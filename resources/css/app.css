@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+@theme {
+  --color-brand-cream: #f3efeb;
+  --color-brand-brown: #402c1f;
+  --color-brand-gradation: #A0522D;
+}

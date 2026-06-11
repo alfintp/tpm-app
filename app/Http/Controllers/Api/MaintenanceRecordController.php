@@ -8,6 +8,7 @@ use App\Models\MaintenanceAction;
 use App\Models\Machine;
 use App\Models\MachineComponent;
 use App\Models\MaintenanceSchedule;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -49,6 +50,10 @@ class MaintenanceRecordController extends Controller
             $recordData['condition_after_pct'] = $afterVals->count() ? round($afterVals->avg(), 1) : null;
 
             $record = MaintenanceRecord::create($recordData);
+
+            $machine = Machine::find($record->machine_id);
+            $machineName = $machine ? $machine->name : 'Mesin';
+            ActivityLog::log('Kirim Laporan', "Mengirimkan laporan maintenance untuk mesin: {$machineName} dengan status: " . strtoupper($record->status));
 
             if (!empty($validated['actions'])) {
                 foreach ($validated['actions'] as $actionData) {

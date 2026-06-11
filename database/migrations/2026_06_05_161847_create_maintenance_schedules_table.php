@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('machine_id')->constrained('machines')->onDelete('cascade');
             $table->integer('interval_days');
-            $table->enum('schedule_type', ['preventive', 'predictive', 'breakdown'])->default('preventive');
+            $table->string('schedule_type')->default('preventive');
             $table->date('next_due_date');
             $table->boolean('is_active')->default(true);
             $table->timestamps();

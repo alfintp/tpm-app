@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use App\Models\MachineComponent;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 
 class MachineComponentController extends Controller
@@ -32,6 +33,8 @@ class MachineComponentController extends Controller
 
         $component = $machine->components()->create($validated);
 
+        ActivityLog::log('Tambah Komponen', "Menambahkan komponen baru: {$component->name} ({$component->category}) pada mesin: {$machine->name}");
+
         return response()->json($component, 201);
     }
 
@@ -52,12 +55,19 @@ class MachineComponentController extends Controller
 
         $component->update($validated);
 
+        $machineName = $component->machine ? $component->machine->name : 'Mesin';
+        ActivityLog::log('Edit Komponen', "Memperbarui komponen: {$component->name} ({$component->category}) pada mesin: {$machineName}");
+
         return response()->json($component);
     }
 
     public function destroy($id)
     {
         $component = MachineComponent::findOrFail($id);
+        $machineName = $component->machine ? $component->machine->name : 'Mesin';
+        
+        ActivityLog::log('Hapus Komponen', "Menghapus komponen: {$component->name} ({$component->category}) dari mesin: {$machineName}");
+
         $component->delete();
 
         return response()->json(['message' => 'Component deleted']);

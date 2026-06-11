@@ -6,12 +6,31 @@ use App\Http\Controllers\Api\MachineController;
 use App\Http\Controllers\Api\MaintenanceScheduleController;
 use App\Http\Controllers\Api\MaintenanceRecordController;
 use App\Http\Controllers\Api\MachineComponentController;
+use App\Http\Controllers\Api\ApprovalController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\UserController;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
 */
+
+// Authentication Routes (unprotected)
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    // Auth profile & logout
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/user/profile', [AuthController::class, 'profile']);
+    
+    // User management (admin & manager only inside controllers)
+    Route::get('/admin/users', [UserController::class, 'index']);
+    Route::put('/admin/users/{id}/role', [UserController::class, 'updateRole']);
+    Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
+    Route::get('/admin/logs', [UserController::class, 'activityLogs']);
+});
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -47,7 +66,14 @@ Route::get('/records', [MaintenanceRecordController::class, 'index']);
 Route::post('/records', [MaintenanceRecordController::class, 'store']);
 Route::get('/records/{id}', [MaintenanceRecordController::class, 'show']);
 
-// Helper route - gets the first user (dummy auth)
-Route::get('/dummy-user', function () {
+// Approvals
+Route::get('/approvals', [ApprovalController::class, 'index']);
+Route::post('/approvals/{recordId}/decide', [ApprovalController::class, 'decide']);
+
+// Helper route - gets the logged in user or first user (dummy auth)
+Route::get('/dummy-user', function (Illuminate\Http\Request $request) {
+    if (auth('sanctum')->check()) {
+        return response()->json(auth('sanctum')->user());
+    }
     return response()->json(\App\Models\User::first() ?? ['id' => null]);
 });

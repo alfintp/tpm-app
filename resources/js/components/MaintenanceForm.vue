@@ -232,6 +232,7 @@ const submitReport = async () => {
     const uRes = await axios.get('/api/dummy-user').catch(() => null);
     const payload = {
       ...form.value,
+      maintenance_date: new Date(form.value.maintenance_date).toISOString(),
       technician_id: uRes?.data?.id,
       actions: validActions,
     };

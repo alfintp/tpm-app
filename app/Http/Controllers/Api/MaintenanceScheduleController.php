@@ -17,12 +17,12 @@ class MaintenanceScheduleController extends Controller
     
     public function notifications()
     {
-        $today = Carbon::today();
+        // Find schedules where next_due_date is tomorrow, today, or in the past (overdue)
+        $tomorrow = Carbon::tomorrow();
         
-        // Find schedules where next_due_date is today or in the past (overdue)
         $schedules = MaintenanceSchedule::with('machine')
             ->where('is_active', true)
-            ->where('next_due_date', '<=', $today)
+            ->where('next_due_date', '<=', $tomorrow)
             ->get();
             
         return response()->json($schedules);

@@ -22,7 +22,7 @@ class MaintenanceRecord extends Model
     ];
 
     protected $casts = [
-        'maintenance_date' => 'date',
+        'maintenance_date' => 'datetime',
     ];
 
     public function machine()

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->float('condition_pct');
             $table->string('location')->nullable();
-            $table->enum('status', ['active', 'inactive', 'maintenance'])->default('active');
+            $table->string('status')->default('active');
             $table->timestamps();
         });
     }
