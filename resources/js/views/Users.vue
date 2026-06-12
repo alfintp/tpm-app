@@ -6,10 +6,18 @@
         <h1 class="text-xl font-black text-brand-brown">Manajemen User</h1>
         <p class="text-sm text-slate-500 font-medium">Ubah role user atau hapus akun pengguna sistem TPM</p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3">
         <span class="text-xs bg-brand-cream text-brand-brown font-bold px-3 py-1.5 rounded-full border border-brand-brown/10">
           Total: {{ users.length }} Pengguna
         </span>
+        <button 
+          v-if="isAdmin" 
+          @click="openAddModal" 
+          class="flex items-center gap-2 bg-brand-brown hover:opacity-90 text-brand-cream px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+          Tambah User Baru
+        </button>
       </div>
     </div>
 
@@ -42,6 +50,7 @@
               <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Email</th>
               <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Role Saat Ini</th>
               <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Ubah Role</th>
+              <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Kota</th>
               <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider text-right">Aksi</th>
             </tr>
           </thead>
@@ -91,20 +100,132 @@
                 </select>
               </td>
 
-              <!-- Delete Action -->
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  @click="handleDeleteUser(u)"
-                  :disabled="u.id === currentUser?.id || deletingId === u.id"
-                  class="text-red-500 hover:text-red-700 font-bold text-xs bg-red-50 hover:bg-red-100 disabled:opacity-30 disabled:pointer-events-none px-3 py-1.5 rounded-lg transition-all border border-red-200/20"
+              <!-- City Select -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <select
+                  v-if="isAdmin"
+                  :value="u.city"
+                  @change="handleCityChange(u, $event.target.value)"
+                  :disabled="updatingCityId === u.id"
+                  class="bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-brown focus:border-brand-brown disabled:opacity-50"
                 >
-                  <span v-if="deletingId === u.id">Menghapus...</span>
-                  <span v-else>Hapus</span>
-                </button>
+                  <option value="pasuruan">Pasuruan</option>
+                  <option value="sby">Surabaya</option>
+                  <option value="both">Keduanya</option>
+                </select>
+                <span v-else class="text-xs font-bold text-slate-600">{{ getCityName(u.city) }}</span>
+              </td>
+
+              <!-- Actions -->
+              <td class="px-6 py-4 whitespace-nowrap text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    v-if="isAdmin"
+                    @click="openPasswordModal(u)"
+                    class="text-indigo-600 hover:text-indigo-800 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-all border border-indigo-200/30"
+                    title="Ubah Password"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                  </button>
+                  <button
+                    @click="handleDeleteUser(u)"
+                    :disabled="u.id === currentUser?.id || deletingId === u.id"
+                    class="text-red-500 hover:text-red-700 font-bold text-xs bg-red-50 hover:bg-red-100 disabled:opacity-30 disabled:pointer-events-none px-3 py-1.5 rounded-lg transition-all border border-red-200/20"
+                  >
+                    <span v-if="deletingId === u.id">Menghapus...</span>
+                    <span v-else>Hapus</span>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Change Password Modal (Admin only) -->
+    <div v-if="showPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showPasswordModal = false"></div>
+      <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm relative z-10 p-8 space-y-6">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+          <div>
+            <h3 class="text-lg font-black text-brand-brown">Ubah Password</h3>
+            <p class="text-xs text-slate-500 mt-0.5">{{ passwordTarget?.full_name }}</p>
+          </div>
+          <button @click="showPasswordModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <form @submit.prevent="handleChangePassword" class="space-y-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Password Baru *</label>
+            <input type="password" v-model="newPassword" required minlength="6" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-brown focus:border-brand-brown text-slate-700 font-medium text-sm" placeholder="Minimal 6 karakter">
+          </div>
+          <div class="pt-2 flex justify-end gap-3">
+            <button type="button" @click="showPasswordModal = false" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">Batal</button>
+            <button type="submit" :disabled="savingPassword" class="px-5 py-2.5 rounded-xl font-bold text-sm text-brand-cream bg-brand-brown hover:opacity-95 transition-colors shadow-md cursor-pointer disabled:opacity-70 flex items-center gap-2">
+              <svg v-if="savingPassword" class="animate-spin h-4 w-4 text-brand-cream" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              Simpan Password
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add User Modal (Admin only) -->
+    <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showAddModal = false"></div>
+      <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md relative z-10 p-8 space-y-6">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+          <h3 class="text-lg font-black text-brand-brown">Tambah User Baru</h3>
+          <button @click="showAddModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        
+        <form @submit.prevent="handleAddUser" class="space-y-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Nama Lengkap *</label>
+            <input type="text" v-model="addForm.full_name" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-brown focus:border-brand-brown text-slate-700 font-medium text-sm" placeholder="e.g. John Doe">
+          </div>
+          
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Email *</label>
+            <input type="email" v-model="addForm.email" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-brown focus:border-brand-brown text-slate-700 font-medium text-sm" placeholder="e.g. john@example.com">
+          </div>
+          
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Password *</label>
+            <input type="password" v-model="addForm.password" required minlength="6" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-brown focus:border-brand-brown text-slate-700 font-medium text-sm" placeholder="••••••••">
+          </div>
+          
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Role *</label>
+            <select v-model="addForm.role" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-brown focus:border-brand-brown text-slate-700 font-bold text-sm cursor-pointer">
+              <option value="technician">Teknisi (Technician)</option>
+              <option value="manager">Manajer (Manager)</option>
+              <option value="admin">Administrator (Admin)</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Akses Kota</label>
+            <select v-model="addForm.city" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-brown focus:border-brand-brown text-slate-700 font-bold text-sm cursor-pointer">
+              <option value="both">Keduanya (Pasuruan & Surabaya)</option>
+              <option value="pasuruan">Pasuruan saja</option>
+              <option value="sby">Surabaya saja</option>
+            </select>
+            <p class="text-[11px] text-slate-400">Untuk teknisi, pembatasan ini menentukan mesin mana yang bisa dilihat.</p>
+          </div>
+          
+          <div class="pt-4 flex justify-end gap-3">
+            <button type="button" @click="showAddModal = false" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">Batal</button>
+            <button type="submit" :disabled="saving" class="px-5 py-2.5 rounded-xl font-bold text-sm text-brand-cream bg-brand-brown hover:opacity-95 transition-colors shadow-md cursor-pointer disabled:opacity-70 flex items-center gap-2">
+              <svg v-if="saving" class="animate-spin h-4 w-4 text-brand-cream" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              Tambah User
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -115,12 +236,98 @@ import { ref, onMounted } from 'vue';
 import { useAuth } from '../composables/useAuth.js';
 import { showAlert, showConfirm } from '../composables/useAlert.js';
 
-const { user: currentUser } = useAuth();
+const { user: currentUser, isAdmin } = useAuth();
 
 const users = ref([]);
 const loading = ref(true);
 const updatingId = ref(null);
+const updatingCityId = ref(null);
 const deletingId = ref(null);
+
+const showAddModal = ref(false);
+const saving = ref(false);
+const addForm = ref({
+  full_name: '',
+  email: '',
+  password: '',
+  role: 'technician',
+  city: 'both'
+});
+
+const showPasswordModal = ref(false);
+const savingPassword = ref(false);
+const newPassword = ref('');
+const passwordTarget = ref(null);
+
+function openAddModal() {
+  addForm.value = {
+    full_name: '',
+    email: '',
+    password: '',
+    role: 'technician',
+    city: 'both'
+  };
+  showAddModal.value = true;
+}
+
+function openPasswordModal(user) {
+  passwordTarget.value = user;
+  newPassword.value = '';
+  showPasswordModal.value = true;
+}
+
+async function handleChangePassword() {
+  if (!newPassword.value || newPassword.value.length < 6) {
+    showAlert('error', 'Gagal', 'Password minimal 6 karakter.');
+    return;
+  }
+  savingPassword.value = true;
+  try {
+    const res = await window.axios.put(`/api/admin/users/${passwordTarget.value.id}/password`, { password: newPassword.value });
+    showAlert('success', 'Berhasil', res.data.message || 'Password berhasil diubah.');
+    showPasswordModal.value = false;
+  } catch (error) {
+    showAlert('error', 'Gagal', error.response?.data?.message || 'Gagal mengubah password.');
+  } finally {
+    savingPassword.value = false;
+  }
+}
+
+async function handleCityChange(user, newCity) {
+  if (user.city === newCity) return;
+  updatingCityId.value = user.id;
+  try {
+    const res = await window.axios.put(`/api/admin/users/${user.id}/city`, { city: newCity });
+    user.city = newCity;
+    showAlert('success', 'Kota Diperbarui', res.data.message || 'Kota user berhasil diubah.');
+  } catch (error) {
+    showAlert('error', 'Gagal', error.response?.data?.message || 'Gagal mengubah kota user.');
+  } finally {
+    updatingCityId.value = null;
+  }
+}
+
+async function handleAddUser() {
+  if (!addForm.value.full_name || !addForm.value.email || !addForm.value.password) {
+    showAlert('error', 'Gagal', 'Semua kolom wajib diisi!');
+    return;
+  }
+  
+  saving.value = true;
+  try {
+    const response = await window.axios.post('/api/admin/users', addForm.value);
+    users.value.push(response.data.user);
+    // Sort list by name
+    users.value.sort((a, b) => a.full_name.localeCompare(b.full_name));
+    showAlert('success', 'Berhasil', response.data.message || 'User baru berhasil ditambahkan.');
+    showAddModal.value = false;
+  } catch (error) {
+    console.error('Failed to add user:', error);
+    showAlert('error', 'Gagal', error.response?.data?.message || 'Gagal menambahkan user baru.');
+  } finally {
+    saving.value = false;
+  }
+}
 
 async function fetchUsers() {
   loading.value = true;
@@ -197,6 +404,11 @@ function getRoleName(role) {
     technician: 'Teknisi'
   };
   return names[role] ?? role;
+}
+
+function getCityName(city) {
+  const map = { pasuruan: 'Pasuruan', sby: 'Surabaya', both: 'Keduanya' };
+  return map[city] ?? city ?? '-';
 }
 
 function getRoleClass(role) {

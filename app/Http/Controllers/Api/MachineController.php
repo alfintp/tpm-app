@@ -11,10 +11,18 @@ use Illuminate\Http\Request;
 
 class MachineController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $machines = Machine::with(['schedules', 'components', 'picMesin', 'records.actions'])->get();
-        return response()->json($machines);
+        $authUser = auth('sanctum')->user();
+
+        $query = Machine::with(['schedules', 'components', 'picMesin', 'records.actions']);
+
+        // Technicians can only see machines in their assigned city (unless city is 'both')
+        if ($authUser && $authUser->role === 'technician' && isset($authUser->city) && $authUser->city !== 'both') {
+            $query->where('kota', $authUser->city);
+        }
+
+        return response()->json($query->get());
     }
 
     public function show($id)
@@ -34,10 +42,12 @@ class MachineController extends Controller
         }
 
         $validated = validator($input, [
+            'kode' => 'required|string|max:100|unique:machines,kode',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'condition_pct' => 'required|numeric|min:0|max:100',
             'location' => 'nullable|string|max:255',
+            'kota' => 'required|string|in:pasuruan,sby',
             'status' => 'required|in:active,inactive,maintenance',
             'pic_mesin_id' => 'nullable|uuid|exists:users,id',
             'maintenance_duration' => 'nullable|integer|min:1',
@@ -62,6 +72,93 @@ class MachineController extends Controller
         return response()->json($machine, 201);
     }
 
+    public function bulkStore(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $request->validate([
+            'machines' => 'required|array',
+            'machines.*.kode' => 'required|string|max:100',
+            'machines.*.name' => 'required|string|max:255',
+            'machines.*.description' => 'nullable|string',
+            'machines.*.condition_pct' => 'required|numeric|min:0|max:100',
+            'machines.*.location' => 'nullable|string|max:255',
+            'machines.*.kota' => 'required|string|in:pasuruan,sby',
+            'machines.*.status' => 'required|in:active,inactive,maintenance',
+            'machines.*.pic_email' => 'nullable|string|email',
+            'machines.*.maintenance_duration' => 'nullable|integer|min:1',
+            'machines.*.maintenance_start_date' => 'nullable|date',
+        ]);
+
+        $kodes = collect($request->machines)->pluck('kode')->toArray();
+        // Check for duplicates in the uploaded array
+        if (count($kodes) !== count(array_unique($kodes))) {
+            return response()->json(['message' => 'Gagal mengimpor. Ada kode mesin ganda di dalam file Excel.'], 422);
+        }
+
+        // Check if any code already exists in DB
+        $existingCodes = Machine::whereIn('kode', $kodes)->pluck('kode')->toArray();
+        if (!empty($existingCodes)) {
+            return response()->json([
+                'message' => 'Gagal mengimpor. Kode mesin berikut sudah terdaftar di database: ' . implode(', ', $existingCodes),
+                'existing_codes' => $existingCodes
+            ], 422);
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $createdCount = 0;
+            foreach ($request->machines as $item) {
+                // Find PIC by email
+                $picId = null;
+                if (!empty($item['pic_email'])) {
+                    $picUser = User::where('email', $item['pic_email'])->first();
+                    if ($picUser) {
+                        $picId = $picUser->id;
+                    }
+                }
+
+                $machine = Machine::create([
+                    'kode' => $item['kode'],
+                    'name' => $item['name'],
+                    'description' => $item['description'] ?? null,
+                    'condition_pct' => $item['condition_pct'],
+                    'location' => $item['location'] ?? null,
+                    'kota' => $item['kota'],
+                    'status' => $item['status'],
+                    'pic_mesin_id' => $picId,
+                    'maintenance_duration' => $item['maintenance_duration'] ?? null,
+                    'maintenance_start_date' => $item['maintenance_start_date'] ?? null,
+                ]);
+
+                // Automatically create maintenance schedule if duration and start date are provided
+                if (!empty($item['maintenance_duration']) && !empty($item['maintenance_start_date'])) {
+                    MaintenanceSchedule::create([
+                        'machine_id' => $machine->id,
+                        'schedule_type' => 'preventive',
+                        'interval_days' => $item['maintenance_duration'],
+                        'next_due_date' => $item['maintenance_start_date'],
+                        'status' => 'pending',
+                    ]);
+                }
+                $createdCount++;
+            }
+
+            ActivityLog::log('Import Mesin', "Mengimpor {$createdCount} data mesin baru melalui Excel");
+            \Illuminate\Support\Facades\DB::commit();
+
+            return response()->json([
+                'message' => "Berhasil mengimpor {$createdCount} mesin.",
+                'count' => $createdCount
+            ], 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['message' => 'Gagal mengimpor data: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function update(Request $request, $id)
     {
         $machine = Machine::findOrFail($id);
@@ -75,10 +172,12 @@ class MachineController extends Controller
         }
 
         $validated = validator($input, [
+            'kode' => 'sometimes|required|string|max:100|unique:machines,kode,' . $machine->id,
             'name' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
             'condition_pct' => 'sometimes|required|numeric|min:0|max:100',
             'location' => 'nullable|string|max:255',
+            'kota' => 'sometimes|required|string|in:pasuruan,sby',
             'status' => 'sometimes|required|in:active,inactive,maintenance',
             'pic_mesin_id' => 'nullable|uuid|exists:users,id',
             'maintenance_duration' => 'nullable|integer|min:1',

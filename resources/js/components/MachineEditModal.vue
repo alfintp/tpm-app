@@ -9,17 +9,32 @@
         </button>
       </div>
       <div class="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-slate-700">Nama Mesin *</label>
-          <input type="text" v-model="form.name" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Mixer Rice Crunch">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-slate-700">Kode Mesin *</label>
+            <input type="text" v-model="form.kode" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. LL-MX-01">
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-slate-700">Nama Mesin *</label>
+            <input type="text" v-model="form.name" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Mixer Rice Crunch">
+          </div>
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-slate-700">Deskripsi</label>
           <textarea v-model="form.description" rows="2" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 resize-none" placeholder="Deskripsi singkat mesin..."></textarea>
         </div>
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-slate-700">Lokasi / Area</label>
-          <input type="text" v-model="form.location" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Line 1">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-slate-700">Kota *</label>
+            <select v-model="form.kota" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 cursor-pointer">
+              <option value="pasuruan">Pasuruan</option>
+              <option value="sby">Surabaya</option>
+            </select>
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-slate-700">Lokasi / Area</label>
+            <input type="text" v-model="form.location" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Line 1">
+          </div>
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-slate-700">PIC Mesin</label>
@@ -69,9 +84,11 @@ const emit = defineEmits(['close', 'saved']);
 const saving = ref(false);
 const users = ref([]);
 const form = ref({ 
+  kode: '',
   name: '', 
   description: '', 
   location: '', 
+  kota: 'pasuruan',
   status: 'active',
   pic_mesin_id: '',
   maintenance_duration: null,
@@ -91,9 +108,11 @@ onMounted(() => {
   loadUsers();
   if (props.machine) {
     form.value = {
+      kode: props.machine.kode ?? '',
       name: props.machine.name ?? '',
       description: props.machine.description ?? '',
       location: props.machine.location ?? '',
+      kota: props.machine.kota ?? 'pasuruan',
       status: props.machine.status ?? 'active',
       pic_mesin_id: props.machine.pic_mesin_id ?? '',
       maintenance_duration: props.machine.maintenance_duration ?? null,
@@ -103,7 +122,10 @@ onMounted(() => {
 });
 
 const submit = async () => {
-  if (!form.value.name) return;
+  if (!form.value.kode || !form.value.name) {
+    alert('Kode Mesin dan Nama Mesin wajib diisi!');
+    return;
+  }
   saving.value = true;
   try {
     await axios.put(`/api/machines/${props.machine.id}`, form.value);

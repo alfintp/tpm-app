@@ -11,10 +11,12 @@ class Machine extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
+        'kode',
         'name',
         'description',
         'condition_pct',
         'location',
+        'kota',
         'status',
         'pic_mesin_id',
         'maintenance_duration',

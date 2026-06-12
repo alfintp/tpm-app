@@ -13,8 +13,12 @@
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
         </button>
         <div>
-          <h2 class="text-2xl font-bold text-slate-800">{{ machine.name }}</h2>
-          <p class="text-slate-500 text-sm mt-0.5">Maintenance Report &bull; {{ machine.description }} &bull; <span class="font-medium">{{ machine.location }}</span></p>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 class="text-2xl font-bold text-slate-800">{{ machine.name }}</h2>
+            <span v-if="machine.kode" class="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-mono font-bold border border-slate-200">{{ machine.kode }}</span>
+            <span v-if="machine.kota" class="px-2.5 py-0.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-extrabold uppercase tracking-wide border border-indigo-100">{{ machine.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}</span>
+          </div>
+          <p class="text-slate-500 text-sm mt-1">Maintenance Report - {{ machine.description ? '-' : ' ' }}  <span class="font-medium">{{ machine.location }}</span></p>
         </div>
       </div>
       <div class="flex items-center gap-3">
@@ -116,7 +120,7 @@
                 class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                Mode Wizard (Mobile)
+                Mode Mobile
               </button>
             </div>
             
@@ -578,6 +582,29 @@
           </div>
         </div>
 
+        <!-- Header with Add/Import buttons -->
+        <div class="flex justify-between items-center mb-6 pb-2 border-b border-slate-100">
+          <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Daftar Komponen
+          </h3>
+          <div class="flex items-center gap-2">
+            <!-- Button Import (Admin only) -->
+            <button 
+              v-if="isAdmin" 
+              @click="triggerComponentImport" 
+              class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors shadow-sm cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              Import Excel
+            </button>
+            <button v-if="isManagerOrAdmin" @click="openAddComponent" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors shadow-sm cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Tambah Komponen
+            </button>
+          </div>
+        </div>
+
         <div v-if="machine.components?.length === 0" class="text-center py-12 text-slate-400 text-sm">
           Belum ada komponen pada mesin ini.
         </div>
@@ -587,18 +614,6 @@
         </div>
 
         <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <!-- Header with Add button -->
-          <div class="lg:col-span-2 flex justify-between items-center mb-2">
-            <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-              Daftar Komponen
-            </h3>
-            <button v-if="isManagerOrAdmin" @click="openAddComponent" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors shadow-sm cursor-pointer">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-              Tambah Komponen
-            </button>
-          </div>
-
           <!-- Component Cards -->
           <div v-for="comp in filteredComponents" :key="comp.id"
             class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-100 transition-all group">
@@ -665,6 +680,81 @@
         @close="showMachineEdit = false"
         @saved="onMachineSaved"
       />
+
+      <!-- Import Components Excel Modal -->
+      <div v-if="showComponentImportModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-xl border border-slate-100 space-y-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Import Komponen ({{ machine?.name }})
+              </h3>
+              <p class="text-xs text-slate-500 mt-1">Unggah file Excel untuk menambahkan banyak komponen ke mesin ini secara massal</p>
+            </div>
+            <button @click="showComponentImportModal = false" class="p-1.5 hover:bg-slate-100 rounded-xl transition-all cursor-pointer text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Step 1: Download Template -->
+            <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center justify-between gap-4">
+              <div>
+                <p class="text-xs font-bold text-slate-700">1. Unduh Format Template</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Gunakan format Excel standar untuk mengimpor komponen</p>
+              </div>
+              <button 
+                @click="downloadComponentTemplate" 
+                class="flex items-center gap-1.5 bg-white border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Format Excel
+              </button>
+            </div>
+
+            <!-- Step 2: Choose File -->
+            <div class="space-y-2">
+              <p class="text-xs font-bold text-slate-700">2. Pilih File Excel (.xlsx, .xls, .csv)</p>
+              <div 
+                class="border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/20 p-6 rounded-2xl text-center transition-all relative"
+              >
+                <input 
+                  type="file" 
+                  ref="componentFileInput" 
+                  @change="handleComponentFileChange" 
+                  accept=".xlsx, .xls, .csv" 
+                  class="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+                <svg class="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                <p class="text-xs font-semibold text-slate-700">
+                  {{ selectedComponentFile ? selectedComponentFile.name : 'Klik untuk cari file atau seret file ke sini' }}
+                </p>
+                <p v-if="selectedComponentFile" class="text-[10px] text-slate-400 mt-1">
+                  Ukuran: {{ (selectedComponentFile.size / 1024).toFixed(1) }} KB
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <button 
+              @click="showComponentImportModal = false" 
+              class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer transition-all"
+            >
+              Batal
+            </button>
+            <button 
+              @click="importComponents" 
+              :disabled="!selectedComponentFile || importingComponents" 
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed transition-all"
+            >
+              <span v-if="importingComponents" class="animate-spin w-3 h-3 border-2 border-white/20 border-t-white rounded-full"></span>
+              {{ importingComponents ? 'Mengimpor...' : 'Mulai Import' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
     </div>
 
@@ -699,7 +789,7 @@ import { useAuth } from '../composables/useAuth.js';
 
 const route = useRoute();
 const router = useRouter();
-const { isManagerOrAdmin } = useAuth();
+const { isManagerOrAdmin, isAdmin } = useAuth();
 const machine = ref(null);
 const loading = ref(true);
 const activeTab = ref('report');
@@ -707,6 +797,11 @@ const componentFilter = ref('unchecked_today');
 const submitting = ref(false);
 const componentRows = ref([]);
 const skipLeaveGuard = ref(false);
+
+const showComponentImportModal = ref(false);
+const importingComponents = ref(false);
+const selectedComponentFile = ref(null);
+const componentFileInput = ref(null);
 
 // Modal states for component CRUD
 const showComponentForm = ref(false);
@@ -1207,5 +1302,127 @@ const onMachineSaved = async () => {
   showMachineEdit.value = false;
   await loadData();
   showAlert('success', 'Berhasil!', 'Data mesin berhasil diperbarui.');
+};
+
+const triggerComponentImport = () => {
+  selectedComponentFile.value = null;
+  showComponentImportModal.value = true;
+};
+
+const handleComponentFileChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    selectedComponentFile.value = file;
+  }
+};
+
+const loadSheetJS = () => {
+  return new Promise((resolve) => {
+    if (window.XLSX) {
+      resolve(window.XLSX);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.onload = () => resolve(window.XLSX);
+    document.head.appendChild(script);
+  });
+};
+
+const downloadComponentTemplate = async () => {
+  try {
+    const XLSX = await loadSheetJS();
+    const headers = [
+      ['Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kondisi Awal (%)', 'Jadwal Perawatan']
+    ];
+    const rows = [
+      ['Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 100, 'Bulanan'],
+      ['Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 90, 'Harian']
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
+    
+    ws['!cols'] = [
+      { wch: 20 }, // Kategori
+      { wch: 25 }, // Nama Komponen
+      { wch: 30 }, // Spesifikasi
+      { wch: 15 }, // Jumlah (Qty)
+      { wch: 15 }, // Satuan
+      { wch: 20 }, // Kondisi Awal (%)
+      { wch: 20 }  // Jadwal Perawatan
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Import Komponen');
+    XLSX.writeFile(wb, 'Format_Import_Komponen.xlsx');
+  } catch (err) {
+    console.error('Template download failed:', err);
+    showAlert('error', 'Gagal!', 'Gagal mendownload template Excel.');
+  }
+};
+
+const importComponents = async () => {
+  if (!selectedComponentFile.value) return;
+  importingComponents.value = true;
+  try {
+    const XLSX = await loadSheetJS();
+    const file = selectedComponentFile.value;
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        if (rows.length < 2) {
+          showAlert('error', 'Gagal!', 'File Excel kosong atau tidak memiliki baris data.');
+          importingComponents.value = false;
+          return;
+        }
+        
+        const mappedComponents = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length === 0 || !row[0]) continue;
+          
+          mappedComponents.push({
+            category: row[0]?.toString()?.trim() || '',
+            name: row[1]?.toString()?.trim() || '',
+            specification: row[2]?.toString()?.trim() || null,
+            qty: parseInt(row[3]) || 1,
+            unit: row[4]?.toString()?.trim() || 'Pcs',
+            last_condition_pct: parseFloat(row[5]) || 100,
+            maintenance_schedule: row[6]?.toString()?.trim() || null
+          });
+        }
+        
+        if (mappedComponents.length === 0) {
+          showAlert('error', 'Gagal!', 'Tidak menemukan baris data komponen yang valid.');
+          importingComponents.value = false;
+          return;
+        }
+        
+        const res = await axios.post(`/api/machines/${route.params.id}/components/import`, { components: mappedComponents });
+        showAlert('success', 'Berhasil!', res.data.message || `Berhasil mengimpor ${mappedComponents.length} komponen.`);
+        showComponentImportModal.value = false;
+        await loadData();
+      } catch (err) {
+        console.error('File parsing/import failed:', err);
+        showAlert('error', 'Gagal!', 'Gagal memproses file: ' + (err.response?.data?.message || err.message));
+      } finally {
+        importingComponents.value = false;
+      }
+    };
+    
+    reader.readAsArrayBuffer(file);
+  } catch (err) {
+    console.error('Import failed:', err);
+    showAlert('error', 'Gagal!', 'Terjadi kesalahan sistem.');
+    importingComponents.value = false;
+  }
 };
 </script>

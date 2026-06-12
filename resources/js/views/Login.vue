@@ -68,14 +68,6 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between">
-            <div class="text-sm">
-              <span class="text-slate-500 font-medium">Belum punya akun?</span>
-              <router-link to="/register" class="ml-1 font-bold text-brand-brown hover:underline">
-                Daftar Sekarang
-              </router-link>
-            </div>
-          </div>
 
           <div>
             <button

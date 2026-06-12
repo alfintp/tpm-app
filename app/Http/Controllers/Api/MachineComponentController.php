@@ -38,6 +38,120 @@ class MachineComponentController extends Controller
         return response()->json($component, 201);
     }
 
+    public function bulkStore(Request $request, $machineId)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $machine = Machine::findOrFail($machineId);
+
+        $request->validate([
+            'components' => 'required|array',
+            'components.*.category' => 'required|string|max:100',
+            'components.*.name' => 'required|string|max:255',
+            'components.*.specification' => 'nullable|string|max:500',
+            'components.*.qty' => 'required|integer|min:1',
+            'components.*.unit' => 'required|string|max:50',
+            'components.*.last_condition_pct' => 'required|numeric|min:0|max:100',
+            'components.*.maintenance_schedule' => 'nullable|string|max:50',
+        ]);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $createdCount = 0;
+            foreach ($request->components as $item) {
+                $machine->components()->create([
+                    'category' => $item['category'],
+                    'name' => $item['name'],
+                    'specification' => $item['specification'] ?? null,
+                    'qty' => $item['qty'],
+                    'unit' => $item['unit'],
+                    'last_condition_pct' => $item['last_condition_pct'],
+                    'maintenance_schedule' => $item['maintenance_schedule'] ?? null,
+                ]);
+                $createdCount++;
+            }
+
+            ActivityLog::log('Import Komponen', "Mengimpor {$createdCount} komponen baru untuk mesin: {$machine->name} melalui Excel");
+            \Illuminate\Support\Facades\DB::commit();
+
+            return response()->json([
+                'message' => "Berhasil mengimpor {$createdCount} komponen.",
+                'count' => $createdCount
+            ], 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['message' => 'Gagal mengimpor komponen: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function bulkStoreGlobal(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $request->validate([
+            'components' => 'required|array',
+            'components.*.machine_code' => 'required|string',
+            'components.*.category' => 'required|string|max:100',
+            'components.*.name' => 'required|string|max:255',
+            'components.*.specification' => 'nullable|string|max:500',
+            'components.*.qty' => 'required|integer|min:1',
+            'components.*.unit' => 'required|string|max:50',
+            'components.*.last_condition_pct' => 'required|numeric|min:0|max:100',
+            'components.*.maintenance_schedule' => 'nullable|string|max:50',
+        ]);
+
+        // Validate all machine codes exist first
+        $machineCodes = collect($request->components)->pluck('machine_code')->unique()->toArray();
+        $existingMachines = Machine::whereIn('kode', $machineCodes)->get()->keyBy('kode');
+
+        $missingCodes = [];
+        foreach ($machineCodes as $code) {
+            if (!$existingMachines->has($code)) {
+                $missingCodes[] = $code;
+            }
+        }
+
+        if (!empty($missingCodes)) {
+            return response()->json([
+                'message' => 'Gagal mengimpor. Kode mesin berikut tidak ditemukan di database: ' . implode(', ', $missingCodes),
+                'missing_codes' => $missingCodes
+            ], 422);
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $createdCount = 0;
+            foreach ($request->components as $item) {
+                $machine = $existingMachines->get($item['machine_code']);
+                $machine->components()->create([
+                    'category' => $item['category'],
+                    'name' => $item['name'],
+                    'specification' => $item['specification'] ?? null,
+                    'qty' => $item['qty'],
+                    'unit' => $item['unit'],
+                    'last_condition_pct' => $item['last_condition_pct'],
+                    'maintenance_schedule' => $item['maintenance_schedule'] ?? null,
+                ]);
+                $createdCount++;
+            }
+
+            ActivityLog::log('Import Komponen Massal', "Mengimpor {$createdCount} komponen massal berdasarkan kode mesin melalui Excel");
+            \Illuminate\Support\Facades\DB::commit();
+
+            return response()->json([
+                'message' => "Berhasil mengimpor {$createdCount} komponen untuk berbagai mesin.",
+                'count' => $createdCount
+            ], 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['message' => 'Gagal mengimpor komponen massal: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function update(Request $request, $id)
     {
         $component = MachineComponent::findOrFail($id);

@@ -17,7 +17,6 @@ use App\Http\Controllers\Api\UserController;
 */
 
 // Authentication Routes (unprotected)
-Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -27,7 +26,10 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // User management (admin & manager only inside controllers)
     Route::get('/admin/users', [UserController::class, 'index']);
+    Route::post('/admin/users', [UserController::class, 'store']);
     Route::put('/admin/users/{id}/role', [UserController::class, 'updateRole']);
+    Route::put('/admin/users/{id}/city', [UserController::class, 'updateCity']);
+    Route::put('/admin/users/{id}/password', [UserController::class, 'updatePassword']);
     Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
     Route::get('/admin/logs', [UserController::class, 'activityLogs']);
 });
@@ -37,8 +39,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 // Machine Routes
-Route::get('/machines', [MachineController::class, 'index']);
+Route::get('/machines', [MachineController::class, 'index'])->middleware('auth:sanctum');
 Route::post('/machines', [MachineController::class, 'store']);
+Route::post('/machines/import', [MachineController::class, 'bulkStore'])->middleware('auth:sanctum');
 Route::get('/machines/{id}', [MachineController::class, 'show']);
 Route::put('/machines/{id}', [MachineController::class, 'update']);
 Route::delete('/machines/{id}', [MachineController::class, 'destroy']);
@@ -47,8 +50,10 @@ Route::get('/users', [MachineController::class, 'getUsers']);
 // Machine Components (nested under machine)
 Route::get('/machines/{machineId}/components', [MachineComponentController::class, 'index']);
 Route::post('/machines/{machineId}/components', [MachineComponentController::class, 'store']);
+Route::post('/machines/{machineId}/components/import', [MachineComponentController::class, 'bulkStore'])->middleware('auth:sanctum');
 
 // Machine Components (standalone - for edit/delete/history)
+Route::post('/components/import-global', [MachineComponentController::class, 'bulkStoreGlobal'])->middleware('auth:sanctum');
 Route::put('/components/{id}', [MachineComponentController::class, 'update']);
 Route::delete('/components/{id}', [MachineComponentController::class, 'destroy']);
 Route::get('/components/{id}/history', [MachineComponentController::class, 'history']);

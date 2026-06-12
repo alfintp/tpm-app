@@ -12,33 +12,6 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
-    {
-        $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6',
-            'role' => 'sometimes|string|in:admin,technician,manager',
-        ]);
-
-        $user = User::create([
-            'full_name' => $request->full_name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role ?? 'technician',
-        ]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        ActivityLog::log('Pendaftaran User', "Mendaftarkan user baru: {$user->full_name} ({$user->email}) dengan role: {$user->role}", $user);
-
-        return response()->json([
-            'user' => $user,
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-        ], 201);
-    }
-
     public function login(Request $request)
     {
         $request->validate([

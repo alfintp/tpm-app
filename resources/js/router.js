@@ -6,7 +6,6 @@ import MachineDetail from './views/MachineDetail.vue';
 import Machines from './views/Machines.vue';
 import Approval from './views/Approval.vue';
 import Login from './views/Login.vue';
-import Register from './views/Register.vue';
 import Users from './views/Users.vue';
 import Logs from './views/Logs.vue';
 
@@ -15,12 +14,6 @@ const routes = [
         path: '/login', 
         component: Login, 
         name: 'login',
-        meta: { guest: true }
-    },
-    { 
-        path: '/register', 
-        component: Register, 
-        name: 'register',
         meta: { guest: true }
     },
     { 

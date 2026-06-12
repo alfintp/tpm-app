@@ -62,25 +62,6 @@ export function useAuth() {
     }
   }
 
-  async function register(fullName, email, password, requestedRole = 'technician') {
-    try {
-      const response = await window.axios.post('/api/register', {
-        full_name: fullName,
-        email,
-        password,
-        role: requestedRole
-      });
-
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Registration error:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Registrasi gagal.' 
-      };
-    }
-  }
-
   async function logout() {
     try {
       if (token.value && token.value !== 'null') {
@@ -139,7 +120,6 @@ export function useAuth() {
     isTechnician,
     isManagerOrAdmin,
     login,
-    register,
     logout,
     initializeAuth,
   };

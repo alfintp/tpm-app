@@ -6,10 +6,29 @@
         <h2 class="text-2xl font-bold text-slate-800">Daftar Mesin</h2>
         <p class="text-sm text-slate-500 mt-1">Kelola semua mesin dalam sistem</p>
       </div>
-      <button v-if="isManagerOrAdmin" @click="openCreate" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-md cursor-pointer">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Tambah Mesin
-      </button>
+      <div class="flex items-center gap-3">
+        <!-- Buttons Import (Admin only) -->
+        <button 
+          v-if="isAdmin" 
+          @click="triggerMachineImport" 
+          class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Import Mesin
+        </button>
+        <button 
+          v-if="isAdmin" 
+          @click="triggerComponentImport" 
+          class="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Import Komponen
+        </button>
+        <button v-if="isManagerOrAdmin" @click="openCreate" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-md cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Tambah Mesin
+        </button>
+      </div>
     </div>
 
     <!-- Filter & Sort Bar -->
@@ -99,10 +118,18 @@
         <tbody class="divide-y divide-slate-50">
           <tr v-for="machine in filtered" :key="machine.id" @click="$router.push(`/machine/${machine.id}`)" class="hover:bg-indigo-50/50 transition-colors cursor-pointer group relative">
             <td class="px-6 py-4">
-              <p class="font-semibold text-slate-800">{{ machine.name }}</p>
+              <div class="flex items-center gap-2">
+                <p class="font-bold text-slate-800">{{ machine.name }}</p>
+                <!-- <span v-if="machine.kode" class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-mono font-semibold">{{ machine.kode }}</span> -->
+              </div>
               <p class="text-xs text-slate-400 mt-0.5 line-clamp-1">{{ machine.description }}</p>
             </td>
-            <td class="px-6 py-4 text-sm text-slate-600">{{ machine.location ?? '-' }}</td>
+            <td class="px-6 py-4 text-sm text-slate-600">
+              <div class="font-medium text-slate-700">{{ machine.location ?? '-' }}</div>
+              <span v-if="machine.kota" class="text-[11px] font-bold text-indigo-500 uppercase tracking-wide">
+                {{ machine.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}
+              </span>
+            </td>
             <td class="px-6 py-4">
               <div v-if="getMachineSchedule(machine)" class="flex items-center gap-2">
                 <span class="text-sm font-medium text-slate-700">{{ formatDate(getMachineSchedule(machine).next_due_date) }}</span>
@@ -139,6 +166,85 @@
 
     <!-- Create Machine Modal -->
     <MachineCreateModal v-if="showCreate" @close="showCreate = false" @saved="onMachineSaved" />
+
+    <!-- Import Excel Modal -->
+    <div v-if="showImportModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-xl border border-slate-100 space-y-6">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <svg v-if="importType === 'machine'" class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <svg v-else class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              {{ importType === 'machine' ? 'Import Data Mesin' : 'Import Komponen Mesin' }}
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">
+              {{ importType === 'machine' ? 'Unggah file Excel untuk mengimpor data mesin secara massal' : 'Unggah file Excel untuk mengimpor komponen massal berdasarkan Kode Mesin' }}
+            </p>
+          </div>
+          <button @click="showImportModal = false" class="p-1.5 hover:bg-slate-100 rounded-xl transition-all cursor-pointer text-slate-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Step 1: Download Template -->
+          <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xs font-bold text-slate-700">1. Unduh Format Template</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Gunakan template resmi agar susunan kolom sesuai dengan sistem</p>
+            </div>
+            <button 
+              @click="importType === 'machine' ? downloadMachineTemplate() : downloadComponentTemplateGlobal()" 
+              class="flex items-center gap-1.5 bg-white border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              Format Excel
+            </button>
+          </div>
+
+          <!-- Step 2: Choose File -->
+          <div class="space-y-2">
+            <p class="text-xs font-bold text-slate-700">2. Pilih File Excel (.xlsx, .xls, .csv)</p>
+            <div 
+              class="border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/20 p-6 rounded-2xl text-center transition-all relative"
+            >
+              <input 
+                type="file" 
+                ref="fileInput" 
+                @change="handleFileChange" 
+                accept=".xlsx, .xls, .csv" 
+                class="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              />
+              <svg class="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+              <p class="text-xs font-semibold text-slate-700">
+                {{ selectedFile ? selectedFile.name : 'Klik untuk cari file atau seret file ke sini' }}
+              </p>
+              <p v-if="selectedFile" class="text-[10px] text-slate-400 mt-1">
+                Ukuran: {{ (selectedFile.size / 1024).toFixed(1) }} KB
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+          <button 
+            @click="showImportModal = false" 
+            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer transition-all"
+          >
+            Batal
+          </button>
+          <button 
+            @click="importType === 'machine' ? importMachines() : importComponentsGlobal()" 
+            :disabled="!selectedFile || importing" 
+            :class="importType === 'machine' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-teal-600 hover:bg-teal-700'"
+            class="px-4 py-2 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed transition-all"
+          >
+            <span v-if="importing" class="animate-spin w-3 h-3 border-2 border-white/20 border-t-white rounded-full"></span>
+            {{ importing ? 'Mengimpor...' : 'Mulai Import' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -151,7 +257,7 @@ import { showConfirm, showAlert } from '../composables/useAlert.js';
 import { useAuth } from '../composables/useAuth.js';
 
 const router = useRouter();
-const { isManagerOrAdmin } = useAuth();
+const { isManagerOrAdmin, isAdmin } = useAuth();
 const machines = ref([]);
 const schedules = ref([]);
 const notifications = ref([]);
@@ -160,6 +266,11 @@ const search = ref('');
 const filterSchedule = ref('');
 const sortBy = ref('name');
 const showCreate = ref(false);
+
+const showImportModal = ref(false);
+const importing = ref(false);
+const selectedFile = ref(null);
+const fileInput = ref(null);
 
 const loadData = async () => {
   try {
@@ -413,5 +524,257 @@ const getAlertTimeText = (dateStr) => {
   if (days === 0) return 'Hari ini';
   if (days === 1) return 'Besok';
   return `${days} hari lagi`;
+};
+
+const importType = ref('machine'); // 'machine' or 'component'
+
+const triggerMachineImport = () => {
+  importType.value = 'machine';
+  selectedFile.value = null;
+  showImportModal.value = true;
+};
+
+const triggerComponentImport = () => {
+  importType.value = 'component';
+  selectedFile.value = null;
+  showImportModal.value = true;
+};
+
+const handleFileChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    selectedFile.value = file;
+  }
+};
+
+const loadSheetJS = () => {
+  return new Promise((resolve) => {
+    if (window.XLSX) {
+      resolve(window.XLSX);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.onload = () => resolve(window.XLSX);
+    document.head.appendChild(script);
+  });
+};
+
+const downloadMachineTemplate = async () => {
+  try {
+    const XLSX = await loadSheetJS();
+    const headers = [
+      ['Kode Mesin', 'Nama Mesin', 'Deskripsi', 'Kondisi (%)', 'Lokasi', 'Kota (psn/sby)', 'Status', 'Email PIC', 'Interval Perawatan (Hari)', 'Tanggal Mulai Perawatan']
+    ];
+    const rows = [
+      ['LL-BLR-01', 'Boiler Utama', 'Mesin pemanas uap utama pabrik', 95, 'Gedung A-1', 'psn', 'active', 'pic@ladanglima.com', 30, '2026-06-12'],
+      ['LL-PKG-01', 'Mesin Packaging 1', 'Mesin pengemas tepung singkong otomatis', 80, 'Gedung B-2', 'sby', 'active', 'pic@ladanglima.com', 15, '2026-06-15']
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
+    
+    ws['!cols'] = [
+      { wch: 15 }, // Kode Mesin
+      { wch: 20 }, // Nama Mesin
+      { wch: 35 }, // Deskripsi
+      { wch: 15 }, // Kondisi (%)
+      { wch: 15 }, // Lokasi
+      { wch: 20 }, // Kota
+      { wch: 15 }, // Status
+      { wch: 25 }, // Email PIC
+      { wch: 25 }, // Interval Perawatan (Hari)
+      { wch: 25 }  // Tanggal Mulai Perawatan
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Import Mesin');
+    XLSX.writeFile(wb, 'Format_Import_Mesin.xlsx');
+  } catch (err) {
+    console.error('Template download failed:', err);
+    showAlert('error', 'Gagal!', 'Gagal mendownload template Excel.');
+  }
+};
+
+const downloadComponentTemplateGlobal = async () => {
+  try {
+    const XLSX = await loadSheetJS();
+    const headers = [
+      ['Kode Mesin', 'Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kondisi Awal (%)', 'Jadwal Perawatan']
+    ];
+    const rows = [
+      ['LL-BLR-01', 'Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 100, 'Bulanan'],
+      ['LL-PKG-01', 'Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 90, 'Harian']
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
+    
+    ws['!cols'] = [
+      { wch: 15 }, // Kode Mesin
+      { wch: 20 }, // Kategori
+      { wch: 25 }, // Nama Komponen
+      { wch: 30 }, // Spesifikasi
+      { wch: 15 }, // Jumlah (Qty)
+      { wch: 15 }, // Satuan
+      { wch: 20 }, // Kondisi Awal (%)
+      { wch: 20 }  // Jadwal Perawatan
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Import Komponen');
+    XLSX.writeFile(wb, 'Format_Import_Komponen_Massal.xlsx');
+  } catch (err) {
+    console.error('Template download failed:', err);
+    showAlert('error', 'Gagal!', 'Gagal mendownload template Excel.');
+  }
+};
+
+const importMachines = async () => {
+  if (!selectedFile.value) return;
+  importing.value = true;
+  try {
+    const XLSX = await loadSheetJS();
+    const file = selectedFile.value;
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        if (rows.length < 2) {
+          showAlert('error', 'Gagal!', 'File Excel kosong atau tidak memiliki baris data.');
+          importing.value = false;
+          return;
+        }
+        
+        const mappedMachines = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length === 0 || !row[0]) continue;
+          
+          mappedMachines.push({
+            kode: row[0]?.toString()?.trim() || '',
+            name: row[1]?.toString()?.trim() || '',
+            description: row[2]?.toString()?.trim() || null,
+            condition_pct: parseFloat(row[3]) || 100,
+            location: row[4]?.toString()?.trim() || null,
+            kota: (() => {
+              const rk = row[5]?.toString()?.trim()?.toLowerCase() || '';
+              return (rk === 'sby' || rk === 'surabaya') ? 'sby' : 'pasuruan';
+            })(),
+            status: row[6]?.toString()?.trim()?.toLowerCase() || 'active',
+            pic_email: row[7]?.toString()?.trim() || null,
+            maintenance_duration: parseInt(row[8]) || null,
+            maintenance_start_date: row[9] ? formatDateISO(row[9]) : null
+          });
+        }
+        
+        if (mappedMachines.length === 0) {
+          showAlert('error', 'Gagal!', 'Tidak menemukan baris data mesin yang valid.');
+          importing.value = false;
+          return;
+        }
+        
+        const res = await axios.post('/api/machines/import', { machines: mappedMachines });
+        showAlert('success', 'Berhasil!', res.data.message || `Berhasil mengimpor ${mappedMachines.length} mesin.`);
+        showImportModal.value = false;
+        await loadData();
+      } catch (err) {
+        console.error('File parsing/import failed:', err);
+        showAlert('error', 'Gagal!', 'Gagal memproses file: ' + (err.response?.data?.message || err.message));
+      } finally {
+        importing.value = false;
+      }
+    };
+    
+    reader.readAsArrayBuffer(file);
+  } catch (err) {
+    console.error('Import failed:', err);
+    showAlert('error', 'Gagal!', 'Terjadi kesalahan sistem.');
+    importing.value = false;
+  }
+};
+
+const importComponentsGlobal = async () => {
+  if (!selectedFile.value) return;
+  importing.value = true;
+  try {
+    const XLSX = await loadSheetJS();
+    const file = selectedFile.value;
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        if (rows.length < 2) {
+          showAlert('error', 'Gagal!', 'File Excel kosong atau tidak memiliki baris data.');
+          importing.value = false;
+          return;
+        }
+        
+        const mappedComponents = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length === 0 || !row[0]) continue;
+          
+          mappedComponents.push({
+            machine_code: row[0]?.toString()?.trim() || '',
+            category: row[1]?.toString()?.trim() || '',
+            name: row[2]?.toString()?.trim() || '',
+            specification: row[3]?.toString()?.trim() || null,
+            qty: parseInt(row[4]) || 1,
+            unit: row[5]?.toString()?.trim() || 'Pcs',
+            last_condition_pct: parseFloat(row[6]) || 100,
+            maintenance_schedule: row[7]?.toString()?.trim() || null
+          });
+        }
+        
+        if (mappedComponents.length === 0) {
+          showAlert('error', 'Gagal!', 'Tidak menemukan baris data komponen yang valid.');
+          importing.value = false;
+          return;
+        }
+        
+        const res = await axios.post('/api/components/import-global', { components: mappedComponents });
+        showAlert('success', 'Berhasil!', res.data.message || `Berhasil mengimpor ${mappedComponents.length} komponen.`);
+        showImportModal.value = false;
+        await loadData();
+      } catch (err) {
+        console.error('File parsing/import failed:', err);
+        showAlert('error', 'Gagal!', 'Gagal memproses file: ' + (err.response?.data?.message || err.message));
+      } finally {
+        importing.value = false;
+      }
+    };
+    
+    reader.readAsArrayBuffer(file);
+  } catch (err) {
+    console.error('Import failed:', err);
+    showAlert('error', 'Gagal!', 'Terjadi kesalahan sistem.');
+    importing.value = false;
+  }
+};
+
+const formatDateISO = (val) => {
+  if (!val) return null;
+  if (typeof val === 'number') {
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return d.toISOString().split('T')[0];
+  }
+  const dateObj = new Date(val);
+  if (!isNaN(dateObj.getTime())) {
+    return dateObj.toISOString().split('T')[0];
+  }
+  return val.toString();
 };
 </script>
