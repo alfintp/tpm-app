@@ -11,12 +11,7 @@
       <div class="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-slate-700">Kategori *</label>
-            <select v-model="form.category" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 cursor-pointer">
-              <option value="Mechanical">Mechanical</option>
-              <option value="Technical">Technical</option>
-              <option value="Electrical">Electrical</option>
-              <option value="Hydraulic">Hydraulic</option>
-            </select>
+            <input type="text" v-model="form.category" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Mechanical, Electrical">
           </div>
          
         <div class="space-y-1.5">
@@ -34,13 +29,7 @@
           </div>
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-slate-700">Satuan *</label>
-            <select v-model="form.unit" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 cursor-pointer">
-              <option value="pcs">pcs</option>
-              <option value="set">set</option>
-              <option value="meter">meter</option>
-              <option value="liter">liter</option>
-              <option value="unit">unit</option>
-            </select>
+            <input type="text" v-model="form.unit" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. pcs, set, meter">
           </div>
         </div>
         

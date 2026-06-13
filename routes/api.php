@@ -42,7 +42,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/machines', [MachineController::class, 'index'])->middleware('auth:sanctum');
 Route::post('/machines', [MachineController::class, 'store']);
 Route::post('/machines/import', [MachineController::class, 'bulkStore'])->middleware('auth:sanctum');
-Route::get('/machines/{id}', [MachineController::class, 'show']);
+Route::get('/machines/{id}', [MachineController::class, 'show'])->middleware('auth:sanctum');
 Route::put('/machines/{id}', [MachineController::class, 'update']);
 Route::delete('/machines/{id}', [MachineController::class, 'destroy']);
 Route::get('/users', [MachineController::class, 'getUsers']);
@@ -68,12 +68,12 @@ Route::delete('/schedules/{id}', [MaintenanceScheduleController::class, 'destroy
 
 // Maintenance Records
 Route::get('/records', [MaintenanceRecordController::class, 'index']);
-Route::post('/records', [MaintenanceRecordController::class, 'store']);
+Route::post('/records', [MaintenanceRecordController::class, 'store'])->middleware('auth:sanctum');
 Route::get('/records/{id}', [MaintenanceRecordController::class, 'show']);
 
 // Approvals
-Route::get('/approvals', [ApprovalController::class, 'index']);
-Route::post('/approvals/{recordId}/decide', [ApprovalController::class, 'decide']);
+Route::get('/approvals', [ApprovalController::class, 'index'])->middleware('auth:sanctum');
+Route::post('/approvals/{recordId}/decide', [ApprovalController::class, 'decide'])->middleware('auth:sanctum');
 
 // Helper route - gets the logged in user or first user (dummy auth)
 Route::get('/dummy-user', function (Illuminate\Http\Request $request) {

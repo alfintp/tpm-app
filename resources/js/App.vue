@@ -42,7 +42,9 @@
           </div>
           <div class="ml-3 flex-1 min-w-0">
             <p class="text-sm font-bold text-brand-brown truncate">{{ user.full_name }}</p>
-            <p class="text-xs text-slate-500 font-medium truncate uppercase">{{ getRoleLabel(user.role) }}</p>
+            <p class="text-xs text-slate-500 font-medium truncate uppercase">
+              {{ getCityLabel(user.city, user.role) || getRoleLabel(user.role) }}
+            </p>
           </div>
         </div>
         <button 
@@ -139,6 +141,19 @@ function getRoleLabel(role) {
     technician: 'Teknisi',
   };
   return map[role] ?? role;
+}
+
+function getCityLabel(city, role) {
+  // Only show city for technicians
+  if (role !== 'technician') return '';
+  
+  if (!city || city === 'both') return 'Teknisi';
+  
+  const map = {
+    sby: 'Teknisi Surabaya',
+    psn: 'Teknisi Pasuruan',
+  };
+  return map[city] ?? `Teknisi ${city}`;
 }
 
 async function handleLogout() {

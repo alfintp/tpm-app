@@ -9,11 +9,11 @@
       <!-- Quick filters / stats -->
       <div v-if="!loading" class="flex items-center gap-4">
         <div class="bg-white border border-slate-100 rounded-2xl px-5 py-3 shadow-sm flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-lg">
+          <div class="w-10 h-10 rounded-xl bg-brand-cream text-brand-brown flex items-center justify-center font-bold text-lg">
             {{ filteredLogs.length }}
           </div>
           <div>
-            <p class="text-xs text-slate-400 font-medium">Log Ditemukan</p>
+            <p class="text-xs text-brand-brown font-medium">Log Ditemukan</p>
             <p class="text-sm font-bold text-slate-800">Total Riwayat</p>
           </div>
         </div>
@@ -41,7 +41,7 @@
           :key="type.value"
           @click="activeTypeFilter = type.value"
           :class="activeTypeFilter === type.value
-            ? 'bg-brand-brown text-brand-cream border-brand-brown'
+            ? 'bg-gradient-to-tr from-brand-brown to-brand-gradation text-brand-cream '
             : 'bg-white text-slate-600 border-slate-200 hover:border-brand-brown'"
           class="px-4 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap"
         >

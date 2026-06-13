@@ -36,7 +36,7 @@
       <button
         v-for="tab in filterTabs" :key="tab.value"
         @click="activeFilter = tab.value"
-        :class="activeFilter === tab.value ? 'bg-indigo-600 text-white shadow' : 'bg-white text-slate-500 border border-slate-200 hover:border-indigo-300'"
+        :class="activeFilter === tab.value ? 'bg-gradient-to-tr from-brand-brown to-brand-gradation text-white shadow' : 'bg-white text-slate-500 border border-slate-200 hover:border-indigo-300'"
         class="px-4 py-1.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
       >
         {{ tab.label }}
@@ -152,7 +152,7 @@
   </div>
 
   <!-- Decide Modal -->
-  <div v-if="decideModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div v-if="decideModal.show" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="decideModal.show = false"></div>
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm relative z-10 p-6 space-y-4">
       <h3 class="text-lg font-semibold text-slate-800">
@@ -370,8 +370,6 @@ const loadData = async () => {
   try {
     const res = await axios.get('/api/approvals', {
       params: {
-        user_id: currentUser.value.id,
-        role: isManagerOrAdmin.value ? 'manager' : 'technician',
       }
     });
     items.value = res.data;
@@ -416,7 +414,6 @@ const submitDecision = async () => {
   deciding.value = true;
   try {
     await axios.post(`/api/approvals/${decideModal.value.item.record_id}/decide`, {
-      approver_id: currentUser.value.id,
       decision: decideModal.value.decision,
       notes: decideModal.value.notes,
     });

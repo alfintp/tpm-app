@@ -16,7 +16,14 @@ class UserController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        return response()->json(User::orderBy('full_name')->get());
+        $query = User::orderBy('full_name');
+
+        // Manager cannot see admin users
+        if ($request->user()->role === 'manager') {
+            $query->where('role', '!=', 'admin');
+        }
+
+        return response()->json($query->get());
     }
 
     public function store(Request $request)

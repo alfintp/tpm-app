@@ -25,9 +25,31 @@ class MachineController extends Controller
         return response()->json($query->get());
     }
 
-    public function show($id)
+    /**
+     * Check if the authenticated user is allowed to access a machine in a given city.
+     * Admins/managers have full access. Technicians are restricted by their city.
+     */
+    private function canAccessMachineCity(?string $machineKota): bool
+    {
+        $user = auth('sanctum')->user();
+        if (!$user || in_array($user->role, ['admin', 'manager'])) {
+            return true;
+        }
+        // Technician: city 'both' means unrestricted
+        if ($user->city === 'both') {
+            return true;
+        }
+        return $user->city === $machineKota;
+    }
+
+    public function show(Request $request, $id)
     {
         $machine = Machine::with(['schedules', 'components', 'records.actions.component', 'records.technician', 'records.approval', 'picMesin'])->findOrFail($id);
+
+        if (!$this->canAccessMachineCity($machine->kota)) {
+            return response()->json(['message' => 'Akses ditolak. Mesin ini berada di luar kota yang ditugaskan kepada Anda.'], 403);
+        }
+
         return response()->json($machine);
     }
 

@@ -9,15 +9,14 @@
         </button>
       </div>
       <div class="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Kode Mesin *</label>
-            <input type="text" v-model="form.kode" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. LL-MX-01">
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Nama Mesin *</label>
-            <input type="text" v-model="form.name" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Mixer Rice Crunch">
-          </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-slate-700">Kode Mesin</label>
+          <input type="text" :value="form.kode" readonly class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-slate-400 font-mono cursor-not-allowed select-none" placeholder="-">
+          <p class="text-xs text-slate-400">Kode mesin tidak dapat diubah setelah dibuat.</p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-slate-700">Nama Mesin *</label>
+          <input type="text" v-model="form.name" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Mixer Rice Crunch">
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-slate-700">Deskripsi</label>
@@ -49,7 +48,7 @@
             <input type="number" v-model="form.maintenance_duration" min="1" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. 30">
           </div>
           <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Tanggal Mulai Maintenance</label>
+            <label class="text-sm font-medium text-slate-700">Tanggal Maintenance</label>
             <input type="date" v-model="form.maintenance_start_date" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
           </div>
         </div>
@@ -122,13 +121,14 @@ onMounted(() => {
 });
 
 const submit = async () => {
-  if (!form.value.kode || !form.value.name) {
-    alert('Kode Mesin dan Nama Mesin wajib diisi!');
+  if (!form.value.name) {
+    alert('Nama Mesin wajib diisi!');
     return;
   }
   saving.value = true;
   try {
-    await axios.put(`/api/machines/${props.machine.id}`, form.value);
+    const { kode, ...payload } = form.value;
+    await axios.put(`/api/machines/${props.machine.id}`, payload);
     emit('saved');
   } catch (e) {
     console.error(e);

@@ -33,7 +33,7 @@
         <button
           v-show="activeTab === 'report'"
           @click="submitReport(false)"
-          :disabled="submitting || pendingCount === 0"
+          :disabled="submitting || pendingCount === 0 || (isReportBlocked && !forceReport)"
           class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg v-if="submitting" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -41,6 +41,24 @@
           Simpan Report ({{ pendingCount }})
         </button>
       </div>
+    </div>
+
+    <!-- Maintenance Schedule Banner -->
+    <div v-if="nextSchedule" class="rounded-2xl border px-5 py-4 flex flex-wrap items-center justify-between gap-3"
+      :class="maintenanceBannerClass">
+      <div class="flex items-center gap-3">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          :class="maintenanceBannerIconClass"
+        ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <div>
+          <p class="text-xs font-bold uppercase tracking-wide" :class="maintenanceBannerTextClass">Jadwal Maintenance Berikutnya</p>
+          <p class="text-sm font-semibold text-slate-700 mt-0.5">
+            {{ formatDate(nextSchedule.next_due_date) }}
+            <span class="ml-2 font-bold" :class="maintenanceDaysClass">{{ maintenanceDaysLabel }}</span>
+          </p>
+        </div>
+      </div>
+      <span class="text-xs font-bold px-3 py-1.5 rounded-full" :class="maintenanceBadgeClass">{{ maintenanceBadgeLabel }}</span>
     </div>
 
     <!-- Machine Condition Card -->
@@ -76,7 +94,7 @@
         >
          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Laporan
-          <span v-if="uncheckedTodayCount > 0" class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">{{ uncheckedTodayCount }} belum</span>
+          <span v-if="uncheckedTodayCount > 0" class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">{{ uncheckedTodayCount }} belum lapor</span>
         </button>
         <button
           @click="switchTab('history')"
@@ -98,6 +116,44 @@
 
       <!-- Tab 1: Report Table -->
       <div v-show="activeTab === 'report'" class="p-6">
+
+        <!-- Not-Due Warning Banner -->
+        <div v-if="isReportBlocked && !forceReport" class="mb-5 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <div>
+              <p class="text-sm font-bold text-amber-800">Belum Waktunya Pengecekan</p>
+              <p class="text-xs text-amber-700 mt-0.5">
+                Jadwal maintenance mesin ini adalah <strong>{{ formatDate(nextSchedule?.next_due_date) }}</strong> {{ maintenanceDaysLabel }}.
+                Laporan hanya disarankan dibuat pada atau setelah tanggal tersebut.
+              </p>
+            </div>
+          </div>
+          <button
+            @click="handleForceReport"
+            :disabled="forceReportLoading"
+            class="flex-shrink-0 flex items-center gap-2 bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg v-if="forceReportLoading" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            {{ forceReportLoading ? 'Mengubah Status...' : 'Tetap Maintenance di Luar Jadwal' }}
+          </button>
+        </div>
+
+        <!-- Blocked Overlay Wrapper -->
+        <div :class="isReportBlocked && !forceReport ? 'relative' : ''">
+          <!-- Dimming overlay -->
+          <div
+            v-if="isReportBlocked && !forceReport"
+            class="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-10 rounded-xl flex items-center justify-center"
+          >
+            <div class="text-center px-6">
+              <svg class="w-10 h-10 text-amber-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+              <p class="text-sm font-bold text-slate-600">Form laporan dikunci</p>
+              <p class="text-xs text-slate-400 mt-1">Klik "Tetap Maintenance di Luar Jadwal" di atas untuk membuka</p>
+            </div>
+          </div>
+
         <div v-if="!machine.components?.length" class="text-center py-12 text-slate-400 text-sm">
           Belum ada komponen pada mesin ini.
         </div>
@@ -256,12 +312,21 @@
                           </div>
 
                           <!-- Sudah dicek hari ini (belum edit) -->
-                          <p v-if="row.checkedToday && !row.editing" class="text-[11px] text-blue-600 font-medium flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            Komponen sudah dicek hari ini
+                          <p v-if="row.checkedToday && !row.editing"
+                            :class="row.todayApprovalStatus === 'pending' ? 'text-amber-600' : 'text-blue-600'"
+                            class="text-[11px] font-medium flex items-center gap-1">
+                            <svg v-if="row.todayApprovalStatus === 'pending'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            {{ row.todayApprovalStatus === 'pending' ? 'Laporan terkirim, menunggu approval' : 'Komponen sudah dicek hari ini' }}
                             <span class="text-slate-400 font-normal">({{ formatDateTime(row.todayCheckedAt) }})</span>
                           </p>
 
+                          <!-- Rejected Today Alert -->
+                          <p v-else-if="row.rejectedToday" class="text-[11px] text-red-600 font-medium flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Laporan ditolak
+                            <span v-if="row.rejectedNotes" class="text-slate-400 font-normal">({{ row.rejectedNotes }})</span>
+                          </p>
                           <!-- Baru dikonfirmasi (belum disimpan) -->
                           <p v-else-if="row.checked && row.checkedAt" class="text-[11px] text-green-600 font-medium flex items-center gap-1">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -269,9 +334,9 @@
                           </p>
                         </div>
 
-                        <!-- Tombol Edit (sudah dicek hari ini) -->
+                        <!-- Tombol Edit (sudah dicek hari ini, hanya admin/manager) -->
                         <button
-                          v-if="row.checkedToday && !row.editing"
+                          v-if="row.checkedToday && !row.editing && isManagerOrAdmin"
                           @click="startEdit(row)"
                           title="Edit kondisi"
                           class="flex-shrink-0 px-3 h-10 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer text-xs font-semibold"
@@ -280,21 +345,32 @@
                           Edit
                         </button>
 
-                        <!-- Tombol Checklist -->
-                        <button
-                          v-else
-                          @click="toggleCheck(row)"
-                          :disabled="!canCheck(row)"
-                          :title="row.checked ? 'Batalkan konfirmasi' : 'Konfirmasi sudah dicek'"
-                          :class="row.checked
-                            ? 'bg-green-500 text-white border-green-500 hover:bg-green-600'
-                            : canCheck(row)
-                              ? 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400 hover:text-indigo-600'
-                              : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'"
-                          class="flex-shrink-0 w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed"
-                        >
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        </button>
+                        <!-- Tombol Checklist + Batal Edit -->
+                        <template v-else-if="!row.checkedToday || row.editing">
+                          <!-- Tombol Batal Edit (X) -->
+                          <button
+                            v-if="row.editing"
+                            @click="cancelEdit(row)"
+                            title="Batalkan edit"
+                            class="flex-shrink-0 w-10 h-10 rounded-xl border-2 border-red-200 bg-red-50 text-red-500 hover:bg-red-100 hover:border-red-300 flex items-center justify-center transition-all cursor-pointer"
+                          >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                          </button>
+                          <!-- Tombol Checklist -->
+                          <button
+                            @click="toggleCheck(row)"
+                            :disabled="!canCheck(row)"
+                            :title="row.checked ? 'Batalkan konfirmasi' : 'Konfirmasi sudah dicek'"
+                            :class="row.checked
+                              ? 'bg-green-500 text-white border-green-500 hover:bg-green-600'
+                              : canCheck(row)
+                                ? 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400 hover:text-indigo-600'
+                                : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'"
+                            class="flex-shrink-0 w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed"
+                          >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                          </button>
+                        </template>
                       </div>
                     </td>
                   </tr>
@@ -450,15 +526,19 @@
                 <!-- Confirmation Check / Checked Today Alert -->
                 <div class="pt-2 border-t border-slate-100">
                   <!-- Checked Today Lock Info -->
-                  <div v-if="currentWizardRow.checkedToday && !currentWizardRow.editing" class="flex items-center justify-between gap-3 bg-blue-50 border border-blue-100 p-4 rounded-2xl">
-                    <div class="flex items-center gap-2 text-xs text-blue-700 font-semibold">
-                      <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <div v-if="currentWizardRow.checkedToday && !currentWizardRow.editing"
+                    :class="currentWizardRow.todayApprovalStatus === 'pending' ? 'bg-amber-50 border-amber-100' : 'bg-blue-50 border-blue-100'"
+                    class="flex items-center justify-between gap-3 border p-4 rounded-2xl">
+                    <div :class="currentWizardRow.todayApprovalStatus === 'pending' ? 'text-amber-700' : 'text-blue-700'" class="flex items-center gap-2 text-xs font-semibold">
+                      <svg v-if="currentWizardRow.todayApprovalStatus === 'pending'" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <svg v-else class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                       <div>
-                        <p>Sudah dicek hari ini</p>
+                        <p>{{ currentWizardRow.todayApprovalStatus === 'pending' ? 'Laporan terkirim, menunggu approval' : 'Sudah dicek hari ini' }}</p>
                         <p class="text-[10px] text-slate-400 font-normal">({{ formatDateTime(currentWizardRow.todayCheckedAt) }})</p>
                       </div>
                     </div>
                     <button
+                      v-if="isManagerOrAdmin"
                       @click="startEdit(currentWizardRow)"
                       class="px-4 py-2 rounded-xl bg-white border border-blue-300 hover:bg-blue-100 hover:border-blue-400 text-blue-600 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                     >
@@ -466,22 +546,42 @@
                       Edit
                     </button>
                   </div>
+                  <!-- Rejected Today Alert (Wizard) -->
+                  <div v-else-if="currentWizardRow.rejectedToday" class="flex items-center justify-between gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl">
+                    <div class="flex items-center gap-2 text-xs font-semibold text-red-700">
+                      <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <div>
+                        <p>Laporan ditolak</p>
+                        <p v-if="currentWizardRow.rejectedNotes" class="text-[10px] text-slate-400 font-normal">({{ currentWizardRow.rejectedNotes }})</p>
+                      </div>
+                    </div>
+                  </div>
 
-                  <!-- Toggle Check Button -->
-                  <button
-                    v-else
-                    @click="toggleWizardCheck(currentWizardRow)"
-                    :disabled="!canCheck(currentWizardRow)"
-                    :class="currentWizardRow.checked
-                      ? 'bg-green-600 hover:bg-green-700 text-white shadow-sm border-green-600'
-                      : canCheck(currentWizardRow)
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm border-indigo-600'
-                        : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'"
-                    class="w-full py-3.5 rounded-2xl border-2 font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-2 disabled:cursor-not-allowed"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    {{ currentWizardRow.checked ? 'Batal Konfirmasi' : 'Konfirmasi Sudah Dicek' }}
-                  </button>
+                  <!-- Toggle Check Button (+ X cancel if editing) -->
+                  <div v-else class="flex gap-2">
+                    <button
+                      v-if="currentWizardRow.editing"
+                      @click="cancelEdit(currentWizardRow)"
+                      title="Batalkan edit"
+                      class="flex-shrink-0 py-3.5 px-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-500 hover:bg-red-100 hover:border-red-300 font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                      Batal
+                    </button>
+                    <button
+                      @click="toggleWizardCheck(currentWizardRow)"
+                      :disabled="!canCheck(currentWizardRow)"
+                      :class="currentWizardRow.checked
+                        ? 'bg-green-600 hover:bg-green-700 text-white shadow-sm border-green-600'
+                        : canCheck(currentWizardRow)
+                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm border-indigo-600'
+                          : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'"
+                      class="flex-1 py-3.5 rounded-2xl border-2 font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                      {{ currentWizardRow.checked ? 'Batal Konfirmasi' : 'Konfirmasi Sudah Dicek' }}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -513,6 +613,7 @@
             Isi kondisi (%) terlebih dahulu, lalu klik checklist untuk konfirmasi. Komponen yang sudah dicek hari ini dapat diedit ulang.
           </p>
         </template>
+        </div>
       </div>
 
       <!-- Tab 2: Maintenance History -->
@@ -621,7 +722,6 @@
               <div class="flex-1 cursor-pointer" @click="openComponentHistory(comp)">
                 <div class="flex gap-2 mb-1.5">
                   <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ comp.category }}</span>
-                  <span v-if="comp.maintenance_schedule" class="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{{ comp.maintenance_schedule }}</span>
                 </div>
                 <h4 class="font-bold text-slate-800 hover:text-indigo-600 transition-colors">{{ comp.name }}</h4>
                 <p class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ comp.specification }}</p>
@@ -656,7 +756,14 @@
               <span>Qty: {{ comp.qty }} {{ comp.unit }}</span>
               <span class="font-medium text-slate-500">Penggantian Terakhir: <span class="text-indigo-600 font-semibold">{{ formatDate(getLastReplacementDate(comp.id)) }}</span></span>
             </div>
-            <p class="text-xs text-indigo-500 mt-2 cursor-pointer hover:underline" @click="openComponentHistory(comp)">Lihat riwayat →</p>
+            <div class="flex justify-between items-center mt-1.5">
+              <span class="text-xs text-slate-400">Maintenance Terakhir:
+                <span class="font-semibold" :class="getLastMaintenanceDate(comp.id) ? 'text-slate-600' : 'text-slate-300'">
+                  {{ getLastMaintenanceDate(comp.id) ? formatDate(getLastMaintenanceDate(comp.id)) : 'Belum ada' }}
+                </span>
+              </span>
+              <p class="text-xs text-indigo-500 cursor-pointer hover:underline" @click="openComponentHistory(comp)">Lihat riwayat →</p>
+            </div>
           </div>
         </div>
       </div>
@@ -760,7 +867,7 @@
 
     <!-- Floating Save Button (FAB) -->
     <button
-      v-if="activeTab === 'report' && pendingCount > 0"
+      v-if="activeTab === 'report' && pendingCount > 0 && !(isReportBlocked && !forceReport)"
       @click="submitReport(false)"
       :disabled="submitting"
       class="fixed bottom-6 right-6 z-50 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg transition-all cursor-pointer flex items-center gap-2 px-5 py-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
@@ -789,7 +896,7 @@ import { useAuth } from '../composables/useAuth.js';
 
 const route = useRoute();
 const router = useRouter();
-const { isManagerOrAdmin, isAdmin } = useAuth();
+const { isManagerOrAdmin, isAdmin, user: authUser } = useAuth();
 const machine = ref(null);
 const loading = ref(true);
 const activeTab = ref('report');
@@ -797,6 +904,8 @@ const componentFilter = ref('unchecked_today');
 const submitting = ref(false);
 const componentRows = ref([]);
 const skipLeaveGuard = ref(false);
+const forceReport = ref(false);
+const forceReportLoading = ref(false);
 
 const showComponentImportModal = ref(false);
 const importingComponents = ref(false);
@@ -824,6 +933,24 @@ const isSameDay = (d1, d2) => {
   const b = new Date(d2);
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 };
+
+// Start of the current maintenance period based on schedule interval.
+// If no schedule, defaults to today (same behavior as before).
+const currentPeriodStart = computed(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const schedules = machine.value?.schedules ?? [];
+  const active = schedules
+    .filter(s => s.is_active !== false && s.interval_days && s.next_due_date)
+    .sort((a, b) => new Date(a.next_due_date) - new Date(b.next_due_date));
+  if (active.length === 0) return today;
+  const sched = active[0];
+  const nextDue = new Date(sched.next_due_date);
+  nextDue.setHours(0, 0, 0, 0);
+  const start = new Date(nextDue);
+  start.setDate(start.getDate() - sched.interval_days);
+  return start;
+});
 
 const loadData = async () => {
   try {
@@ -858,21 +985,56 @@ onUnmounted(() => {
 
 const todayChecks = computed(() => {
   const map = {};
-  const today = new Date();
+  const periodStart = currentPeriodStart.value;
   if (!machine.value?.records) return map;
 
   for (const record of machine.value.records) {
-    if (!isSameDay(record.maintenance_date, today)) continue;
+    const recDate = new Date(record.maintenance_date);
+    recDate.setHours(0, 0, 0, 0);
+    // Only include records within the current maintenance period
+    if (recDate < periodStart) continue;
+    const approvalStatus = record.approval?.decision ?? 'pending';
+    // Rejected records are treated as if they never happened — allow re-submission
+    if (approvalStatus === 'rejected') continue;
+
     for (const action of record.actions ?? []) {
       const id = action.machine_component_id;
       if (!id) continue;
-      if (!map[id] || new Date(record.maintenance_date) > new Date(map[id].date)) {
+      if (!map[id] || recDate > new Date(map[id].date)) {
         map[id] = {
           condition: action.condition_after_pct,
           date: record.maintenance_date,
           conditionBefore: action.condition_before_pct,
           description: action.description ?? '',
           isReplacement: action.action_type === 'replace',
+          approvalStatus, // 'pending' | 'approved'
+        };
+      }
+    }
+  }
+  return map;
+});
+
+// Map of rejected records for the current period (used to show rejection info)
+const rejectedChecks = computed(() => {
+  const map = {};
+  const periodStart = currentPeriodStart.value;
+  if (!machine.value?.records) return map;
+
+  for (const record of machine.value.records) {
+    const recDate = new Date(record.maintenance_date);
+    recDate.setHours(0, 0, 0, 0);
+    if (recDate < periodStart) continue;
+    const approvalStatus = record.approval?.decision ?? 'pending';
+    if (approvalStatus !== 'rejected') continue;
+
+    for (const action of record.actions ?? []) {
+      const id = action.machine_component_id;
+      if (!id) continue;
+      if (!map[id] || recDate > new Date(map[id].date)) {
+        map[id] = {
+          date: record.maintenance_date,
+          notes: record.approval?.notes ?? '',
         };
       }
     }
@@ -883,6 +1045,9 @@ const todayChecks = computed(() => {
 const getComponentActions = (componentId) => {
   const actions = [];
   for (const record of machine.value?.records ?? []) {
+    // Only include actions from approved records for display purposes
+    const approvalStatus = record.approval?.decision ?? 'pending';
+    if (approvalStatus !== 'approved') continue;
     for (const action of record.actions ?? []) {
       if (action.machine_component_id === componentId) {
         actions.push({ ...action, recordDate: record.maintenance_date });
@@ -918,6 +1083,7 @@ const getPreviousCheck = (componentId) => {
 const initComponentRows = () => {
   componentRows.value = (machine.value?.components ?? []).map(comp => {
     const todayCheck = todayChecks.value[comp.id];
+    const rejectedCheck = rejectedChecks.value[comp.id];
     return {
       id: comp.id,
       category: comp.category,
@@ -925,18 +1091,21 @@ const initComponentRows = () => {
       specification: comp.specification,
       qty: comp.qty,
       unit: comp.unit,
-      maintenance_schedule: comp.maintenance_schedule,
       lastConditionPct: comp.last_condition_pct,
       checkedToday: !!todayCheck,
       todayCondition: todayCheck?.condition ?? null,
       todayCheckedAt: todayCheck?.date ?? null,
+      todayApprovalStatus: todayCheck?.approvalStatus ?? null,
       conditionPct: todayCheck?.condition ?? comp.last_condition_pct ?? null,
+      originalCondition: todayCheck?.condition ?? comp.last_condition_pct ?? null,
       editing: false,
       checked: false,
       checkedAt: null,
       showForm: false,
       description: todayCheck?.description ?? '',
       is_component_replacement: todayCheck?.isReplacement ?? false,
+      rejectedToday: !!rejectedCheck,
+      rejectedNotes: rejectedCheck?.notes ?? null,
     };
   });
 };
@@ -948,6 +1117,9 @@ const replacementDates = computed(() => {
   if (!machine.value?.records) return map;
 
   for (const record of machine.value.records) {
+    // Only count replacements from approved records
+    const approvalStatus = record.approval?.decision ?? 'pending';
+    if (approvalStatus !== 'approved') continue;
     for (const action of record.actions ?? []) {
       if (action.action_type !== 'replace' || !action.machine_component_id) continue;
       const date = record.maintenance_date;
@@ -967,6 +1139,104 @@ const getLastReplacementDate = (componentId) => {
   return comp?.last_replaced_at ?? null;
 };
 
+const getLastMaintenanceDate = (componentId) => {
+  let latest = null;
+  for (const record of machine.value?.records ?? []) {
+    const approvalStatus = record.approval?.decision ?? 'pending';
+    if (approvalStatus !== 'approved') continue;
+    for (const action of record.actions ?? []) {
+      if (action.machine_component_id !== componentId) continue;
+      if (!latest || new Date(record.maintenance_date) > new Date(latest)) {
+        latest = record.maintenance_date;
+      }
+    }
+  }
+  return latest;
+};
+
+// --- Maintenance Schedule Logic ---
+const nextSchedule = computed(() => {
+  const schedules = machine.value?.schedules ?? [];
+  if (schedules.length === 0) return null;
+  // Find the soonest active schedule
+  const active = schedules
+    .filter(s => s.is_active !== false)
+    .sort((a, b) => new Date(a.next_due_date) - new Date(b.next_due_date));
+  return active[0] ?? null;
+});
+
+const maintenanceDaysFromNow = computed(() => {
+  if (!nextSchedule.value) return null;
+  const due = new Date(nextSchedule.value.next_due_date);
+  due.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((due - today) / (1000 * 60 * 60 * 24));
+});
+
+const maintenanceDaysLabel = computed(() => {
+  const d = maintenanceDaysFromNow.value;
+  if (d === null) return '';
+  if (d === 0) return '(Hari ini)';
+  if (d > 0) return `(${d} hari lagi)`;
+  return `(${Math.abs(d)} hari yang lalu)`;
+});
+
+// Block report only when maintenance is in the FUTURE (d > 0)
+const isReportBlocked = computed(() => {
+  const d = maintenanceDaysFromNow.value;
+  return d !== null && d > 0;
+});
+
+const maintenanceBannerClass = computed(() => {
+  const d = maintenanceDaysFromNow.value;
+  if (d === null) return 'bg-slate-50 border-slate-200';
+  if (d <= 0) return 'bg-green-50 border-green-200';
+  if (d <= 7) return 'bg-amber-50 border-amber-200';
+  return 'bg-blue-50 border-blue-200';
+});
+
+const maintenanceBannerIconClass = computed(() => {
+  const d = maintenanceDaysFromNow.value;
+  if (d === null) return 'text-slate-400';
+  if (d <= 0) return 'text-green-500';
+  if (d <= 7) return 'text-amber-500';
+  return 'text-blue-400';
+});
+
+const maintenanceBannerTextClass = computed(() => {
+  const d = maintenanceDaysFromNow.value;
+  if (d === null) return 'text-slate-500';
+  if (d <= 0) return 'text-green-700';
+  if (d <= 7) return 'text-amber-700';
+  return 'text-blue-600';
+});
+
+const maintenanceDaysClass = computed(() => {
+  const d = maintenanceDaysFromNow.value;
+  if (d === null) return 'text-slate-400';
+  if (d <= 0) return 'text-green-600';
+  if (d <= 7) return 'text-amber-600';
+  return 'text-blue-500';
+});
+
+const maintenanceBadgeClass = computed(() => {
+  const d = maintenanceDaysFromNow.value;
+  if (d === null) return 'bg-slate-100 text-slate-500';
+  if (d <= 0) return 'bg-green-100 text-green-700';
+  if (d <= 7) return 'bg-amber-100 text-amber-700';
+  return 'bg-blue-100 text-blue-600';
+});
+
+const maintenanceBadgeLabel = computed(() => {
+  const d = maintenanceDaysFromNow.value;
+  if (d === null) return 'Tidak Ada Jadwal';
+  if (d === 0) return 'Jadwal Hari Ini';
+  if (d < 0) return 'Terlambat';
+  if (d <= 7) return 'Segera';
+  return 'Terjadwal';
+});
+
 const sortedRecords = computed(() => {
   if (!machine.value?.records) return [];
   return [...machine.value.records].sort((a, b) => {
@@ -982,8 +1252,8 @@ const pendingCount = computed(() => componentRows.value.filter(r => r.checked).l
 const hasUnsavedChanges = computed(() => pendingCount.value > 0);
 
 const filterOptions = computed(() => [
-  { value: 'unchecked_today', label: 'Belum Dicek Hari Ini', count: uncheckedTodayCount.value },
-  { value: 'checked_today', label: 'Sudah Dicek Hari Ini', count: checkedTodayCount.value },
+  { value: 'unchecked_today', label: 'Belum Dilaporkan Periode Ini', count: uncheckedTodayCount.value },
+  { value: 'checked_today', label: 'Sudah Dilaporkan Periode Ini', count: checkedTodayCount.value },
   { value: 'all', label: 'Semua', count: componentRows.value.length },
 ]);
 
@@ -1053,7 +1323,10 @@ const canCheck = (row) => isConditionValid(row.conditionPct) && (!row.checkedTod
 
 const rowRowClass = (row) => {
   if (row.checked) return 'bg-green-50/40';
-  if (row.checkedToday && !row.editing) return 'bg-blue-50/30';
+  if (row.checkedToday && !row.editing) {
+    if (row.todayApprovalStatus === 'pending') return 'bg-amber-50/40';
+    return 'bg-blue-50/30'; // approved
+  }
   return 'hover:bg-slate-50/50';
 };
 
@@ -1065,12 +1338,27 @@ const onConditionChange = (row) => {
 };
 
 const startEdit = (row) => {
+  // Save original values so we can restore on cancel
+  row._origConditionPct = row.conditionPct;
+  row._origDescription = row.description;
+  row._origIsReplacement = row.is_component_replacement;
   row.editing = true;
   row.checked = false;
   row.checkedAt = null;
   if (row.description || row.is_component_replacement) {
     row.showForm = true;
   }
+};
+
+const cancelEdit = (row) => {
+  // Restore original values
+  row.conditionPct = row._origConditionPct;
+  row.description = row._origDescription;
+  row.is_component_replacement = row._origIsReplacement;
+  row.editing = false;
+  row.checked = false;
+  row.checkedAt = null;
+  row.showForm = false;
 };
 
 const toggleCheck = (row) => {
@@ -1110,12 +1398,39 @@ const switchTab = async (tab) => {
   const ok = await handleUnsavedAction();
   if (!ok) return;
   activeTab.value = tab;
+  if (tab !== 'report') forceReport.value = false;
 };
 
 const handleNavigateBack = async () => {
   const ok = await handleUnsavedAction();
   if (!ok) return;
   router.push(`/machines`);
+};
+
+const handleForceReport = async () => {
+  forceReportLoading.value = true;
+  try {
+    // Reset all component rows to unchecked for this session
+    componentRows.value = componentRows.value.map(row => ({
+      ...row,
+      checkedToday: false,
+      rejectedToday: false,
+      rejectedNotes: null,
+      status: null,
+      notes: null,
+      condition: row.originalCondition || row.condition
+    }));
+    
+    // Enable force reporting
+    forceReport.value = true;
+    
+    showAlert('success', 'Berhasil!', 'Status komponen telah diubah. Anda sekarang dapat melakukan maintenance di luar jadwal.');
+  } catch (error) {
+    console.error('Error handling force report:', error);
+    showAlert('error', 'Gagal!', 'Terjadi kesalahan saat mengubah status komponen.');
+  } finally {
+    forceReportLoading.value = false;
+  }
 };
 
 onBeforeRouteLeave(async (to, from, next) => {
@@ -1148,8 +1463,6 @@ const submitReport = async (redirect = true) => {
 
   submitting.value = true;
   try {
-    const uRes = await axios.get('/api/dummy-user').catch(() => null);
-
     const actions = checkedRows.map(row => {
       const prev = getPreviousCheck(row.id);
       const isReplacement = !!row.is_component_replacement;
@@ -1165,21 +1478,24 @@ const submitReport = async (redirect = true) => {
 
     await axios.post('/api/records', {
       machine_id: route.params.id,
-      technician_id: uRes?.data?.id,
       maintenance_date: new Date().toISOString(),
       status: 'completed',
       notes: `Maintenance report - ${checkedRows.length} komponen diperiksa`,
       actions,
     });
 
+    const istech = authUser.value?.role === 'technician';
+    const successMsg = istech
+      ? `Laporan berhasil dibuat untuk ${checkedRows.length} komponen. Menunggu approval dari manager/admin.`
+      : `Laporan berhasil disimpan untuk ${checkedRows.length} komponen.`;
+
     if (redirect) {
       skipLeaveGuard.value = true;
-      showAlert('success', 'Berhasil!', 'Report berhasil disimpan.');
+      showAlert('success', 'Laporan Berhasil Dikirim!', successMsg);
       router.push(`/machine/${route.params.id}`)
-      
     } else {
       await loadData();
-      showAlert('success', 'Berhasil!', 'Report berhasil disimpan.');
+      showAlert('success', 'Laporan Berhasil Dikirim!', successMsg);
       window.dispatchEvent(new CustomEvent('refresh-data'));
     }
     return true;
@@ -1333,11 +1649,11 @@ const downloadComponentTemplate = async () => {
   try {
     const XLSX = await loadSheetJS();
     const headers = [
-      ['Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kondisi Awal (%)', 'Jadwal Perawatan']
+      ['Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kondisi Awal (%)']
     ];
     const rows = [
-      ['Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 100, 'Bulanan'],
-      ['Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 90, 'Harian']
+      ['Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 100],
+      ['Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 90]
     ];
     
     const wb = XLSX.utils.book_new();
@@ -1350,7 +1666,6 @@ const downloadComponentTemplate = async () => {
       { wch: 15 }, // Jumlah (Qty)
       { wch: 15 }, // Satuan
       { wch: 20 }, // Kondisi Awal (%)
-      { wch: 20 }  // Jadwal Perawatan
     ];
     
     XLSX.utils.book_append_sheet(wb, ws, 'Template Import Komponen');
@@ -1396,7 +1711,6 @@ const importComponents = async () => {
             qty: parseInt(row[3]) || 1,
             unit: row[4]?.toString()?.trim() || 'Pcs',
             last_condition_pct: parseFloat(row[5]) || 100,
-            maintenance_schedule: row[6]?.toString()?.trim() || null
           });
         }
         

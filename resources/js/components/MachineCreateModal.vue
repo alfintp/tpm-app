@@ -9,15 +9,13 @@
         </button>
       </div>
       <div class="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Kode Mesin *</label>
-            <input type="text" v-model="form.kode" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. LL-MX-01">
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Nama Mesin *</label>
-            <input type="text" v-model="form.name" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Mixer Rice Crunch">
-          </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-slate-700">Kode Mesin *</label>
+          <input type="text" v-model="form.kode" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-mono" placeholder="e.g. LL-MX-01">
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-slate-700">Nama Mesin *</label>
+          <input type="text" v-model="form.name" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Mixer Rice Crunch">
         </div>
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-slate-700">Deskripsi</label>
@@ -28,7 +26,7 @@
             <label class="text-sm font-medium text-slate-700">Kota *</label>
             <select v-model="form.kota" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 cursor-pointer">
               <option value="pasuruan">Pasuruan</option>
-              <option value="sby">Surabaya (SBY)</option>
+              <option value="sby">Surabaya</option>
             </select>
           </div>
           <div class="space-y-1.5">
@@ -45,19 +43,21 @@
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Kondisi Awal (%) *</label>
-            <input type="number" v-model="form.condition_pct" min="0" max="100" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
-            <p class="text-xs text-slate-400">Nilai ini akan dihitung ulang otomatis saat komponen ditambahkan.</p>
-          </div>
-          <div class="space-y-1.5">
             <label class="text-sm font-medium text-slate-700">Durasi Maintenance (hari)</label>
             <input type="number" v-model="form.maintenance_duration" min="1" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. 30">
           </div>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-slate-700">Tanggal Maintenance</label>
+            <input type="date" v-model="form.maintenance_start_date" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+          </div>
         </div>
         <div class="space-y-1.5">
-          <label class="text-sm font-medium text-slate-700">Tanggal Mulai Maintenance</label>
-          <input type="date" v-model="form.maintenance_start_date" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
-          <p class="text-xs text-slate-400">Pengingat otomatis akan dikirim berdasarkan durasi maintenance.</p>
+          <label class="text-sm font-medium text-slate-700">Status</label>
+          <select v-model="form.status" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 cursor-pointer">
+            <option value="active">Active</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="inactive">Inactive</option>
+          </select>
         </div>
       </div>
       <div class="px-8 pb-8 flex justify-end gap-3">

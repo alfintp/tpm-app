@@ -25,7 +25,7 @@ class MaintenanceRecordController extends Controller
     {
         $validated = $request->validate([
             'machine_id' => 'required|exists:machines,id',
-            'technician_id' => 'required|exists:users,id',
+            'technician_id' => 'nullable|exists:users,id',
             'schedule_id' => 'nullable|exists:maintenance_schedules,id',
             'maintenance_date' => 'required|date',
             'notes' => 'nullable|string',
@@ -37,6 +37,22 @@ class MaintenanceRecordController extends Controller
             'actions.*.condition_after_pct' => 'nullable|numeric|min:0|max:100',
             'actions.*.description' => 'nullable|string',
         ]);
+
+        // Always use the authenticated user as the technician
+        if ($request->user()) {
+            $validated['technician_id'] = $request->user()->id;
+        }
+
+        // City-based access check for technicians
+        $authUser = $request->user();
+        if ($authUser && $authUser->role === 'technician' && ($authUser->city ?? 'both') !== 'both') {
+            $machine = Machine::find($validated['machine_id']);
+            if ($machine && $machine->kota !== $authUser->city) {
+                return response()->json([
+                    'error' => 'Akses ditolak. Anda tidak dapat membuat laporan untuk mesin di luar kota yang ditugaskan kepada Anda.'
+                ], 403);
+            }
+        }
 
         DB::beginTransaction();
 
@@ -58,36 +74,7 @@ class MaintenanceRecordController extends Controller
             if (!empty($validated['actions'])) {
                 foreach ($validated['actions'] as $actionData) {
                     $record->actions()->create($actionData);
-
-                    // Update component's last condition
-                    if (!empty($actionData['condition_after_pct'])) {
-                        $component = MachineComponent::find($actionData['machine_component_id']);
-                        if ($component) {
-                            $component->update([
-                                'last_condition_pct' => $actionData['condition_after_pct'],
-                                'last_replaced_at' => in_array($actionData['action_type'], ['replace']) ? Carbon::parse($validated['maintenance_date']) : $component->last_replaced_at,
-                            ]);
-                            // This triggers the booted observer to update machine avg
-                        }
-                    }
-                }
-            }
-
-            // Update machine status if completed
-            if ($record->status === 'completed') {
-                $machine = Machine::find($record->machine_id);
-                if ($machine) {
-                    $machine->update(['status' => 'active']);
-                }
-
-                // Update schedule next_due_date
-                if ($record->schedule_id) {
-                    $schedule = MaintenanceSchedule::find($record->schedule_id);
-                    if ($schedule) {
-                        $schedule->update([
-                            'next_due_date' => Carbon::parse($record->maintenance_date)->addDays($schedule->interval_days)
-                        ]);
-                    }
+                    // NOTE: component and machine condition updates are deferred until approval
                 }
             }
 

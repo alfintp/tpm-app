@@ -13,7 +13,7 @@
         <button 
           v-if="isAdmin" 
           @click="openAddModal" 
-          class="flex items-center gap-2 bg-brand-brown hover:opacity-90 text-brand-cream px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer"
+          class="flex items-center gap-2 bg-gradient-to-tr from-brand-brown to-brand-gradation hover:opacity-90 text-brand-cream px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
           Tambah User Baru
@@ -23,6 +23,14 @@
 
     <!-- Users Table Card -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <!-- Search Bar -->
+      <div class="px-6 pt-5 pb-3 border-b border-slate-100">
+        <div class="relative max-w-sm">
+          <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input v-model="searchQuery" type="text" placeholder="Cari nama, email, role..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-brown/30 focus:border-brand-brown text-sm text-slate-700">
+        </div>
+      </div>
+
       <!-- Loading State -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-16 space-y-3">
         <svg class="animate-spin h-8 w-8 text-brand-brown" fill="none" viewBox="0 0 24 24">
@@ -33,7 +41,7 @@
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="users.length === 0" class="text-center py-16">
+      <div v-else-if="filteredUsers.length === 0" class="text-center py-16">
         <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
@@ -47,15 +55,15 @@
           <thead>
             <tr class="bg-slate-50 border-b border-slate-200">
               <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">User</th>
-              <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Email</th>
-              <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Role Saat Ini</th>
-              <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Ubah Role</th>
+              <th v-if="isAdmin" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Email</th>
+              <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">{{ isAdmin ? 'Role Saat Ini' : 'Role' }}</th>
+              <th v-if="isAdmin" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Ubah Role</th>
               <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Kota</th>
-              <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider text-right">Aksi</th>
+              <th v-if="isAdmin" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider text-right">Aksi</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="u in users" :key="u.id" class="hover:bg-slate-50/50 transition-colors">
+            <tr v-for="u in filteredUsers" :key="u.id" class="hover:bg-slate-50/50 transition-colors">
               <!-- Name with Avatar -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
@@ -74,8 +82,8 @@
                 </div>
               </td>
 
-              <!-- Email -->
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600">
+              <!-- Email (Admin only) -->
+              <td v-if="isAdmin" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600">
                 {{ u.email }}
               </td>
 
@@ -86,8 +94,8 @@
                 </span>
               </td>
 
-              <!-- Role Select -->
-              <td class="px-6 py-4 whitespace-nowrap">
+              <!-- Role Select (Admin only) -->
+              <td v-if="isAdmin" class="px-6 py-4 whitespace-nowrap">
                 <select
                   :value="u.role"
                   @change="handleRoleChange(u, $event.target.value)"
@@ -100,7 +108,7 @@
                 </select>
               </td>
 
-              <!-- City Select -->
+              <!-- City -->
               <td class="px-6 py-4 whitespace-nowrap">
                 <select
                   v-if="isAdmin"
@@ -116,11 +124,10 @@
                 <span v-else class="text-xs font-bold text-slate-600">{{ getCityName(u.city) }}</span>
               </td>
 
-              <!-- Actions -->
-              <td class="px-6 py-4 whitespace-nowrap text-right">
+              <!-- Actions (Admin only) -->
+              <td v-if="isAdmin" class="px-6 py-4 whitespace-nowrap text-right">
                 <div class="flex items-center justify-end gap-2">
                   <button
-                    v-if="isAdmin"
                     @click="openPasswordModal(u)"
                     class="text-indigo-600 hover:text-indigo-800 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-all border border-indigo-200/30"
                     title="Ubah Password"
@@ -232,11 +239,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuth } from '../composables/useAuth.js';
 import { showAlert, showConfirm } from '../composables/useAlert.js';
 
-const { user: currentUser, isAdmin } = useAuth();
+const { user: currentUser, isAdmin, isManager } = useAuth();
+
+const searchQuery = ref('');
 
 const users = ref([]);
 const loading = ref(true);
@@ -328,6 +337,17 @@ async function handleAddUser() {
     saving.value = false;
   }
 }
+
+const filteredUsers = computed(() => {
+  if (!searchQuery.value) return users.value;
+  const q = searchQuery.value.toLowerCase();
+  return users.value.filter(u =>
+    u.full_name.toLowerCase().includes(q) ||
+    u.email.toLowerCase().includes(q) ||
+    getRoleName(u.role).toLowerCase().includes(q) ||
+    getCityName(u.city).toLowerCase().includes(q)
+  );
+});
 
 async function fetchUsers() {
   loading.value = true;
