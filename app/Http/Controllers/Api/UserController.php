@@ -156,6 +156,33 @@ class UserController extends Controller
         ]);
     }
 
+    public function update(Request $request, $id)
+    {
+        // Only Admin can update user details (name and email)
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Hanya Admin yang dapat mengubah profil user.'], 403);
+        }
+
+        $user = User::findOrFail($id);
+
+        $validated = $request->validate([
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+        ]);
+
+        $oldName = $user->full_name;
+        $oldEmail = $user->email;
+
+        $user->update($validated);
+
+        ActivityLog::log('Ubah Detail User', "Admin mengubah detail user {$oldName} ({$oldEmail}) menjadi {$user->full_name} ({$user->email})");
+
+        return response()->json([
+            'message' => 'Profil user berhasil diperbarui.',
+            'user' => $user
+        ]);
+    }
+
     public function activityLogs(Request $request)
     {
         // Require admin role

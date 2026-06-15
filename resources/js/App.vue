@@ -6,29 +6,48 @@
 
   <!-- Standard Dashboard Layout -->
   <div v-else class="flex h-full w-full">
+    <!-- Mobile Sidebar Overlay -->
+    <div 
+      v-if="mobileSidebarOpen" 
+      class="fixed inset-0 bg-black/50 z-30 md:hidden"
+      @click="mobileSidebarOpen = false"
+    ></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 bg-brand-cream border-r border-slate-200 text-brand-brown flex flex-col hidden md:flex h-full relative z-20">
-      <div class="h-20 flex items-center justify-center border-b border-slate-200 px-4">
-        <img :src="'/images/logo-ladang-lima.png'" alt="Logo Ladang Lima" class="h-12 w-auto cursor-pointer" @click="$router.push('/')">
+    <aside 
+      :class="[
+        'w-64 bg-brand-cream border-r border-slate-200 text-brand-brown flex flex-col h-full fixed md:relative z-40 transition-transform duration-300 ease-in-out',
+        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      ]"
+    >
+      <!-- Mobile Close Button -->
+      <div class="h-20 flex items-center justify-between border-b border-slate-200 px-4">
+        <img :src="'/images/logo-ladang-lima.png'" alt="Logo Ladang Lima" class="h-12 w-auto cursor-pointer" @click="$router.push('/'); mobileSidebarOpen = false;">
+        <button 
+          @click="mobileSidebarOpen = false" 
+          class="md:hidden p-2 hover:bg-brand-brown/10 rounded-lg transition-colors"
+        >
+          <svg class="w-6 h-6 text-brand-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
       </div>
       <nav class="flex-1 px-4 py-6 space-y-1">
-        <router-link to="/" exact-active-class="active-link" class="nav-link">
+        <router-link @click="mobileSidebarOpen = false" to="/" exact-active-class="active-link" class="nav-link">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
           Dashboard
         </router-link>
-        <router-link to="/machines" active-class="active-link" class="nav-link">
+        <router-link @click="mobileSidebarOpen = false" to="/machines" active-class="active-link" class="nav-link">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
           Machines
         </router-link>
-        <router-link to="/approvals" active-class="active-link" class="nav-link">
+        <router-link @click="mobileSidebarOpen = false" to="/approvals" active-class="active-link" class="nav-link">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Approval
         </router-link>
-        <router-link v-if="isManagerOrAdmin" to="/users" active-class="active-link" class="nav-link">
+        <router-link @click="mobileSidebarOpen = false" v-if="isManagerOrAdmin" to="/users" active-class="active-link" class="nav-link">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
           Users
         </router-link>
-        <router-link v-if="isAdmin" to="/logs" active-class="active-link" class="nav-link">
+        <router-link @click="mobileSidebarOpen = false" v-if="isAdmin" to="/logs" active-class="active-link" class="nav-link">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
           System Logs
         </router-link>
@@ -59,9 +78,16 @@
 
     <!-- Main Content -->
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 relative">
-      <header class="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 z-10 sticky top-0 shadow-sm">
+      <header class="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 z-10 sticky top-0 shadow-sm">
         <div class="flex items-center gap-3">
-          <div class="w-2 h-2 rounded-full bg-gradient-to-tr from-bred-500 to-brand-gradation"></div>
+          <!-- Mobile Menu Button -->
+          <button 
+            @click="mobileSidebarOpen = true" 
+            class="md:hidden p-2 -ml-2 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div class="w-2 h-2 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation"></div>
           <h2 class="text-base font-semibold text-slate-700">{{ pageTitle }}</h2>
         </div>
       </header>
@@ -97,6 +123,7 @@ const { user, isManagerOrAdmin, isAdmin, logout, initializeAuth } = useAuth();
 const showModal = ref(false);
 const selectedMachineId = ref(null);
 const alertModalRef = ref(null);
+const mobileSidebarOpen = ref(false);
 
 const isAuthPage = computed(() => ['login', 'register'].includes(route.name));
 

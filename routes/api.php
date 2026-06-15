@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/users/{id}/role', [UserController::class, 'updateRole']);
     Route::put('/admin/users/{id}/city', [UserController::class, 'updateCity']);
     Route::put('/admin/users/{id}/password', [UserController::class, 'updatePassword']);
+    Route::put('/admin/users/{id}', [UserController::class, 'update']);
     Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
     Route::get('/admin/logs', [UserController::class, 'activityLogs']);
 });
@@ -46,6 +47,7 @@ Route::get('/machines/{id}', [MachineController::class, 'show'])->middleware('au
 Route::put('/machines/{id}', [MachineController::class, 'update']);
 Route::delete('/machines/{id}', [MachineController::class, 'destroy']);
 Route::get('/users', [MachineController::class, 'getUsers']);
+Route::get('/machines/check-kode', [MachineController::class, 'checkKode']);
 
 // Machine Components (nested under machine)
 Route::get('/machines/{machineId}/components', [MachineComponentController::class, 'index']);

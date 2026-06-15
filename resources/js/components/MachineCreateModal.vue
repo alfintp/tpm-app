@@ -74,6 +74,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../composables/useAlert.js';
 
 const emit = defineEmits(['close', 'saved']);
 const saving = ref(false);
@@ -105,17 +106,33 @@ onMounted(() => {
 });
 
 const submit = async () => {
-  if (!form.value.kode || !form.value.name) {
-    alert('Kode Mesin dan Nama Mesin wajib diisi!');
+  // Validasi data lengkap
+  if (!form.value.kode || !form.value.name || !form.value.kota) {
+    showAlert('warning', 'Data Belum Lengkap', 'Kode Mesin, Nama Mesin, dan Kota wajib diisi!');
     return;
   }
-  saving.value = true;
+
+  // Cek kode mesin unik
+  try {
+    saving.value = true;
+    const checkRes = await axios.get(`/api/machines/check-kode?kode=${encodeURIComponent(form.value.kode)}`);
+    if (checkRes.data.exists) {
+      showAlert('error', 'Kode Sudah Digunakan', `Kode mesin "${form.value.kode}" sudah ada di database. Gunakan kode yang lain.`);
+      saving.value = false;
+      return;
+    }
+  } catch (e) {
+    console.error('Kode check error:', e);
+  }
+
   try {
     await axios.post('/api/machines', form.value);
     emit('saved');
+    showAlert('success', 'Berhasil', 'Mesin baru berhasil ditambahkan!');
   } catch (e) {
     console.error(e);
-    alert('Gagal menyimpan: ' + (e.response?.data?.message || e.message));
+    const errorMsg = e.response?.data?.message || e.response?.data?.error || e.message;
+    showAlert('error', 'Gagal Menyimpan', errorMsg);
   } finally {
     saving.value = false;
   }

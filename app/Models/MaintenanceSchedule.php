@@ -23,6 +23,18 @@ class MaintenanceSchedule extends Model
         'is_active' => 'boolean',
     ];
 
+    protected static function booted()
+    {
+        static::saving(function ($schedule) {
+            if ($schedule->next_due_date) {
+                $date = \Carbon\Carbon::parse($schedule->next_due_date);
+                if ($date->isSunday()) {
+                    $schedule->next_due_date = $date->addDay()->toDateString();
+                }
+            }
+        });
+    }
+
     public function machine()
     {
         return $this->belongsTo(Machine::class);

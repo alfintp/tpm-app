@@ -10,8 +10,8 @@
       </div>
       <div class="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
           <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Kategori *</label>
-            <input type="text" v-model="form.category" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Mechanical, Electrical">
+            <label class="text-sm font-medium text-slate-700">Kategori</label>
+            <input type="text" v-model="form.category" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. Mechanical, Electrical">
           </div>
          
         <div class="space-y-1.5">
@@ -24,12 +24,12 @@
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Qty *</label>
-            <input type="number" v-model="form.qty" min="1" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+            <label class="text-sm font-medium text-slate-700">Qty</label>
+            <input type="text" v-model="form.qty" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. 6-8 atau 10">
           </div>
           <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Satuan *</label>
-            <input type="text" v-model="form.unit" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. pcs, set, meter">
+            <label class="text-sm font-medium text-slate-700">Satuan</label>
+            <input type="text" v-model="form.unit" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. pcs, set, meter">
           </div>
         </div>
         
@@ -48,6 +48,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../composables/useAlert.js';
 
 const props = defineProps({
   machineId: { type: String, required: true },
@@ -59,17 +60,22 @@ const isEdit = computed(() => !!props.component);
 const saving = ref(false);
 
 const form = ref({
-  category: props.component?.category ?? 'Mechanical',
+  category: props.component?.category ?? '',
   name: props.component?.name ?? '',
   specification: props.component?.specification ?? '',
-  qty: props.component?.qty ?? 1,
-  unit: props.component?.unit ?? 'pcs',
+  qty: props.component?.qty ?? '',
+  unit: props.component?.unit ?? '',
   last_condition_pct: props.component?.last_condition_pct ?? 100,
   last_replaced_at: props.component?.last_replaced_at ? props.component.last_replaced_at.split('T')[0] : '',
 });
 
 const submit = async () => {
-  if (!form.value.name || !form.value.qty) return;
+  // Validasi hanya nama yang wajib
+  if (!form.value.name || form.value.name.trim() === '') {
+    showAlert('warning', 'Data Belum Lengkap', 'Nama Komponen wajib diisi!');
+    return;
+  }
+
   saving.value = true;
   try {
     if (isEdit.value) {
@@ -78,9 +84,11 @@ const submit = async () => {
       await axios.post(`/api/machines/${props.machineId}/components`, form.value);
     }
     emit('saved');
+    showAlert('success', 'Berhasil', isEdit.value ? 'Komponen berhasil diperbarui!' : 'Komponen baru berhasil ditambahkan!');
   } catch (e) {
     console.error(e);
-    alert('Gagal menyimpan: ' + (e.response?.data?.message || e.message));
+    const errorMsg = e.response?.data?.message || e.response?.data?.error || e.message;
+    showAlert('error', 'Gagal Menyimpan', errorMsg);
   } finally {
     saving.value = false;
   }

@@ -21,15 +21,20 @@ class MachineComponentController extends Controller
         $machine = Machine::findOrFail($machineId);
 
         $validated = $request->validate([
-            'category' => 'required|string|max:100',
+            'category' => 'nullable|string|max:100',
             'name' => 'required|string|max:255',
             'specification' => 'nullable|string|max:500',
-            'qty' => 'required|integer|min:1',
-            'unit' => 'required|string|max:50',
+            'qty' => 'nullable|string|max:50',
+            'unit' => 'nullable|string|max:50',
             'last_replaced_at' => 'nullable|date',
-            'last_condition_pct' => 'required|numeric|min:0|max:100',
+            'last_condition_pct' => 'nullable|numeric|min:0|max:100',
             'maintenance_schedule' => 'nullable|string|max:50',
         ]);
+
+        // Set default values if not provided
+        if (!isset($validated['last_condition_pct'])) {
+            $validated['last_condition_pct'] = 100;
+        }
 
         $component = $machine->components()->create($validated);
 
@@ -48,12 +53,12 @@ class MachineComponentController extends Controller
 
         $request->validate([
             'components' => 'required|array',
-            'components.*.category' => 'required|string|max:100',
+            'components.*.category' => 'nullable|string|max:100',
             'components.*.name' => 'required|string|max:255',
             'components.*.specification' => 'nullable|string|max:500',
-            'components.*.qty' => 'required|integer|min:1',
-            'components.*.unit' => 'required|string|max:50',
-            'components.*.last_condition_pct' => 'required|numeric|min:0|max:100',
+            'components.*.qty' => 'nullable|string|max:50',
+            'components.*.unit' => 'nullable|string|max:50',
+            'components.*.last_condition_pct' => 'nullable|numeric|min:0|max:100',
             'components.*.maintenance_schedule' => 'nullable|string|max:50',
         ]);
 
@@ -62,12 +67,12 @@ class MachineComponentController extends Controller
             $createdCount = 0;
             foreach ($request->components as $item) {
                 $machine->components()->create([
-                    'category' => $item['category'],
+                    'category' => $item['category'] ?? null,
                     'name' => $item['name'],
                     'specification' => $item['specification'] ?? null,
-                    'qty' => $item['qty'],
-                    'unit' => $item['unit'],
-                    'last_condition_pct' => $item['last_condition_pct'],
+                    'qty' => $item['qty'] ?? null,
+                    'unit' => $item['unit'] ?? null,
+                    'last_condition_pct' => $item['last_condition_pct'] ?? 100,
                     'maintenance_schedule' => $item['maintenance_schedule'] ?? null,
                 ]);
                 $createdCount++;
@@ -95,12 +100,12 @@ class MachineComponentController extends Controller
         $request->validate([
             'components' => 'required|array',
             'components.*.machine_code' => 'required|string',
-            'components.*.category' => 'required|string|max:100',
+            'components.*.category' => 'nullable|string|max:100',
             'components.*.name' => 'required|string|max:255',
             'components.*.specification' => 'nullable|string|max:500',
-            'components.*.qty' => 'required|integer|min:1',
-            'components.*.unit' => 'required|string|max:50',
-            'components.*.last_condition_pct' => 'required|numeric|min:0|max:100',
+            'components.*.qty' => 'nullable|string|max:50',
+            'components.*.unit' => 'nullable|string|max:50',
+            'components.*.last_condition_pct' => 'nullable|numeric|min:0|max:100',
             'components.*.maintenance_schedule' => 'nullable|string|max:50',
         ]);
 
@@ -128,12 +133,12 @@ class MachineComponentController extends Controller
             foreach ($request->components as $item) {
                 $machine = $existingMachines->get($item['machine_code']);
                 $machine->components()->create([
-                    'category' => $item['category'],
+                    'category' => $item['category'] ?? null,
                     'name' => $item['name'],
                     'specification' => $item['specification'] ?? null,
-                    'qty' => $item['qty'],
-                    'unit' => $item['unit'],
-                    'last_condition_pct' => $item['last_condition_pct'],
+                    'qty' => $item['qty'] ?? null,
+                    'unit' => $item['unit'] ?? null,
+                    'last_condition_pct' => $item['last_condition_pct'] ?? 100,
                     'maintenance_schedule' => $item['maintenance_schedule'] ?? null,
                 ]);
                 $createdCount++;
@@ -157,15 +162,20 @@ class MachineComponentController extends Controller
         $component = MachineComponent::findOrFail($id);
 
         $validated = $request->validate([
-            'category' => 'sometimes|required|string|max:100',
-            'name' => 'sometimes|required|string|max:255',
+            'category' => 'nullable|string|max:100',
+            'name' => 'required|string|max:255',
             'specification' => 'nullable|string|max:500',
-            'qty' => 'sometimes|required|integer|min:1',
-            'unit' => 'sometimes|required|string|max:50',
+            'qty' => 'nullable|string|max:50',
+            'unit' => 'nullable|string|max:50',
             'last_replaced_at' => 'nullable|date',
-            'last_condition_pct' => 'sometimes|required|numeric|min:0|max:100',
+            'last_condition_pct' => 'nullable|numeric|min:0|max:100',
             'maintenance_schedule' => 'nullable|string|max:50',
         ]);
+
+        // Set default value if not provided
+        if (!isset($validated['last_condition_pct'])) {
+            $validated['last_condition_pct'] = 100;
+        }
 
         $component->update($validated);
 

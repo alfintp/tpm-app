@@ -16,7 +16,7 @@
           <div class="flex items-center gap-2 flex-wrap">
             <h2 class="text-2xl font-bold text-slate-800">{{ machine.name }}</h2>
             <span v-if="machine.kode" class="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-mono font-bold border border-slate-200">{{ machine.kode }}</span>
-            <span v-if="machine.kota" class="px-2.5 py-0.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-extrabold uppercase tracking-wide border border-indigo-100">{{ machine.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}</span>
+            <span v-if="machine.kota" class="px-2.5 py-0.5 bg-brand-cream text-brand-gradation rounded-lg text-xs font-extrabold uppercase tracking-wide border border-brand-cream/50">{{ machine.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}</span>
           </div>
           <p class="text-slate-500 text-sm mt-1">Maintenance Report - {{ machine.description ? '-' : ' ' }}  <span class="font-medium">{{ machine.location }}</span></p>
         </div>
@@ -30,16 +30,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
           Edit Mesin
         </button>
-        <button
-          v-show="activeTab === 'report'"
-          @click="submitReport(false)"
-          :disabled="submitting || pendingCount === 0 || (isReportBlocked && !forceReport)"
-          class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-sm cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <svg v-if="submitting" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-          <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-          Simpan Report ({{ pendingCount }})
-        </button>
+        
       </div>
     </div>
 
@@ -89,7 +80,7 @@
       <div class="flex border-b border-slate-100">
         <button
           @click="switchTab('report')"
-          :class="activeTab === 'report' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+          :class="activeTab === 'report' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
           class="flex-1 sm:flex-none px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
         >
          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -98,7 +89,7 @@
         </button>
         <button
           @click="switchTab('history')"
-          :class="activeTab === 'history' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+          :class="activeTab === 'history' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
           class="flex-1 sm:flex-none px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -106,7 +97,7 @@
         </button>
         <button
           @click="switchTab('component')"
-          :class="activeTab === 'component' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
+          :class="activeTab === 'component' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
           class="flex-1 sm:flex-none px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
         >
             <svg class="w-5 h-5 " fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -183,7 +174,7 @@
             <div class="flex flex-wrap items-center gap-3 flex-1 sm:justify-end">
               <div class="relative min-w-[200px] flex-1 max-w-xs">
                 <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <input v-model="reportSearch" type="text" placeholder="Cari nama komponen..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-slate-700">
+                <input v-model="reportSearch" type="text" placeholder="Cari nama komponen..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-brown text-sm text-slate-700">
               </div>
               <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filter:</span>
               <button
@@ -191,8 +182,8 @@
                 :key="opt.value"
                 @click="componentFilter = opt.value"
                 :class="componentFilter === opt.value
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'"
+                  ? 'bg-gradient-to-tr from-brand-brown to-brand-gradation text-white '
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-brand-brown/50'"
                 class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer"
               >
                 {{ opt.label }}
@@ -230,7 +221,7 @@
                     <!-- Nama & Spesifikasi -->
                     <td class="px-4 py-3 align-top">
                       <div class="flex gap-2 mb-1">
-                        <span class="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ row.category }}</span>
+                        <span class="text-[10px] font-semibold text-brand-gradation bg-brand-cream px-2 py-0.5 rounded-full">{{ row.category }}</span>
                         <span v-if="row.maintenance_schedule" class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{{ row.maintenance_schedule }}</span>
                       </div>
                       <p class="font-semibold text-slate-800 text-sm">{{ row.name }}</p>
@@ -270,7 +261,7 @@
                           v-model="row.description"
                           :disabled="isInputDisabled(row)"
                           rows="2"
-                          class="w-full px-2.5 py-1.5 text-xs border border-slate-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed resize-none"
+                          class="w-full px-2.5 py-1.5 text-xs border border-slate-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-brown disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed resize-none"
                           placeholder="Masukkan catatan..."
                         ></textarea>
                         <!-- pilihan hanya centang saja, Ganti komponen, kalo ga dicentang yasudah, input ganti komponen juga ada di kolom sebelah, jadi gausah pake kolom is_component_replacement -->
@@ -279,7 +270,7 @@
                             type="checkbox" 
                             v-model="row.is_component_replacement" 
                             :disabled="isInputDisabled(row)"
-                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed cursor-pointer"
+                            class="rounded border-slate-300 text-brand-gradation focus:ring-brand-brown disabled:cursor-not-allowed cursor-pointer"
                           >
                           <span class="text-xs text-slate-700 font-medium">Ganti komponen</span>
                         </label>
@@ -301,7 +292,7 @@
                               max="100"
                               placeholder="0–100"
                               :disabled="isInputDisabled(row)"
-                              class="w-20 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                              class="w-20 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-brown disabled:bg-slate-100 disabled:cursor-not-allowed"
                             />
                             <span class="text-sm text-slate-500">%</span>
                             <span
@@ -324,7 +315,7 @@
                           <!-- Rejected Today Alert -->
                           <p v-else-if="row.rejectedToday" class="text-[11px] text-red-600 font-medium flex items-center gap-1">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            Laporan ditolak
+                            Laporan sebelumnya ditolak
                             <span v-if="row.rejectedNotes" class="text-slate-400 font-normal">({{ row.rejectedNotes }})</span>
                           </p>
                           <!-- Baru dikonfirmasi (belum disimpan) -->
@@ -364,7 +355,7 @@
                             :class="row.checked
                               ? 'bg-green-500 text-white border-green-500 hover:bg-green-600'
                               : canCheck(row)
-                                ? 'bg-white text-slate-600 border-slate-300 hover:border-indigo-400 hover:text-indigo-600'
+                                ? 'bg-white text-slate-600 border-slate-300 hover:border-brand-brown hover:text-brand-gradation'
                                 : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed'"
                             class="flex-shrink-0 w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed"
                           >
@@ -398,12 +389,12 @@
               <div 
                 v-if="currentWizardRow" 
                 class="bg-white rounded-3xl border-2 transition-all duration-300 p-6 shadow-md space-y-6"
-                :class="currentWizardRow.checked ? 'border-green-400 ring-4 ring-green-50' : 'border-slate-100 hover:border-indigo-100'"
+                :class="currentWizardRow.checked ? 'border-green-400 ring-4 ring-green-50' : 'border-slate-100 hover:border-brand-cream'"
               >
                 <!-- Card Header -->
                 <div class="flex items-start justify-between pb-4 border-b border-slate-100">
                   <div>
-                    <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full uppercase">{{ currentWizardRow.category }}</span>
+                    <span class="text-[10px] font-bold text-brand-gradation bg-brand-cream px-2.5 py-1 rounded-full uppercase">{{ currentWizardRow.category }}</span>
                     <span v-if="currentWizardRow.maintenance_schedule" class="ml-1.5 text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full uppercase">{{ currentWizardRow.maintenance_schedule }}</span>
                     <h4 class="text-lg font-bold text-slate-800 mt-2 leading-tight">{{ currentWizardRow.name }}</h4>
                     <p class="text-xs text-slate-500 mt-1">{{ currentWizardRow.specification || 'Tidak ada spesifikasi' }}</p>
@@ -481,7 +472,7 @@
                         max="100"
                         placeholder="0–100"
                         :disabled="isInputDisabled(currentWizardRow)"
-                        class="w-16 rounded-xl border border-slate-200 bg-white text-center font-bold px-2 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        class="w-16 rounded-xl border border-slate-200 bg-white text-center font-bold px-2 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-brown disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                       />
                       <span class="text-sm font-bold text-slate-500">%</span>
                     </div>
@@ -493,7 +484,7 @@
                       v-for="preset in [100, 90, 80, 70, 60]" 
                       :key="preset"
                       @click="setWizardPreset(currentWizardRow, preset)"
-                      class="flex-1 py-1.5 border border-slate-200 hover:border-indigo-300 bg-white rounded-lg text-[10px] font-bold text-slate-600 hover:text-indigo-600 transition-all cursor-pointer"
+                      class="flex-1 py-1.5 border border-slate-200 hover:border-indigo-600 bg-white rounded-lg text-[10px] font-bold text-slate-600 hover:text-indigo-600 transition-all cursor-pointer"
                     >
                       {{ preset }}%
                     </button>
@@ -508,7 +499,7 @@
                       v-model="currentWizardRow.description"
                       :disabled="isInputDisabled(currentWizardRow)"
                       rows="2"
-                      class="w-full px-3 py-2 text-xs border border-slate-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed resize-none"
+                      class="w-full px-3 py-2 text-xs border border-slate-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-brown disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed resize-none"
                       placeholder="Masukkan catatan jika ada..."
                     ></textarea>
                     <label class="flex items-center gap-2" :class="isInputDisabled(currentWizardRow) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'">
@@ -516,7 +507,7 @@
                         type="checkbox" 
                         v-model="currentWizardRow.is_component_replacement" 
                         :disabled="isInputDisabled(currentWizardRow)"
-                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed cursor-pointer"
+                        class="rounded border-slate-300 text-brand-gradation focus:ring-brand-brown disabled:cursor-not-allowed cursor-pointer"
                       >
                       <span class="text-xs text-slate-700 font-semibold">Ganti komponen (Tindakan Replace)</span>
                     </label>
@@ -547,14 +538,24 @@
                     </button>
                   </div>
                   <!-- Rejected Today Alert (Wizard) -->
-                  <div v-else-if="currentWizardRow.rejectedToday" class="flex items-center justify-between gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl">
-                    <div class="flex items-center gap-2 text-xs font-semibold text-red-700">
-                      <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                      <div>
-                        <p>Laporan ditolak</p>
-                        <p v-if="currentWizardRow.rejectedNotes" class="text-[10px] text-slate-400 font-normal">({{ currentWizardRow.rejectedNotes }})</p>
+                  <div v-else-if="currentWizardRow.rejectedToday && !currentWizardRow.editing" class="space-y-3">
+                    <div class="flex items-center justify-between gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl">
+                      <div class="flex items-center gap-2 text-xs font-semibold text-red-700">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <div>
+                          <p>Laporan sebelumnya ditolak, silahkan buat laporan kembali</p>
+                          <p v-if="currentWizardRow.rejectedNotes" class="text-[10px] text-slate-400 font-normal">({{ currentWizardRow.rejectedNotes }})</p>
+                        </div>
                       </div>
                     </div>
+                    <!-- Button to re-fill rejected component -->
+                    <button
+                      @click="startEdit(currentWizardRow)"
+                      class="w-full py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white shadow-sm border-2 border-red-600 font-bold text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      Buat Laporan Baru
+                    </button>
                   </div>
 
                   <!-- Toggle Check Button (+ X cancel if editing) -->
@@ -622,9 +623,9 @@
           Belum ada riwayat pengerjaan.
         </div>
 
-        <div v-else class="relative border-l-2 border-indigo-100 ml-3 space-y-6 pb-4">
+        <div v-else class="relative border-l-2 border-brand-cream ml-3 space-y-6 pb-4">
           <div v-for="record in sortedRecords" :key="record.id" class="relative pl-6">
-            <div class="absolute w-4 h-4 rounded-full bg-indigo-500 border-4 border-white left-[-9px] top-1.5 shadow-sm"></div>
+            <div class="absolute w-4 h-4 rounded-full bg-brand-brown border-4 border-white left-[-9px] top-1.5 shadow-sm"></div>
             <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:shadow-md transition-shadow">
               <div class="flex justify-between items-start mb-2">
                 <div>
@@ -649,7 +650,7 @@
                     <p v-if="action.description" class="text-xs text-slate-500 mt-0.5">{{ action.description }}</p>
                   </div>
                   <div class="text-xs text-slate-400 flex-shrink-0 text-right">
-                    <div>{{ action.condition_before_pct ?? '-' }}% → <span class="text-indigo-600 font-medium">{{ action.condition_after_pct ?? '-' }}%</span></div>
+                    <div>{{ action.condition_before_pct ?? '-' }}% → <span class="text-brand-gradation font-medium">{{ action.condition_after_pct ?? '-' }}%</span></div>
                   </div>
                 </div>
               </div>
@@ -663,7 +664,7 @@
         <div class="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-slate-100">
           <div class="flex-1 relative min-w-[200px]">
             <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input v-model="componentSearch" type="text" placeholder="Cari nama komponen..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-slate-700">
+            <input v-model="componentSearch" type="text" placeholder="Cari nama komponen..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-brown text-sm text-slate-700">
           </div>
           <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filter:</span>
           <button
@@ -671,8 +672,8 @@
             :key="opt.value"
             @click="componentCategoryFilter = opt.value"
             :class="componentCategoryFilter === opt.value
-              ? 'bg-indigo-600 text-white border-indigo-600'
-              : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'"
+              ? 'bg-brand-brown text-white border-brand-brown'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-brand-brown/50'"
             class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer"
           >
             {{ opt.label }}
@@ -686,7 +687,7 @@
         <!-- Header with Add/Import buttons -->
         <div class="flex justify-between items-center mb-6 pb-2 border-b border-slate-100">
           <h3 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <svg class="w-5 h-5 text-brand-gradation" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             Daftar Komponen
           </h3>
           <div class="flex items-center gap-2">
@@ -699,7 +700,7 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
               Import Excel
             </button>
-            <button v-if="isManagerOrAdmin" @click="openAddComponent" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors shadow-sm cursor-pointer">
+            <button v-if="isManagerOrAdmin" @click="openAddComponent" class="flex items-center gap-1.5 bg-brand-brown hover:bg-brand-gradation text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors shadow-sm cursor-pointer">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
               Tambah Komponen
             </button>
@@ -717,13 +718,13 @@
         <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <!-- Component Cards -->
           <div v-for="comp in filteredComponents" :key="comp.id"
-            class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-100 transition-all group">
+            class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md hover:border-brand-cream transition-all group">
             <div class="flex justify-between items-start">
               <div class="flex-1 cursor-pointer" @click="openComponentHistory(comp)">
                 <div class="flex gap-2 mb-1.5">
-                  <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ comp.category }}</span>
+                  <span class="text-xs font-semibold text-brand-gradation bg-brand-cream px-2 py-0.5 rounded-full">{{ comp.category }}</span>
                 </div>
-                <h4 class="font-bold text-slate-800 hover:text-indigo-600 transition-colors">{{ comp.name }}</h4>
+                <h4 class="font-bold text-slate-800 hover:text-brand-gradation transition-colors">{{ comp.name }}</h4>
                 <p class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ comp.specification }}</p>
               </div>
 
@@ -742,7 +743,7 @@
 
                 <!-- Edit/Delete actions -->
                 <div v-if="isManagerOrAdmin" class="flex flex-col gap-1">
-                  <button @click.stop="openEditComponent(comp)" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer transition-colors" title="Edit">
+                  <button @click.stop="openEditComponent(comp)" class="p-1.5 text-slate-400 hover:text-brand-gradation hover:bg-brand-cream rounded-lg cursor-pointer transition-colors" title="Edit">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                   </button>
                   <button @click.stop="deleteComponent(comp)" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors" title="Hapus">
@@ -754,7 +755,7 @@
 
             <div class="flex justify-between text-xs text-slate-400 border-t border-slate-100 pt-2 mt-3">
               <span>Qty: {{ comp.qty }} {{ comp.unit }}</span>
-              <span class="font-medium text-slate-500">Penggantian Terakhir: <span class="text-indigo-600 font-semibold">{{ formatDate(getLastReplacementDate(comp.id)) }}</span></span>
+              <span class="font-medium text-slate-500">Penggantian Terakhir: <span class="text-brand-gradation font-semibold">{{ formatDate(getLastReplacementDate(comp.id)) }}</span></span>
             </div>
             <div class="flex justify-between items-center mt-1.5">
               <span class="text-xs text-slate-400">Maintenance Terakhir:
@@ -762,7 +763,7 @@
                   {{ getLastMaintenanceDate(comp.id) ? formatDate(getLastMaintenanceDate(comp.id)) : 'Belum ada' }}
                 </span>
               </span>
-              <p class="text-xs text-indigo-500 cursor-pointer hover:underline" @click="openComponentHistory(comp)">Lihat riwayat →</p>
+              <p class="text-xs text-brand-gradation cursor-pointer hover:underline" @click="openComponentHistory(comp)">Lihat riwayat →</p>
             </div>
           </div>
         </div>
@@ -824,7 +825,7 @@
             <div class="space-y-2">
               <p class="text-xs font-bold text-slate-700">2. Pilih File Excel (.xlsx, .xls, .csv)</p>
               <div 
-                class="border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/20 p-6 rounded-2xl text-center transition-all relative"
+                class="border-2 border-dashed border-slate-200 hover:border-brand-brown bg-white hover:bg-brand-cream/20 p-6 rounded-2xl text-center transition-all relative"
               >
                 <input 
                   type="file" 
@@ -1158,10 +1159,12 @@ const getLastMaintenanceDate = (componentId) => {
 const nextSchedule = computed(() => {
   const schedules = machine.value?.schedules ?? [];
   if (schedules.length === 0) return null;
+  
   // Find the soonest active schedule
   const active = schedules
     .filter(s => s.is_active !== false)
     .sort((a, b) => new Date(a.next_due_date) - new Date(b.next_due_date));
+  
   return active[0] ?? null;
 });
 
@@ -1478,6 +1481,7 @@ const submitReport = async (redirect = true) => {
 
     await axios.post('/api/records', {
       machine_id: route.params.id,
+      schedule_id: forceReport.value ? null : (nextSchedule.value?.id || null),
       maintenance_date: new Date().toISOString(),
       status: 'completed',
       notes: `Maintenance report - ${checkedRows.length} komponen diperiksa`,

@@ -156,8 +156,9 @@ class ApprovalController extends Controller
                 if ($record->schedule_id) {
                     $schedule = MaintenanceSchedule::find($record->schedule_id);
                     if ($schedule) {
+                        // Calculate next due date starting from the current planned next_due_date
                         $schedule->update([
-                            'next_due_date' => Carbon::parse($record->maintenance_date)->addDays($schedule->interval_days),
+                            'next_due_date' => Carbon::parse($schedule->next_due_date)->addDays($schedule->interval_days),
                         ]);
                     }
                 }

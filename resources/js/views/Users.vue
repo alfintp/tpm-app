@@ -59,6 +59,7 @@
               <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">{{ isAdmin ? 'Role Saat Ini' : 'Role' }}</th>
               <th v-if="isAdmin" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Ubah Role</th>
               <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Kota</th>
+              <th v-if="isAdmin || isManager" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Mesin (PIC)</th>
               <th v-if="isAdmin" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider text-right">Aksi</th>
             </tr>
           </thead>
@@ -124,9 +125,28 @@
                 <span v-else class="text-xs font-bold text-slate-600">{{ getCityName(u.city) }}</span>
               </td>
 
+              <!-- Mesin/PIC Column (Admin & Manager) -->
+              <td v-if="isAdmin || isManager" class="px-6 py-4 whitespace-nowrap">
+                <button
+                  @click="openMachinesModal(u)"
+                  class="text-emerald-600 hover:text-emerald-800 font-bold text-xs bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-all border border-emerald-200/30 flex items-center gap-1.5"
+                  title="Lihat Mesin yang di-PIC"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                  Lihat Mesin
+                </button>
+              </td>
+
               <!-- Actions (Admin only) -->
               <td v-if="isAdmin" class="px-6 py-4 whitespace-nowrap text-right">
                 <div class="flex items-center justify-end gap-2">
+                  <button
+                    @click="openEditModal(u)"
+                    class="text-amber-600 hover:text-amber-800 font-bold text-xs bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-all border border-amber-200/30"
+                    title="Ubah Nama & Email"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                  </button>
                   <button
                     @click="openPasswordModal(u)"
                     class="text-indigo-600 hover:text-indigo-800 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-all border border-indigo-200/30"
@@ -147,6 +167,104 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Edit Profil Modal (Admin only) -->
+    <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showEditModal = false"></div>
+      <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm relative z-10 p-8 space-y-6">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+          <div>
+            <h3 class="text-lg font-black text-brand-brown">Edit Profil User</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Ubah Nama atau Email</p>
+          </div>
+          <button @click="showEditModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <form @submit.prevent="handleEditUser" class="space-y-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Nama Lengkap *</label>
+            <input type="text" v-model="editForm.full_name" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-brown focus:border-brand-brown text-slate-700 font-medium text-sm" placeholder="e.g. John Doe">
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Email *</label>
+            <input type="email" v-model="editForm.email" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-brown focus:border-brand-brown text-slate-700 font-medium text-sm" placeholder="e.g. john@example.com">
+          </div>
+          <div class="pt-2 flex justify-end gap-3">
+            <button type="button" @click="showEditModal = false" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">Batal</button>
+            <button type="submit" :disabled="savingEdit" class="px-5 py-2.5 rounded-xl font-bold text-sm text-brand-cream bg-brand-brown hover:opacity-95 transition-colors shadow-md cursor-pointer disabled:opacity-70 flex items-center gap-2">
+              <svg v-if="savingEdit" class="animate-spin h-4 w-4 text-brand-cream" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              Simpan Profil
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Machines Modal (Admin & Manager) -->
+    <div v-if="showMachinesModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showMachinesModal = false"></div>
+      <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg relative z-10 p-6 space-y-4 max-h-[80vh] overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+          <div>
+            <h3 class="text-lg font-black text-brand-brown">Mesin yang Di-PIC</h3>
+            <p class="text-xs text-slate-500 mt-0.5">{{ machinesTarget?.full_name }}</p>
+          </div>
+          <button @click="showMachinesModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        
+        <!-- Loading State -->
+        <div v-if="machinesLoading" class="flex flex-col items-center justify-center py-10 space-y-3">
+          <svg class="animate-spin h-8 w-8 text-brand-brown" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.062 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span class="text-sm text-slate-500 font-semibold">Memuat daftar mesin...</span>
+        </div>
+        
+        <!-- Empty State -->
+        <div v-else-if="userMachines.length === 0" class="text-center py-10">
+          <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+          </svg>
+          <h3 class="mt-3 text-sm font-bold text-slate-600">Tidak Ada Mesin</h3>
+          <p class="mt-1 text-xs text-slate-400">User ini belum ditugaskan sebagai PIC untuk mesin manapun.</p>
+        </div>
+        
+        <!-- Machines List -->
+        <div v-else class="overflow-y-auto flex-1 space-y-2 pr-1">
+          <div v-for="machine in userMachines" :key="machine.id" 
+               class="p-3 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-bold text-brand-brown truncate">{{ machine.name }}</div>
+                <div class="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                  <span class="font-mono bg-slate-200 px-1.5 py-0.5 rounded">{{ machine.kode }}</span>
+                  <span v-if="machine.location" class="truncate">📍 {{ machine.location }}</span>
+                </div>
+              </div>
+              <span :class="getMachineStatusClass(machine.status)" class="text-[10px] font-black px-2 py-1 rounded-full uppercase whitespace-nowrap">
+                {{ getMachineStatusLabel(machine.status) }}
+              </span>
+            </div>
+            <div v-if="machine.condition_pct !== null" class="mt-2 flex items-center gap-2">
+              <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div class="h-full rounded-full" :class="getConditionColor(machine.condition_pct)" :style="{ width: machine.condition_pct + '%' }"></div>
+              </div>
+              <span class="text-[10px] font-bold text-slate-600">{{ machine.condition_pct }}%</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="pt-2 border-t border-slate-100">
+          <button @click="showMachinesModal = false" class="w-full px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">
+            Tutup
+          </button>
+        </div>
       </div>
     </div>
 
@@ -267,6 +385,81 @@ const showPasswordModal = ref(false);
 const savingPassword = ref(false);
 const newPassword = ref('');
 const passwordTarget = ref(null);
+
+const showEditModal = ref(false);
+const savingEdit = ref(false);
+const editForm = ref({
+  id: '',
+  full_name: '',
+  email: ''
+});
+
+// Mesin/PIC Modal
+const showMachinesModal = ref(false);
+const machinesLoading = ref(false);
+const machinesTarget = ref(null);
+const userMachines = ref([]);
+
+function openEditModal(user) {
+  editForm.value = {
+    id: user.id,
+    full_name: user.full_name,
+    email: user.email
+  };
+  showEditModal.value = true;
+}
+
+async function handleEditUser() {
+  if (!editForm.value.full_name || !editForm.value.email) {
+    showAlert('error', 'Gagal', 'Nama Lengkap dan Email wajib diisi!');
+    return;
+  }
+  
+  savingEdit.value = true;
+  try {
+    const response = await window.axios.put(`/api/admin/users/${editForm.value.id}`, {
+      full_name: editForm.value.full_name,
+      email: editForm.value.email
+    });
+    
+    // Update user local ref in list
+    const index = users.value.findIndex(u => u.id === editForm.value.id);
+    if (index !== -1) {
+      users.value[index].full_name = response.data.user.full_name;
+      users.value[index].email = response.data.user.email;
+    }
+    
+    // Sort list again by name
+    users.value.sort((a, b) => a.full_name.localeCompare(b.full_name));
+    
+    showAlert('success', 'Berhasil', response.data.message || 'Profil user berhasil diperbarui.');
+    showEditModal.value = false;
+  } catch (error) {
+    console.error('Failed to update user:', error);
+    showAlert('error', 'Gagal', error.response?.data?.message || 'Gagal memperbarui profil user.');
+  } finally {
+    savingEdit.value = false;
+  }
+}
+
+async function openMachinesModal(user) {
+  machinesTarget.value = user;
+  showMachinesModal.value = true;
+  machinesLoading.value = true;
+  userMachines.value = [];
+  
+  try {
+    // Fetch all machines and filter by pic_mesin_id
+    const response = await window.axios.get('/api/machines');
+    const allMachines = response.data || [];
+    userMachines.value = allMachines.filter(m => m.pic_mesin_id === user.id);
+  } catch (error) {
+    console.error('Failed to fetch machines:', error);
+    showAlert('error', 'Gagal', 'Gagal memuat daftar mesin.');
+  } finally {
+    machinesLoading.value = false;
+  }
+}
 
 function openAddModal() {
   addForm.value = {
@@ -444,6 +637,30 @@ function formatDate(dateStr) {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function getMachineStatusClass(status) {
+  const classes = {
+    active: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
+    maintenance: 'bg-amber-50 text-amber-700 border border-amber-100',
+    inactive: 'bg-slate-50 text-slate-600 border border-slate-200'
+  };
+  return classes[status] ?? 'bg-slate-50 text-slate-600 border border-slate-200';
+}
+
+function getMachineStatusLabel(status) {
+  const labels = {
+    active: 'Aktif',
+    maintenance: 'Maintenance',
+    inactive: 'Nonaktif'
+  };
+  return labels[status] ?? status;
+}
+
+function getConditionColor(pct) {
+  if (pct >= 80) return 'bg-emerald-500';
+  if (pct >= 50) return 'bg-amber-500';
+  return 'bg-rose-500';
 }
 
 onMounted(() => {

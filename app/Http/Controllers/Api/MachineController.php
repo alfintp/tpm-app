@@ -255,4 +255,18 @@ class MachineController extends Controller
         $users = User::select('id', 'full_name', 'role')->get();
         return response()->json($users);
     }
+
+    public function checkKode(Request $request)
+    {
+        $request->validate([
+            'kode' => 'required|string|max:100',
+        ]);
+
+        $exists = Machine::where('kode', $request->kode)->exists();
+
+        return response()->json([
+            'exists' => $exists,
+            'kode' => $request->kode,
+        ]);
+    }
 }
