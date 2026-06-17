@@ -1,174 +1,155 @@
 <template>
   <div class="space-y-6">
-    <!-- Header Card -->
-    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div>
-        <h1 class="text-xl font-black text-brand-brown">Manajemen User</h1>
-        <p class="text-sm text-slate-500 font-medium">Ubah role user atau hapus akun pengguna sistem TPM</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <span class="text-xs bg-brand-cream text-brand-brown font-bold px-3 py-1.5 rounded-full border border-brand-brown/10">
-          Total: {{ users.length }} Pengguna
-        </span>
-        <button 
-          v-if="isAdmin" 
-          @click="openAddModal" 
-          class="flex items-center gap-2 bg-gradient-to-tr from-brand-brown to-brand-gradation hover:opacity-90 text-brand-cream px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md cursor-pointer"
+    <!-- Header -->
+    <PageHeader
+      subtitle="Ubah role user atau hapus akun pengguna sistem TPM"
+      :badge="`Total: ${users.length} Pengguna`"
+      
+    >
+      <template #actions>
+        <Button
+          v-if="isAdmin"
+          @click="openAddModal"
+          class="bg-gradient-to-tr from-brand-brown to-brand-gradation hover:opacity-90 text-brand-cream rounded-xl font-bold text-sm shadow-md gap-2"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
           Tambah User Baru
-        </button>
-      </div>
-    </div>
+        </Button>
+      </template>
+    </PageHeader>
 
-    <!-- Users Table Card -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <!-- Search Bar -->
-      <div class="px-6 pt-5 pb-3 border-b border-slate-100">
-        <div class="relative max-w-sm">
-          <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          <input v-model="searchQuery" type="text" placeholder="Cari nama, email, role..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-brown/30 focus:border-brand-brown text-sm text-slate-700">
+    <!-- Search Bar -->
+    <SearchInput
+      v-model="searchQuery"
+      placeholder="Cari nama, email, role..."
+      wrapper-class="max-w-sm"
+    />
+
+    <!-- Users Table -->
+    <DataTable
+      :columns="userColumns"
+      :rows="paginatedUsers"
+      :loading="loading"
+      loading-text="Memuat daftar user..."
+      loading-subtext="Mengambil data dari server"
+      empty-title="Tidak Ada User"
+      empty-subtext="Belum ada user terdaftar di dalam sistem."
+      min-width="min-w-[900px]"
+      :paginate="false"
+      actions-align="right"
+      actions-width="w-[12%]"
+    >
+      <!-- Kolom: User (avatar + nama) -->
+      <template #cell-full_name="{ row }">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation text-brand-cream flex items-center justify-center font-bold text-sm shadow-inner uppercase flex-shrink-0">
+            {{ getInitials(row.full_name) }}
+          </div>
+          <div>
+            <div class="text-sm font-bold text-brand-brown">
+              {{ row.full_name }}
+              <span v-if="row.id === currentUser?.id" class="ml-1.5 text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded">Anda</span>
+            </div>
+            <div class="text-xs text-slate-400 font-medium">Terdaftar {{ formatDate(row.created_at) }}</div>
+          </div>
         </div>
-      </div>
+      </template>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="flex flex-col items-center justify-center py-16 space-y-3">
-        <svg class="animate-spin h-8 w-8 text-brand-brown" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.062 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-        </svg>
-        <span class="text-sm text-slate-500 font-semibold">Memuat daftar user...</span>
-      </div>
+      <!-- Kolom: Email (Admin only) -->
+      <template #cell-email="{ row }">
+        <span class="text-sm font-medium text-slate-600">{{ row.email }}</span>
+      </template>
 
-      <!-- Empty State -->
-      <div v-else-if="filteredUsers.length === 0" class="text-center py-16">
-        <svg class="mx-auto h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-        <h3 class="mt-2 text-sm font-bold text-brand-brown">Tidak Ada User</h3>
-        <p class="mt-1 text-sm text-slate-500 font-medium">Belum ada user terdaftar di dalam sistem.</p>
-      </div>
+      <!-- Kolom: Role badge -->
+      <template #cell-role="{ row }">
+        <span :class="getRoleClass(row.role)" class="inline-flex items-center text-xs font-black px-3 py-1 rounded-full uppercase">
+          {{ getRoleName(row.role) }}
+        </span>
+      </template>
 
-      <!-- Table -->
-      <div v-else class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-slate-50 border-b border-slate-200">
-              <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">User</th>
-              <th v-if="isAdmin" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Email</th>
-              <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">{{ isAdmin ? 'Role Saat Ini' : 'Role' }}</th>
-              <th v-if="isAdmin" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Ubah Role</th>
-              <th class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Kota</th>
-              <th v-if="isAdmin || isManager" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider">Mesin (PIC)</th>
-              <th v-if="isAdmin" class="px-6 py-4 text-xs font-black text-slate-600 uppercase tracking-wider text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="u in filteredUsers" :key="u.id" class="hover:bg-slate-50/50 transition-colors">
-              <!-- Name with Avatar -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation text-brand-cream flex items-center justify-center font-bold text-sm shadow-inner uppercase">
-                    {{ getInitials(u.full_name) }}
-                  </div>
-                  <div class="ml-4">
-                    <div class="text-sm font-bold text-brand-brown">
-                      {{ u.full_name }}
-                      <span v-if="u.id === currentUser?.id" class="ml-1.5 text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded">
-                        Anda
-                      </span>
-                    </div>
-                    <div class="text-xs text-slate-400 font-medium">Terdaftar {{ formatDate(u.created_at) }}</div>
-                  </div>
-                </div>
-              </td>
+      <!-- Kolom: Ubah Role (Admin only) -->
+      <template #cell-role_select="{ row }">
+        <select
+          :value="row.role"
+          @change="handleRoleChange(row, $event.target.value)"
+          :disabled="updatingId === row.id"
+          class="bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-brown focus:border-brand-brown disabled:opacity-50 cursor-pointer"
+        >
+          <option value="technician">Teknisi</option>
+          <option value="manager">Manajer</option>
+          <option value="admin">Admin</option>
+        </select>
+      </template>
 
-              <!-- Email (Admin only) -->
-              <td v-if="isAdmin" class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600">
-                {{ u.email }}
-              </td>
+      <!-- Kolom: Kota -->
+      <template #cell-city="{ row }">
+        <select
+          v-if="isAdmin"
+          :value="row.city"
+          @change="handleCityChange(row, $event.target.value)"
+          :disabled="updatingCityId === row.id"
+          class="bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-brown focus:border-brand-brown disabled:opacity-50 cursor-pointer"
+        >
+          <option value="pasuruan">Pasuruan</option>
+          <option value="sby">Surabaya</option>
+          <option value="both">Keduanya</option>
+        </select>
+        <span v-else class="text-xs font-bold text-slate-600">{{ getCityName(row.city) }}</span>
+      </template>
 
-              <!-- Role Badge -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getRoleClass(u.role)" class="inline-flex items-center text-xs font-black px-3 py-1 rounded-full uppercase">
-                  {{ getRoleName(u.role) }}
-                </span>
-              </td>
+      <!-- Kolom: Mesin PIC (Admin & Manager) -->
+      <template #cell-machines_pic="{ row }">
+        <Button
+          variant="outline"
+          size="sm"
+          @click="openMachinesModal(row)"
+          class="text-emerald-600 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 rounded-lg text-xs font-bold gap-1.5 h-auto py-1.5"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+          Lihat Mesin
+        </Button>
+      </template>
 
-              <!-- Role Select (Admin only) -->
-              <td v-if="isAdmin" class="px-6 py-4 whitespace-nowrap">
-                <select
-                  :value="u.role"
-                  @change="handleRoleChange(u, $event.target.value)"
-                  :disabled="updatingId === u.id"
-                  class="bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-brown focus:border-brand-brown disabled:opacity-50"
-                >
-                  <option value="technician">Teknisi (Technician)</option>
-                  <option value="manager">Manajer (Manager)</option>
-                  <option value="admin">Administrator (Admin)</option>
-                </select>
-              </td>
+      <!-- Slot Actions: Edit, Password, Hapus (Admin only) -->
+      <template v-if="isAdmin" #actions="{ row }">
+        <div class="flex items-center justify-end gap-1.5">
+          <Button
+            variant="outline" size="sm"
+            @click="openEditModal(row)"
+            title="Ubah Nama & Email"
+            class="h-8 w-8 p-0 text-amber-600 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:text-amber-800 rounded-lg"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </Button>
+          <Button
+            variant="outline" size="sm"
+            @click="openPasswordModal(row)"
+            title="Ubah Password"
+            class="h-8 w-8 p-0 text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-800 rounded-lg"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+          </Button>
+          <Button
+            variant="outline" size="sm"
+            @click="handleDeleteUser(row)"
+            :disabled="row.id === currentUser?.id || deletingId === row.id"
+            class="h-8 px-2.5 text-red-500 border-red-200 bg-red-50 hover:bg-red-100 hover:text-red-700 rounded-lg text-xs font-bold disabled:opacity-30"
+          >
+            <span v-if="deletingId === row.id">...</span>
+            <span v-else>Hapus</span>
+          </Button>
+        </div>
+      </template>
+    </DataTable>
 
-              <!-- City -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <select
-                  v-if="isAdmin"
-                  :value="u.city"
-                  @change="handleCityChange(u, $event.target.value)"
-                  :disabled="updatingCityId === u.id"
-                  class="bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-brown focus:border-brand-brown disabled:opacity-50"
-                >
-                  <option value="pasuruan">Pasuruan</option>
-                  <option value="sby">Surabaya</option>
-                  <option value="both">Keduanya</option>
-                </select>
-                <span v-else class="text-xs font-bold text-slate-600">{{ getCityName(u.city) }}</span>
-              </td>
+    <!-- Pagination -->
+    <TablePagination
+      v-if="!loading"
+      v-model="currentPage"
+      :total="filteredUsers.length"
+      :per-page="perPage"
+    />
 
-              <!-- Mesin/PIC Column (Admin & Manager) -->
-              <td v-if="isAdmin || isManager" class="px-6 py-4 whitespace-nowrap">
-                <button
-                  @click="openMachinesModal(u)"
-                  class="text-emerald-600 hover:text-emerald-800 font-bold text-xs bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-all border border-emerald-200/30 flex items-center gap-1.5"
-                  title="Lihat Mesin yang di-PIC"
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
-                  Lihat Mesin
-                </button>
-              </td>
-
-              <!-- Actions (Admin only) -->
-              <td v-if="isAdmin" class="px-6 py-4 whitespace-nowrap text-right">
-                <div class="flex items-center justify-end gap-2">
-                  <button
-                    @click="openEditModal(u)"
-                    class="text-amber-600 hover:text-amber-800 font-bold text-xs bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-all border border-amber-200/30"
-                    title="Ubah Nama & Email"
-                  >
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                  </button>
-                  <button
-                    @click="openPasswordModal(u)"
-                    class="text-indigo-600 hover:text-indigo-800 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-all border border-indigo-200/30"
-                    title="Ubah Password"
-                  >
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-                  </button>
-                  <button
-                    @click="handleDeleteUser(u)"
-                    :disabled="u.id === currentUser?.id || deletingId === u.id"
-                    class="text-red-500 hover:text-red-700 font-bold text-xs bg-red-50 hover:bg-red-100 disabled:opacity-30 disabled:pointer-events-none px-3 py-1.5 rounded-lg transition-all border border-red-200/20"
-                  >
-                    <span v-if="deletingId === u.id">Menghapus...</span>
-                    <span v-else>Hapus</span>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
 
     <!-- Edit Profil Modal (Admin only) -->
     <div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -357,19 +338,44 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useAuth } from '../composables/useAuth.js';
 import { showAlert, showConfirm } from '../composables/useAlert.js';
+import PageHeader from '../components/PageHeader.vue';
+import SearchInput from '../components/SearchInput.vue';
+import DataTable from '../components/DataTable.vue';
+import TablePagination from '../components/TablePagination.vue';
+import Button from '../../views/components/ui/button/Button.vue';
 
-const { user: currentUser, isAdmin, isManager } = useAuth();
+const props = defineProps({
+  initialUsers: {
+    type: Array,
+    default: null
+  }
+});
+
+const { user: currentUser, isAdmin, isManager, isManagerOrAdmin } = useAuth();
 
 const searchQuery = ref('');
+const currentPage = ref(1);
+const perPage = 15;
 
-const users = ref([]);
-const loading = ref(true);
+const loading = ref(props.initialUsers === null);
+const users = ref(props.initialUsers || []);
 const updatingId = ref(null);
 const updatingCityId = ref(null);
 const deletingId = ref(null);
+
+const userColumns = computed(() => [
+  { key: 'full_name',    label: 'User',        width: 'w-[22%]' },
+  { key: 'email',        label: 'Email',        width: 'w-[18%]', show: isAdmin.value },
+  { key: 'role',         label: isAdmin.value ? 'Role Saat Ini' : 'Role', width: 'w-[12%]' },
+  { key: 'role_select',  label: 'Ubah Role',   width: 'w-[14%]', show: isAdmin.value },
+  { key: 'city',         label: 'Kota',         width: 'w-[14%]' },
+  { key: 'machines_pic', label: 'Mesin (PIC)',  width: 'w-[12%]', show: isAdmin.value || isManager.value },
+]);
+
+watch(searchQuery, () => { currentPage.value = 1; });
 
 const showAddModal = ref(false);
 const saving = ref(false);
@@ -542,7 +548,13 @@ const filteredUsers = computed(() => {
   );
 });
 
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredUsers.value.slice(start, start + perPage);
+});
+
 async function fetchUsers() {
+  if (props.initialUsers !== null) return;
   loading.value = true;
   try {
     const response = await window.axios.get('/api/admin/users');

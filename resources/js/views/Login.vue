@@ -44,7 +44,7 @@
                 type="email"
                 autocomplete="email"
                 required
-                placeholder="nama@tpm.com"
+                placeholder="nama@lsi.com"
                 class="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-brand-brown focus:border-brand-brown sm:text-sm font-medium"
               >
             </div>
@@ -90,10 +90,8 @@
 
 <script setup>
 import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
 import { useAuth } from '../composables/useAuth.js';
 
-const router = useRouter();
 const { login } = useAuth();
 
 const form = reactive({
@@ -112,7 +110,7 @@ async function handleLogin() {
   
   loading.value = false;
   if (result.success) {
-    router.push({ name: 'dashboard' });
+    window.location.href = '/';
   } else {
     error.value = result.message;
   }

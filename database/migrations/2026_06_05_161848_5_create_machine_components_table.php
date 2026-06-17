@@ -21,7 +21,6 @@ return new class extends Migration
             $table->string('unit')->default('pcs'); // e.g. pcs, set, meter
             $table->date('last_replaced_at')->nullable();
             $table->float('last_condition_pct')->nullable();
-            $table->string('maintenance_schedule')->nullable(); // e.g. W1
             $table->timestamps();
         });
     }

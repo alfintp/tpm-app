@@ -1,0 +1,195 @@
+<template>
+  <div class="flex h-screen w-screen overflow-hidden bg-slate-50">
+    <!-- Mobile Sidebar Overlay -->
+    <div 
+      v-if="mobileSidebarOpen" 
+      class="fixed inset-0 bg-black/50 z-30 md:hidden"
+      @click="mobileSidebarOpen = false"
+    ></div>
+
+    <!-- Sidebar -->
+    <aside 
+      :class="[
+        'w-64 bg-brand-cream border-r border-slate-200 text-brand-brown flex flex-col h-full fixed md:relative z-40 transition-transform duration-300 ease-in-out',
+        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      ]"
+    >
+      <!-- Mobile Close Button -->
+      <div class="h-20 flex items-center justify-between border-b border-slate-200 px-4 flex-shrink-0">
+        <Link href="/" class="h-12 w-auto cursor-pointer flex items-center">
+          <img :src="'/images/logo-ladang-lima.png'" alt="Logo Ladang Lima" class="h-12 w-auto">
+        </Link>
+        <button 
+          @click="mobileSidebarOpen = false" 
+          class="md:hidden p-2 hover:bg-brand-brown/10 rounded-lg transition-colors cursor-pointer"
+        >
+          <svg class="w-6 h-6 text-brand-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <!-- SPA Dashboard Link (use normal href to return to Vue Router SPA if needed, or Link if everything is Inertia) -->
+         <!-- buat router push -->
+          
+        <Link href="/" :class="['nav-link', isUrl('/') ? 'active-link' : '']">
+          <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </Link>
+        <Link href="/machines" :class="['nav-link', isUrl('/machines') ? 'active-link' : '']">
+          <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Machines
+        </Link>
+        <Link href="/approvals" :class="['nav-link', isUrl('/approvals') ? 'active-link' : '']">
+          <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Approval
+        </Link>
+        <Link href="/users" v-if="isManagerOrAdmin" :class="['nav-link', isUrl('/users') ? 'active-link' : '']">
+          <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          Users
+        </Link>
+        <Link href="/logs" v-if="isAdmin" :class="['nav-link', isUrl('/logs') ? 'active-link' : '']">
+          <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+          System Logs
+        </Link>
+      </nav>
+
+      <!-- Profile & Logout Footer -->
+      <div v-if="user" class="p-4 border-t border-slate-200 flex flex-col gap-3 flex-shrink-0">
+        <div class="flex items-center">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation flex items-center justify-center font-bold text-brand-cream shadow-md text-xs uppercase">
+            {{ initials }}
+          </div>
+          <div class="ml-3 flex-1 min-w-0">
+            <p class="text-sm font-bold text-brand-brown truncate">{{ user.full_name }}</p>
+            <p class="text-xs text-slate-500 font-medium truncate uppercase">
+              {{ getCityLabel(user.city, user.role) || getRoleLabel(user.role) }}
+            </p>
+          </div>
+        </div>
+        <button 
+          @click="handleLogout" 
+          class="w-full flex items-center justify-center py-2 px-3 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all border border-red-100/50 hover:cursor-pointer"
+        >
+          <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          Keluar Sistem
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 relative">
+      <header class="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 z-10 sticky top-0 shadow-sm flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <!-- Mobile Menu Button -->
+          <button 
+            @click="mobileSidebarOpen = true" 
+            class="md:hidden p-2 -ml-2 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+          >
+            <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div class="w-2 h-2 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation"></div>
+          <h2 class="text-base font-semibold text-slate-700">{{ pageTitle }}</h2>
+        </div>
+      </header>
+
+      <div class="flex-1 overflow-y-auto p-8 z-0">
+        <slot />
+      </div>
+    </main>
+
+    <!-- Global Alert Modal -->
+    <AlertModal ref="alertModalRef" />
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { useAuth } from '../composables/useAuth.js';
+import AlertModal from '../components/AlertModal.vue';
+import { alertRef } from '../composables/useAlert.js';
+
+const page = usePage();
+const { user, isAdmin, isManager, isManagerOrAdmin, initializeAuth } = useAuth();
+
+const mobileSidebarOpen = ref(false);
+const alertModalRef = ref(null);
+
+onMounted(async () => {
+  alertRef.value = alertModalRef.value;
+  await initializeAuth();
+});
+
+const isUrl = (url) => {
+  if (url === '/') return page.url === '/';
+  return page.url.startsWith(url);
+};
+
+const pageTitle = computed(() => {
+  const url = page.url;
+  if (url.includes('/users')) return 'Manajemen User';
+  if (url.includes('/logs')) return 'Log Aktivitas Sistem';
+  if (url.includes('/approvals')) return 'Approval Laporan';
+  if (url.includes('/machines') || url.includes('/machine/')) return 'Daftar Mesin';
+  return 'TPM System';
+});
+
+const initials = computed(() => {
+  if (!user.value?.full_name) return '??';
+  const parts = user.value.full_name.split(' ').filter(n => n.length > 0);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return user.value.full_name.slice(0, 2).toUpperCase();
+});
+
+function getRoleLabel(role) {
+  const map = {
+    admin: 'Administrator',
+    manager: 'Manajer',
+    technician: 'Teknisi',
+  };
+  return map[role] ?? role;
+}
+
+function getCityLabel(city, role) {
+  if (role !== 'technician') return '';
+  if (!city || city === 'both') return 'Teknisi';
+  
+  const map = {
+    sby: 'Teknisi Surabaya',
+    pasuruan: 'Teknisi Pasuruan',
+  };
+  return map[city] ?? `Teknisi ${city}`;
+}
+
+function handleLogout() {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_profile');
+  window.location.href = '/login';
+}
+</script>
+
+<style>
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #5c4d43;
+  transition: all 0.2s;
+  cursor: pointer;
+  text-decoration: none;
+}
+.nav-link:hover {
+  color: #402c1f;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+.nav-link.active-link {
+  color: #402c1f;
+  background-color: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+</style>

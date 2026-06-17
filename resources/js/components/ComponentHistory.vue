@@ -41,12 +41,24 @@
           <div v-for="item in history" :key="item.id" class="relative pl-6">
             <div class="absolute w-4 h-4 rounded-full bg-indigo-500 border-4 border-white left-[-9px] top-1.5 shadow-sm"></div>
             <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:shadow-md transition-shadow">
-              <div class="flex justify-between items-start mb-2">
+              <div class="flex justify-between items-start mb-2 gap-2">
                 <div>
                   <span class="text-sm font-bold text-slate-800">{{ formatDateTime(item.record?.maintenance_date) }}</span>
                   <p class="text-xs text-slate-500 mt-0.5">Teknisi: {{ item.record?.technician?.full_name ?? '-' }}</p>
                 </div>
-                <span class="text-xs font-bold px-3 py-1 rounded-full" :class="getActionTypeClass(item.action_type)">{{ item.action_type }}</span>
+                <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
+                  <span class="text-xs font-bold px-3 py-1 rounded-full uppercase" :class="getActionTypeClass(item.action_type)">{{ item.action_type }}</span>
+                  <span v-if="item.record?.approval" class="text-[10px] font-semibold px-2 py-0.5 rounded border" :class="{
+                    'bg-amber-100 text-amber-800 border-amber-200': item.record.approval.decision === 'pending',
+                    'bg-emerald-100 text-emerald-800 border-emerald-200': item.record.approval.decision === 'approved',
+                    'bg-rose-100 text-rose-800 border-rose-200': item.record.approval.decision === 'rejected'
+                  }">
+                    {{ item.record.approval.decision === 'pending' ? 'MENUNGGU' : (item.record.approval.decision === 'approved' ? 'DISETUJUI' : 'DITOLAK') }}
+                  </span>
+                  <span v-else class="text-[10px] font-semibold px-2 py-0.5 rounded border bg-amber-100 text-amber-800 border-amber-200">
+                    MENUNGGU
+                  </span>
+                </div>
               </div>
 
               <!-- Condition change -->

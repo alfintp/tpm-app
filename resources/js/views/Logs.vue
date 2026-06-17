@@ -1,136 +1,109 @@
 <template>
   <div class="space-y-6">
-    <!-- Header with count -->
-    <div class="flex items-center justify-between flex-wrap gap-4">
-      <div>
-        <p class="text-slate-500 text-sm mt-0.5">Memantau seluruh jejak riwayat aktivitas dan tindakan pengguna di dalam sistem</p>
-      </div>
-
-      <!-- Quick filters / stats -->
-      <div v-if="!loading" class="flex items-center gap-4">
-        <div class="bg-white border border-slate-100 rounded-2xl px-5 py-3 shadow-sm flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-brand-cream text-brand-brown flex items-center justify-center font-bold text-lg">
-            {{ filteredLogs.length }}
-          </div>
-          <div>
-            <p class="text-xs text-brand-brown font-medium">Log Ditemukan</p>
-            <p class="text-sm font-bold text-slate-800">Total Riwayat</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Header -->
+    <PageHeader
+      subtitle="Memantau seluruh jejak riwayat aktivitas dan tindakan pengguna di dalam sistem"
+      :badge="!loading ? `${filteredLogs.length} Log Ditemukan` : ''"
+    />
 
     <!-- Search & Filter Controls -->
     <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-      <div class="relative w-full md:max-w-md">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <SearchInput
+        v-model="search"
+        placeholder="Cari aktivitas, nama pengguna, detail, atau IP..."
+      />
+      <FilterTabs v-model="activeTypeFilter" :tabs="logTypes" />
+    </div>
+
+    <!-- Logs Table -->
+    <DataTable
+      :columns="columns"
+      :rows="paginatedLogs"
+      :loading="loading"
+      loading-text="Memuat log aktivitas..."
+      loading-subtext="Mengambil data aman dari server"
+      empty-title="Tidak ada log ditemukan"
+      empty-subtext="Coba sesuaikan kata kunci pencarian atau ganti filter kategori."
+      min-width="min-w-[950px]"
+      :paginate="false"
+    >
+      <!-- Kolom: Waktu -->
+      <template #cell-created_at="{ row }">
+        <p class="font-semibold text-slate-800 text-sm">{{ formatDateTime(row.created_at).date }}</p>
+        <p class="text-xs text-slate-400 font-medium mt-0.5">{{ formatDateTime(row.created_at).time }} WIB</p>
+      </template>
+
+      <!-- Kolom: Pengguna -->
+      <template #cell-user_fullname="{ row }">
+        <div class="flex items-center">
+          <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation text-brand-cream flex items-center justify-center font-bold text-xs shadow-inner uppercase flex-shrink-0">
+            {{ getInitials(row.user_fullname) }}
+          </div>
+          <div class="ml-3">
+            <p class="text-sm font-bold text-slate-800">{{ row.user_fullname }}</p>
+            <p class="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Role: {{ row.user?.role ?? 'Guest/System' }}</p>
+          </div>
+        </div>
+      </template>
+
+      <!-- Kolom: Aktivitas -->
+      <template #cell-activity="{ row }">
+        <span :class="getActivityTheme(row.activity)" class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap">
+          {{ row.activity }}
         </span>
-        <input
-          v-model="search"
-          type="text"
-          placeholder="Cari aktivitas, nama pengguna, detail, atau IP..."
-          class="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-all"
-        />
-      </div>
+      </template>
 
-      <!-- Category Filter -->
-      <div class="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-        <button
-          v-for="type in logTypes"
-          :key="type.value"
-          @click="activeTypeFilter = type.value"
-          :class="activeTypeFilter === type.value
-            ? 'bg-gradient-to-tr from-brand-brown to-brand-gradation text-brand-cream '
-            : 'bg-white text-slate-600 border-slate-200 hover:border-brand-brown'"
-          class="px-4 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap"
-        >
-          {{ type.label }}
-        </button>
-      </div>
-    </div>
+      <!-- Kolom: Detail Tindakan -->
+      <template #cell-details="{ row }">
+        <p class="font-medium text-slate-700 leading-relaxed break-words line-clamp-3 text-sm" :title="row.details ?? '-'">{{ row.details ?? '-' }}</p>
+      </template>
 
-    <!-- Logs Table Card -->
-    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-      <!-- Loading State -->
-      <div v-if="loading" class="p-16 text-center text-slate-400">
-        <div class="animate-spin w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full mx-auto mb-4"></div>
-        <p class="font-semibold text-slate-600">Memuat log aktivitas...</p>
-        <p class="text-xs text-slate-400 mt-1">Mengambil data aman dari server</p>
-      </div>
+      <!-- Kolom: IP Address -->
+      <template #cell-ip_address="{ row }">
+        <span class="text-xs font-mono text-slate-400">{{ row.ip_address ?? '127.0.0.1' }}</span>
+      </template>
+    </DataTable>
 
-      <!-- Empty State -->
-      <div v-else-if="filteredLogs.length === 0" class="p-16 text-center text-slate-400">
-        <svg class="w-16 h-16 mx-auto mb-4 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-        <p class="font-bold text-slate-600 text-lg">Tidak ada log ditemukan</p>
-        <p class="text-sm text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau ganti filter kategori.</p>
-      </div>
-
-      <!-- Logs Table -->
-      <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[950px] border-collapse">
-          <thead class="bg-slate-50/70 border-b border-slate-100">
-            <tr>
-              <th class="text-left text-xs font-black text-slate-500 uppercase tracking-wider px-6 py-4 w-[18%]">Waktu</th>
-              <th class="text-left text-xs font-black text-slate-500 uppercase tracking-wider px-6 py-4 w-[25%]">Pengguna</th>
-              <th class="text-left text-xs font-black text-slate-500 uppercase tracking-wider px-6 py-4 w-[18%]">Aktivitas</th>
-              <th class="text-left text-xs font-black text-slate-500 uppercase tracking-wider px-6 py-4 w-[27%]">Detail Tindakan</th>
-              <th class="text-left text-xs font-black text-slate-500 uppercase tracking-wider px-6 py-4 w-[12%]">IP Address</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-50">
-            <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-slate-50/30 transition-colors">
-              <!-- Waktu (Timestamp) -->
-              <td class="px-6 py-4 text-sm text-slate-600 whitespace-nowrap">
-                <p class="font-semibold text-slate-800">{{ formatDateTime(log.created_at).date }}</p>
-                <p class="text-xs text-slate-400 font-medium mt-0.5">{{ formatDateTime(log.created_at).time }} WIB</p>
-              </td>
-
-              <!-- Pengguna (User Info) -->
-              <td class="px-6 py-4">
-                <div class="flex items-center">
-                  <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation text-brand-cream flex items-center justify-center font-bold text-xs shadow-inner uppercase flex-shrink-0">
-                    {{ getInitials(log.user_fullname) }}
-                  </div>
-                  <div class="ml-3">
-                    <p class="text-sm font-bold text-slate-800">{{ log.user_fullname }}</p>
-                    <p class="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Role: {{ log.user?.role ?? 'Guest/System' }}</p>
-                  </div>
-                </div>
-              </td>
-
-              <!-- Aktivitas (Badge) -->
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getActivityTheme(log.activity)" class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
-                  {{ log.activity }}
-                </span>
-              </td>
-
-              <!-- Detail Tindakan -->
-              <td class="px-6 py-4 text-sm text-slate-600">
-                <p class="font-medium text-slate-700 leading-relaxed break-words max-w-sm">{{ log.details ?? '-' }}</p>
-              </td>
-
-              <!-- IP Address -->
-              <td class="px-6 py-4 text-xs font-mono text-slate-400 whitespace-nowrap">
-                {{ log.ip_address ?? '127.0.0.1' }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <!-- Pagination -->
+    <TablePagination
+      v-if="!loading"
+      v-model="currentPage"
+      :total="filteredLogs.length"
+      :per-page="perPage"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
+import PageHeader from '../components/PageHeader.vue';
+import SearchInput from '../components/SearchInput.vue';
+import FilterTabs from '../components/FilterTabs.vue';
+import DataTable from '../components/DataTable.vue';
+import TablePagination from '../components/TablePagination.vue';
 
-const loading = ref(true);
-const logs = ref([]);
+const props = defineProps({
+  initialLogs: {
+    type: Array,
+    default: null
+  }
+});
+
+const loading = ref(props.initialLogs === null);
+const logs = ref(props.initialLogs || []);
 const search = ref('');
 const activeTypeFilter = ref('all');
+const currentPage = ref(1);
+const perPage = 10;
+
+const columns = [
+  { key: 'created_at',   label: 'Waktu',           width: 'w-[15%]', cellClass: 'whitespace-nowrap' },
+  { key: 'user_fullname', label: 'Pengguna',         width: 'w-[18%]' },
+  { key: 'activity',    label: 'Aktivitas',         width: 'w-[20%]', cellClass: 'whitespace-nowrap' },
+  { key: 'details',     label: 'Detail Tindakan',   width: 'w-[27%]', cellClass: 'max-w-0 whitespace-normal' },
+  { key: 'ip_address',  label: 'IP Address',        width: 'w-[15%]', cellClass: 'whitespace-nowrap' },
+];
 
 const logTypes = [
   { value: 'all', label: 'Semua Kategori' },
@@ -141,6 +114,7 @@ const logTypes = [
 ];
 
 const loadLogs = async () => {
+  if (props.initialLogs !== null) return;
   loading.value = true;
   try {
     const res = await axios.get('/api/admin/logs');
@@ -200,6 +174,8 @@ const getActivityTheme = (activity) => {
   return 'bg-slate-50 text-slate-600 border border-slate-100';
 };
 
+watch([search, activeTypeFilter], () => { currentPage.value = 1; });
+
 const filteredLogs = computed(() => {
   let list = logs.value;
 
@@ -237,5 +213,10 @@ const filteredLogs = computed(() => {
   }
 
   return list;
+});
+
+const paginatedLogs = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredLogs.value.slice(start, start + perPage);
 });
 </script>

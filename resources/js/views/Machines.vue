@@ -72,7 +72,7 @@
       </h3>
       <div class="space-y-3">
         <div v-for="alert in maintenanceAlerts" :key="alert.id" :class="getAlertClasses(alert)" class="flex items-center p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer gap-4"
-          @click="$router.push(`/machine/${alert.machine_id}`)"
+          @click="navigateToMachine(alert.machine_id)"
         >
           <div :class="getAlertIconClasses(alert)" class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center">
             <svg v-if="alert.isFullyChecked" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -120,7 +120,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-50">
-          <tr v-for="machine in filtered" :key="machine.id" @click="$router.push(`/machine/${machine.id}`)" class="hover:bg-indigo-50/50 transition-colors cursor-pointer group relative">
+          <tr v-for="machine in filtered" :key="machine.id" @click="navigateToMachine(machine.id)" class="hover:bg-indigo-50/50 transition-colors cursor-pointer group relative">
             <td class="px-6 py-4">
               <div class="flex items-center gap-2">
                 <p class="font-bold text-slate-800">{{ machine.name }}</p>
@@ -391,22 +391,56 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import MachineCreateModal from '../components/MachineCreateModal.vue';
 import { showConfirm, showAlert } from '../composables/useAlert.js';
 import { useAuth } from '../composables/useAuth.js';
 
-const router = useRouter();
-const { isManagerOrAdmin, isAdmin } = useAuth();
-const machines = ref([]);
-const schedules = ref([]);
-const notifications = ref([]);
-const loading = ref(true);
+const props = defineProps({
+  initialMachines: {
+    type: Array,
+    default: null
+  },
+  machines: {
+    type: Array,
+    default: null
+  },
+  initialSchedules: {
+    type: Array,
+    default: null
+  },
+  schedules: {
+    type: Array,
+    default: null
+  },
+  initialNotifications: {
+    type: Array,
+    default: null
+  },
+  notifications: {
+    type: Array,
+    default: null
+  }
+});
+
+const { isManagerOrAdmin, isAdmin, user } = useAuth();
+const machines = ref(props.machines || props.initialMachines || []);
+const schedules = ref(props.schedules || props.initialSchedules || []);
+const notifications = ref(props.notifications || props.initialNotifications || []);
+const loading = ref(!props.machines && !props.initialMachines);
 const search = ref('');
 const filterSchedule = ref('');
 const sortBy = ref('name');
 const showCreate = ref(false);
+
+const allowedMachines = computed(() => {
+  let list = machines.value;
+  if (user.value?.role === 'technician' && user.value?.city && user.value.city !== 'both') {
+    list = list.filter(m => m.kota === user.value.city);
+  }
+  return list;
+});
 
 const showImportModal = ref(false);
 const importing = ref(false);
@@ -435,8 +469,14 @@ const loadData = async () => {
   }
 };
 
+const navigateToMachine = (machineId) => {
+  router.visit(`/machine/${machineId}`);
+};
+
 onMounted(() => {
-  loadData();
+  if (!props.machines && !props.initialMachines) {
+    loadData();
+  }
   window.addEventListener('refresh-data', loadData);
 });
 onUnmounted(() => window.removeEventListener('refresh-data', loadData));
@@ -473,7 +513,7 @@ const formatDate = (d) => {
 };
 
 const stats = computed(() => {
-  const m = machines.value;
+  const m = allowedMachines.value;
   const machineSchedules = m.map(machine => getMachineSchedule(machine)).filter(s => s !== null);
   return [
     { label: 'Telat', value: machineSchedules.filter(s => getDaysUntil(s.next_due_date) < 0).length, bg: 'bg-red-50 border-red-100', textColor: 'text-red-600' },
@@ -504,7 +544,7 @@ const maintenanceAlerts = computed(() => {
     const daysUntil = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
     if (daysUntil < -1) return null; // Hide if more than 1 day overdue
 
-    const machine = machines.value.find(m => m.id === notif.machine_id);
+    const machine = allowedMachines.value.find(m => m.id === notif.machine_id);
     if (!machine) return null;
 
     // Calculate component check status today
@@ -566,7 +606,7 @@ const maintenanceAlerts = computed(() => {
 });
 
 const filtered = computed(() => {
-  let list = machines.value;
+  let list = allowedMachines.value;
   
   // Apply search filter
   if (search.value) {
@@ -977,7 +1017,7 @@ const getMachinesForDate = (date) => {
   today.setHours(0, 0, 0, 0);
   const todayTime = today.getTime();
   
-  machines.value.forEach(machine => {
+  allowedMachines.value.forEach(machine => {
     // 1. Check if there is a completed/submitted maintenance record on this date
     const hasRecord = (machine.records ?? []).some(record => {
       const recDate = new Date(record.maintenance_date);
@@ -1127,7 +1167,7 @@ const nextMonth = () => {
 };
 
 const goToMachine = (machineId) => {
-  router.push(`/machine/${machineId}`);
+  navigateToMachine(machineId);
   closeCalendar();
 };
 </script>

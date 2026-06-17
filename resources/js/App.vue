@@ -1,11 +1,5 @@
 <template>
-  <!-- Full Screen Auth Pages without sidebar/header -->
-  <div v-if="isAuthPage" class="h-full w-full bg-slate-50">
-    <router-view />
-  </div>
-
-  <!-- Standard Dashboard Layout -->
-  <div v-else class="flex h-full w-full">
+  <div class="flex h-screen w-screen overflow-hidden bg-slate-50">
     <!-- Mobile Sidebar Overlay -->
     <div 
       v-if="mobileSidebarOpen" 
@@ -21,40 +15,46 @@
       ]"
     >
       <!-- Mobile Close Button -->
-      <div class="h-20 flex items-center justify-between border-b border-slate-200 px-4">
-        <img :src="'/images/logo-ladang-lima.png'" alt="Logo Ladang Lima" class="h-12 w-auto cursor-pointer" @click="$router.push('/'); mobileSidebarOpen = false;">
+      <div class="h-20 flex items-center justify-between border-b border-slate-200 px-4 flex-shrink-0">
+        <Link href="/" class="h-12 w-auto cursor-pointer flex items-center">
+          <img :src="'/images/logo-ladang-lima.png'" alt="Logo Ladang Lima" class="h-12 w-auto">
+        </Link>
         <button 
           @click="mobileSidebarOpen = false" 
-          class="md:hidden p-2 hover:bg-brand-brown/10 rounded-lg transition-colors"
+          class="md:hidden p-2 hover:bg-brand-brown/10 rounded-lg transition-colors cursor-pointer"
         >
           <svg class="w-6 h-6 text-brand-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <nav class="flex-1 px-4 py-6 space-y-1">
-        <router-link @click="mobileSidebarOpen = false" to="/" exact-active-class="active-link" class="nav-link">
+
+      <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <!-- SPA Dashboard Link (use normal href to return to Vue Router SPA if needed, or Link if everything is Inertia) -->
+         <!-- buat router push -->
+          
+        <Link href="/" :class="['nav-link', isUrl('/') ? 'active-link' : '']">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
           Dashboard
-        </router-link>
-        <router-link @click="mobileSidebarOpen = false" to="/machines" active-class="active-link" class="nav-link">
+        </Link>
+        <Link href="/machines" :class="['nav-link', isUrl('/machines') ? 'active-link' : '']">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
           Machines
-        </router-link>
-        <router-link @click="mobileSidebarOpen = false" to="/approvals" active-class="active-link" class="nav-link">
+        </Link>
+        <Link href="/approvals" :class="['nav-link', isUrl('/approvals') ? 'active-link' : '']">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Approval
-        </router-link>
-        <router-link @click="mobileSidebarOpen = false" v-if="isManagerOrAdmin" to="/users" active-class="active-link" class="nav-link">
+        </Link>
+        <Link href="/users" v-if="isManagerOrAdmin" :class="['nav-link', isUrl('/users') ? 'active-link' : '']">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
           Users
-        </router-link>
-        <router-link @click="mobileSidebarOpen = false" v-if="isAdmin" to="/logs" active-class="active-link" class="nav-link">
+        </Link>
+        <Link href="/logs" v-if="isAdmin" :class="['nav-link', isUrl('/logs') ? 'active-link' : '']">
           <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
           System Logs
-        </router-link>
+        </Link>
       </nav>
-      
+
       <!-- Profile & Logout Footer -->
-      <div v-if="user" class="p-4 border-t border-slate-200 flex flex-col gap-3">
+      <div v-if="user" class="p-4 border-t border-slate-200 flex flex-col gap-3 flex-shrink-0">
         <div class="flex items-center">
           <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation flex items-center justify-center font-bold text-brand-cream shadow-md text-xs uppercase">
             {{ initials }}
@@ -78,12 +78,12 @@
 
     <!-- Main Content -->
     <main class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 relative">
-      <header class="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 z-10 sticky top-0 shadow-sm">
+      <header class="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 z-10 sticky top-0 shadow-sm flex-shrink-0">
         <div class="flex items-center gap-3">
           <!-- Mobile Menu Button -->
           <button 
             @click="mobileSidebarOpen = true" 
-            class="md:hidden p-2 -ml-2 hover:bg-slate-100 rounded-lg transition-colors"
+            class="md:hidden p-2 -ml-2 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
           >
             <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
@@ -93,15 +93,9 @@
       </header>
 
       <div class="flex-1 overflow-y-auto p-8 z-0">
-        <router-view />
+        <slot />
       </div>
     </main>
-
-    <MaintenanceForm
-      v-if="showModal"
-      :initialMachineId="selectedMachineId"
-      @close="closeModal"
-    />
 
     <!-- Global Alert Modal -->
     <AlertModal ref="alertModalRef" />
@@ -109,23 +103,36 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { useAuth } from './composables/useAuth.js';
-import MaintenanceForm from './components/MaintenanceForm.vue';
-import AlertModal from './components/AlertModal.vue';
-import { alertRef } from './composables/useAlert.js';
+import { ref, computed, onMounted } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
+// import { useAuth } from '../composables/useAuth.js';
+// import AlertModal from '../components/AlertModal.vue';
+// import { alertRef } from '../composables/useAlert.js';
 
-const route = useRoute();
-const router = useRouter();
-const { user, isManagerOrAdmin, isAdmin, logout, initializeAuth } = useAuth();
+const page = usePage();
+const { user, isAdmin, isManager, isManagerOrAdmin, initializeAuth } = useAuth();
 
-const showModal = ref(false);
-const selectedMachineId = ref(null);
-const alertModalRef = ref(null);
 const mobileSidebarOpen = ref(false);
+const alertModalRef = ref(null);
 
-const isAuthPage = computed(() => ['login', 'register'].includes(route.name));
+onMounted(async () => {
+  alertRef.value = alertModalRef.value;
+  await initializeAuth();
+});
+
+const isUrl = (url) => {
+  if (url === '/') return page.url === '/';
+  return page.url.startsWith(url);
+};
+
+const pageTitle = computed(() => {
+  const url = page.url;
+  if (url.includes('/users')) return 'Manajemen User';
+  if (url.includes('/logs')) return 'Log Aktivitas Sistem';
+  if (url.includes('/approvals')) return 'Approval Laporan';
+  if (url.includes('/machines') || url.includes('/machine/')) return 'Daftar Mesin';
+  return 'TPM System';
+});
 
 const initials = computed(() => {
   if (!user.value?.full_name) return '??';
@@ -134,31 +141,6 @@ const initials = computed(() => {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
   return user.value.full_name.slice(0, 2).toUpperCase();
-});
-
-// Wire up global alert ref & initialize auth
-onMounted(async () => {
-  alertRef.value = alertModalRef.value;
-  window.addEventListener('open-report-modal', handleOpenReportModal);
-  
-  // Fetch initial profile if we have a token saved
-  await initializeAuth();
-});
-
-onUnmounted(() => {
-  window.removeEventListener('open-report-modal', handleOpenReportModal);
-});
-
-const pageTitle = computed(() => {
-  const map = {
-    'dashboard': 'Dashboard',
-    'machines': 'Daftar Mesin',
-    'machine-detail': 'Detail Mesin',
-    'approvals': 'Approval Report',
-    'users': 'Manajemen User',
-    'logs': 'Log Aktivitas Sistem',
-  };
-  return map[route.name] ?? 'TPM System';
 });
 
 function getRoleLabel(role) {
@@ -171,36 +153,20 @@ function getRoleLabel(role) {
 }
 
 function getCityLabel(city, role) {
-  // Only show city for technicians
   if (role !== 'technician') return '';
-  
   if (!city || city === 'both') return 'Teknisi';
   
   const map = {
     sby: 'Teknisi Surabaya',
-    psn: 'Teknisi Pasuruan',
+    pasuruan: 'Teknisi Pasuruan',
   };
   return map[city] ?? `Teknisi ${city}`;
 }
 
-async function handleLogout() {
-  await logout();
-  router.push({ name: 'login' });
-}
-
-function openModal(machineId) {
-  selectedMachineId.value = machineId;
-  showModal.value = true;
-}
-
-function closeModal(refresh = false) {
-  showModal.value = false;
-  selectedMachineId.value = null;
-  if (refresh) window.dispatchEvent(new Event('refresh-data'));
-}
-
-function handleOpenReportModal(e) {
-  openModal(e.detail?.machineId ?? null);
+function handleLogout() {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_profile');
+  window.location.href = '/login';
 }
 </script>
 
@@ -227,4 +193,3 @@ function handleOpenReportModal(e) {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 </style>
-

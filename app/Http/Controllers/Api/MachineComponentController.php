@@ -20,6 +20,10 @@ class MachineComponentController extends Controller
     {
         $machine = Machine::findOrFail($machineId);
 
+        if ($request->has('qty')) {
+            $request->merge(['qty' => $request->qty !== null ? (string)$request->qty : null]);
+        }
+
         $validated = $request->validate([
             'category' => 'nullable|string|max:100',
             'name' => 'required|string|max:255',
@@ -50,6 +54,15 @@ class MachineComponentController extends Controller
         }
 
         $machine = Machine::findOrFail($machineId);
+
+        // Cast qty ke string sebelum validasi
+        $components = $request->input('components', []);
+        foreach ($components as $key => $item) {
+            if (array_key_exists('qty', $item)) {
+                $components[$key]['qty'] = $item['qty'] !== null ? (string)$item['qty'] : null;
+            }
+        }
+        $request->merge(['components' => $components]);
 
         $request->validate([
             'components' => 'required|array',
@@ -97,6 +110,15 @@ class MachineComponentController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
+        // Cast qty ke string sebelum validasi
+        $components = $request->input('components', []);
+        foreach ($components as $key => $item) {
+            if (array_key_exists('qty', $item)) {
+                $components[$key]['qty'] = $item['qty'] !== null ? (string)$item['qty'] : null;
+            }
+        }
+        $request->merge(['components' => $components]);
+
         $request->validate([
             'components' => 'required|array',
             'components.*.machine_code' => 'required|string',
@@ -139,12 +161,11 @@ class MachineComponentController extends Controller
                     'qty' => $item['qty'] ?? null,
                     'unit' => $item['unit'] ?? null,
                     'last_condition_pct' => $item['last_condition_pct'] ?? 100,
-                    'maintenance_schedule' => $item['maintenance_schedule'] ?? null,
                 ]);
                 $createdCount++;
             }
 
-            ActivityLog::log('Import Komponen Massal', "Mengimpor {$createdCount} komponen massal berdasarkan kode mesin melalui Excel");
+            ActivityLog::log('Import Komponen', "Mengimpor {$createdCount} komponen berdasarkan kode mesin melalui Excel");
             \Illuminate\Support\Facades\DB::commit();
 
             return response()->json([
@@ -153,13 +174,17 @@ class MachineComponentController extends Controller
             ], 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
-            return response()->json(['message' => 'Gagal mengimpor komponen massal: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Gagal mengimpor komponen: ' . $e->getMessage()], 500);
         }
     }
 
     public function update(Request $request, $id)
     {
         $component = MachineComponent::findOrFail($id);
+
+        if ($request->has('qty')) {
+            $request->merge(['qty' => $request->qty !== null ? (string)$request->qty : null]);
+        }
 
         $validated = $request->validate([
             'category' => 'nullable|string|max:100',
@@ -201,7 +226,7 @@ class MachineComponentController extends Controller
     {
         $component = MachineComponent::with(['machine'])->findOrFail($id);
 
-        $query = \App\Models\MaintenanceAction::with(['record.technician'])
+        $query = \App\Models\MaintenanceAction::with(['record.technician', 'record.approval'])
             ->where('machine_component_id', $id)
             ->orderBy('created_at', 'desc');
 

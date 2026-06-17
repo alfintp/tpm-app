@@ -627,16 +627,29 @@
           <div v-for="record in sortedRecords" :key="record.id" class="relative pl-6">
             <div class="absolute w-4 h-4 rounded-full bg-brand-brown border-4 border-white left-[-9px] top-1.5 shadow-sm"></div>
             <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:shadow-md transition-shadow">
-              <div class="flex justify-between items-start mb-2">
+              <div class="flex justify-between items-start mb-2 gap-2">
                 <div>
                   <span class="text-sm font-bold text-slate-800">{{ formatDateTime(record.maintenance_date) }}</span>
                   <p class="text-xs text-slate-400 mt-0.5">Teknisi: {{ record.technician?.full_name ?? '-' }}</p>
                 </div>
-                <span class="text-xs font-semibold px-2 py-1 rounded-lg" :class="{
-                  'bg-green-100 text-green-700': record.status === 'completed',
-                  'bg-amber-100 text-amber-700': record.status === 'in_progress',
-                  'bg-slate-200 text-slate-700': record.status === 'planned'
-                }">{{ record.status.toUpperCase() }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-semibold px-2 py-1 rounded-lg" :class="{
+                    'bg-green-100 text-green-700': record.status === 'completed',
+                    'bg-amber-100 text-amber-700': record.status === 'in_progress',
+                    'bg-slate-200 text-slate-700': record.status === 'planned'
+                  }">{{ record.status.toUpperCase() }}</span>
+                  
+                  <span v-if="record.approval" class="text-xs font-semibold px-2 py-1 rounded-lg border" :class="{
+                    'bg-amber-100 text-amber-800 border-amber-200': record.approval.decision === 'pending',
+                    'bg-emerald-100 text-emerald-800 border-emerald-200': record.approval.decision === 'approved',
+                    'bg-rose-100 text-rose-800 border-rose-200': record.approval.decision === 'rejected'
+                  }">
+                    {{ record.approval.decision === 'pending' ? 'MENUNGGU APPROVAL' : (record.approval.decision === 'approved' ? 'DISETUJUI' : 'DITOLAK') }}
+                  </span>
+                  <span v-else class="text-xs font-semibold px-2 py-1 rounded-lg border bg-amber-100 text-amber-800 border-amber-200">
+                    MENUNGGU APPROVAL
+                  </span>
+                </div>
               </div>
 
               <p class="text-sm text-slate-600 italic mb-3">{{ record.notes || 'Tidak ada catatan.' }}</p>
@@ -772,7 +785,7 @@
       <!-- Modals -->
       <ComponentForm
         v-if="showComponentForm"
-        :machineId="route.params.id"
+        :machineId="machineId"
         :component="editingComponent"
         @close="showComponentForm = false"
         @saved="onComponentSaved"
@@ -887,19 +900,39 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import axios from 'axios';
 import { showAlert, showUnsavedConfirm, showConfirm } from '../composables/useAlert.js';
 import ComponentForm from '../components/ComponentForm.vue';
 import ComponentHistory from '../components/ComponentHistory.vue';
 import MachineEditModal from '../components/MachineEditModal.vue';
 import { useAuth } from '../composables/useAuth.js';
+import { router } from '@inertiajs/vue3';
 
-const route = useRoute();
-const router = useRouter();
+const props = defineProps({
+  initialMachine: {
+    type: Object,
+    default: null
+  },
+  machine: {
+    type: Object,
+    default: null
+  }
+});
+
 const { isManagerOrAdmin, isAdmin, user: authUser } = useAuth();
-const machine = ref(null);
-const loading = ref(true);
+const machine = ref(props.machine || props.initialMachine);
+const loading = ref(!machine.value);
+
+const machineId = computed(() => {
+  if (machine.value) return machine.value.id;
+  
+  if (typeof window !== 'undefined') {
+    const parts = window.location.pathname.split('/');
+    return parts[parts.length - 1];
+  }
+  return null;
+});
+
 const activeTab = ref('report');
 const componentFilter = ref('unchecked_today');
 const submitting = ref(false);
@@ -953,11 +986,35 @@ const currentPeriodStart = computed(() => {
   return start;
 });
 
+const initialLoadDone = ref(false);
+
+const checkCityGuard = () => {
+  if (authUser.value?.role === 'technician' && authUser.value?.city && authUser.value.city !== 'both') {
+    if (machine.value?.kota && machine.value.kota !== authUser.value.city) {
+      showAlert('error', 'Akses Ditolak!', 'Anda tidak memiliki hak akses untuk melihat mesin ini.');
+      router.visit('/machines');
+      return false;
+    }
+  }
+  return true;
+};
+
 const loadData = async () => {
+  if ((props.machine || props.initialMachine) && !initialLoadDone.value) {
+    initialLoadDone.value = true;
+    const ok = checkCityGuard();
+    if (ok) {
+      initComponentRows();
+    }
+    return;
+  }
   try {
-    const res = await axios.get(`/api/machines/${route.params.id}`);
+    const res = await axios.get(`/api/machines/${machineId.value}`);
     machine.value = res.data;
-    initComponentRows();
+    const ok = checkCityGuard();
+    if (ok) {
+      initComponentRows();
+    }
   } catch (e) {
     console.error(e);
   } finally {
@@ -975,13 +1032,38 @@ const handleKeydown = (e) => {
   }
 };
 
+let unregisterBeforeListener = null;
+
 onMounted(() => {
   loadData();
   window.addEventListener('keydown', handleKeydown);
+
+  unregisterBeforeListener = router.on('before', (event) => {
+    if (skipLeaveGuard.value) return;
+    if (!hasUnsavedChanges.value) return;
+    
+    event.preventDefault();
+    
+    confirmUnsaved().then(async (choice) => {
+      if (choice === 'save') {
+        const saved = await submitReport(false);
+        if (saved) {
+          skipLeaveGuard.value = true;
+          router.visit(event.detail.visit.url);
+        }
+      } else if (choice === 'discard') {
+        skipLeaveGuard.value = true;
+        router.visit(event.detail.visit.url);
+      }
+    });
+  });
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
+  if (unregisterBeforeListener) {
+    unregisterBeforeListener();
+  }
 });
 
 const todayChecks = computed(() => {
@@ -1110,8 +1192,6 @@ const initComponentRows = () => {
     };
   });
 };
-
-onMounted(loadData);
 
 const replacementDates = computed(() => {
   const map = {};
@@ -1407,7 +1487,7 @@ const switchTab = async (tab) => {
 const handleNavigateBack = async () => {
   const ok = await handleUnsavedAction();
   if (!ok) return;
-  router.push(`/machines`);
+  router.visit(`/machines`);
 };
 
 const handleForceReport = async () => {
@@ -1421,7 +1501,7 @@ const handleForceReport = async () => {
       rejectedNotes: null,
       status: null,
       notes: null,
-      condition: row.originalCondition || row.condition
+      conditionPct: row.originalCondition !== null ? row.originalCondition : row.conditionPct
     }));
     
     // Enable force reporting
@@ -1435,27 +1515,6 @@ const handleForceReport = async () => {
     forceReportLoading.value = false;
   }
 };
-
-onBeforeRouteLeave(async (to, from, next) => {
-  if (skipLeaveGuard.value) {
-    next();
-    return;
-  }
-  if (!hasUnsavedChanges.value) {
-    next();
-    return;
-  }
-  const choice = await confirmUnsaved();
-  if (choice === 'cancel') {
-    next(false);
-  } else if (choice === 'save') {
-    const saved = await submitReport(false);
-    if (saved) skipLeaveGuard.value = true;
-    next(saved);
-  } else {
-    next();
-  }
-});
 
 const submitReport = async (redirect = true) => {
   const checkedRows = componentRows.value.filter(r => r.checked);
@@ -1480,7 +1539,7 @@ const submitReport = async (redirect = true) => {
     });
 
     await axios.post('/api/records', {
-      machine_id: route.params.id,
+      machine_id: machineId.value,
       schedule_id: forceReport.value ? null : (nextSchedule.value?.id || null),
       maintenance_date: new Date().toISOString(),
       status: 'completed',
@@ -1496,7 +1555,7 @@ const submitReport = async (redirect = true) => {
     if (redirect) {
       skipLeaveGuard.value = true;
       showAlert('success', 'Laporan Berhasil Dikirim!', successMsg);
-      router.push(`/machine/${route.params.id}`)
+      router.visit(`/machine/${machineId.value}`, { preserveState: false });
     } else {
       await loadData();
       showAlert('success', 'Laporan Berhasil Dikirim!', successMsg);
@@ -1724,7 +1783,7 @@ const importComponents = async () => {
           return;
         }
         
-        const res = await axios.post(`/api/machines/${route.params.id}/components/import`, { components: mappedComponents });
+        const res = await axios.post(`/api/machines/${machineId.value}/components/import`, { components: mappedComponents });
         showAlert('success', 'Berhasil!', res.data.message || `Berhasil mengimpor ${mappedComponents.length} komponen.`);
         showComponentImportModal.value = false;
         await loadData();

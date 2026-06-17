@@ -70,7 +70,7 @@
             Maintenance Alerts
           </h3>
           <button 
-            @click="$router.push('/machines')" 
+            @click="router.visit('/machines')" 
             class="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
           >
             Lihat Semua
@@ -102,7 +102,7 @@
           <div v-for="alert in maintenanceAlerts" :key="alert.id" 
                :class="getAlertClasses(alert)" 
                class="group flex items-center p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer gap-4"
-               @click="$router.push(`/machine/${alert.machine_id}`)">
+               @click="router.visit(`/machine/${alert.machine_id}`)">
             
             <div :class="getAlertIconClasses(alert)" class="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center">
               <svg v-if="alert.isFullyChecked" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -196,7 +196,7 @@
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <div v-for="machine in filteredMachines" :key="machine.id" 
-             @click="$router.push(`/machine/${machine.id}`)" 
+             @click="router.visit(`/machine/${machine.id}`)" 
              class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg transition-all relative overflow-hidden group cursor-pointer transform hover:-translate-y-1 duration-300">
           
           <!-- Gradient Background -->
@@ -266,16 +266,30 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { useAuth } from '@/composables/useAuth';
 
-const router = useRouter();
+const props = defineProps({
+  machines: {
+    type: Array,
+    default: null
+  },
+  schedules: {
+    type: Array,
+    default: null
+  },
+  notifications: {
+    type: Array,
+    default: null
+  }
+});
+
 const { user } = useAuth();
 
-const machines = ref([]);
-const notifications = ref([]);
-const loading = ref(true);
+const machines = ref(props.machines || []);
+const notifications = ref(props.notifications || []);
+const loading = ref(!props.machines);
 const machineSearch = ref('');
 const machineSort = ref('name');
 
@@ -493,7 +507,9 @@ const getAlertTimeText = (dateStr) => {
 
 // Lifecycle
 onMounted(() => { 
-  loadData(); 
+  if (!props.machines) {
+    loadData(); 
+  }
   window.addEventListener('refresh-data', loadData); 
 });
 
