@@ -32,7 +32,6 @@ class MachineComponentController extends Controller
             'unit' => 'nullable|string|max:50',
             'last_replaced_at' => 'nullable|date',
             'last_condition_pct' => 'nullable|numeric|min:0|max:100',
-            'maintenance_schedule' => 'nullable|string|max:50',
         ]);
 
         // Set default values if not provided
@@ -72,7 +71,6 @@ class MachineComponentController extends Controller
             'components.*.qty' => 'nullable|string|max:50',
             'components.*.unit' => 'nullable|string|max:50',
             'components.*.last_condition_pct' => 'nullable|numeric|min:0|max:100',
-            'components.*.maintenance_schedule' => 'nullable|string|max:50',
         ]);
 
         \Illuminate\Support\Facades\DB::beginTransaction();
@@ -86,7 +84,6 @@ class MachineComponentController extends Controller
                     'qty' => $item['qty'] ?? null,
                     'unit' => $item['unit'] ?? null,
                     'last_condition_pct' => $item['last_condition_pct'] ?? 100,
-                    'maintenance_schedule' => $item['maintenance_schedule'] ?? null,
                 ]);
                 $createdCount++;
             }
@@ -128,7 +125,6 @@ class MachineComponentController extends Controller
             'components.*.qty' => 'nullable|string|max:50',
             'components.*.unit' => 'nullable|string|max:50',
             'components.*.last_condition_pct' => 'nullable|numeric|min:0|max:100',
-            'components.*.maintenance_schedule' => 'nullable|string|max:50',
         ]);
 
         // Validate all machine codes exist first
@@ -194,7 +190,6 @@ class MachineComponentController extends Controller
             'unit' => 'nullable|string|max:50',
             'last_replaced_at' => 'nullable|date',
             'last_condition_pct' => 'nullable|numeric|min:0|max:100',
-            'maintenance_schedule' => 'nullable|string|max:50',
         ]);
 
         // Set default value if not provided

@@ -19,7 +19,6 @@ class MachineComponent extends Model
         'unit',
         'last_replaced_at',
         'last_condition_pct',
-        'maintenance_schedule',
     ];
 
     protected $casts = [

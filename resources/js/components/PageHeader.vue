@@ -1,8 +1,8 @@
 <template>
   <div
     :class="[
-      'flex flex-col md:flex-row md:items-center md:justify-between flex-wrap gap-4',
-      card ? 'bg-white p-6 rounded-2xl border border-slate-200 shadow-sm' : ''
+      'flex flex-col md:flex-row md:items-center md:justify-between flex-wrap gap-4 mt-4',
+      card ? 'bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mt-4' : ''
     ]"
   >
     <!-- Left: Title & Subtitle -->

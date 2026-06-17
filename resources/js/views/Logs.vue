@@ -2,6 +2,7 @@
   <div class="space-y-6">
     <!-- Header -->
     <PageHeader
+    title="Log Aktifitas Sistem"
       subtitle="Memantau seluruh jejak riwayat aktivitas dan tindakan pengguna di dalam sistem"
       :badge="!loading ? `${filteredLogs.length} Log Ditemukan` : ''"
     />
@@ -77,6 +78,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
+import { useAuth } from '../composables/useAuth.js';
 import PageHeader from '../components/PageHeader.vue';
 import SearchInput from '../components/SearchInput.vue';
 import FilterTabs from '../components/FilterTabs.vue';
@@ -90,6 +92,7 @@ const props = defineProps({
   }
 });
 
+const { authReady } = useAuth();
 const loading = ref(props.initialLogs === null);
 const logs = ref(props.initialLogs || []);
 const search = ref('');
@@ -126,7 +129,13 @@ const loadLogs = async () => {
   }
 };
 
-onMounted(loadLogs);
+onMounted(() => {
+  if (authReady.value) loadLogs();
+});
+
+watch(authReady, (ready) => {
+  if (ready && logs.value.length === 0 && !loading.value) loadLogs();
+});
 
 const getInitials = (fullName) => {
   if (!fullName) return 'SYS';

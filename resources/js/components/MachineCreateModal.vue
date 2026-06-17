@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="fixed inset-0 z-50 flex items-start justify-center pt-24 pb-6 overflow-y-auto">
     <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="$emit('close')"></div>
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md relative z-10">
       <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center">
@@ -8,7 +8,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <div class="p-8 space-y-5 max-h-[70vh] overflow-y-auto">
+      <div class="p-8 space-y-5 max-h-[55vh] overflow-y-auto">
         <div class="space-y-1.5">
           <label class="text-sm font-medium text-slate-700">Kode Mesin *</label>
           <input type="text" v-model="form.kode" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-mono" placeholder="e.g. LL-MX-01">

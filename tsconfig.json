@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": false,
+    "jsx": "preserve",
+    "lib": ["ESNext", "DOM"],
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@/lib/*": ["./resources/views/lib/*"],
+      "@/components/ui/*": ["./resources/views/components/ui/*"],
+      "@/composables/*": ["./resources/js/composables/*"],
+      "@/components/*": ["./resources/js/components/*"],
+      "@/*": ["./resources/js/*"]
+    }
+  },
+  "include": [
+    "resources/**/*.ts",
+    "resources/**/*.vue"
+  ]
+}

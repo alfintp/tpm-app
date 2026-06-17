@@ -43,9 +43,9 @@ if (isInertia) {
 
       const page = pageModule.default || pageModule;
 
-      // Gunakan Pages/App.vue sebagai layout default untuk semua halaman Inertia kecuali Login
+      // Gunakan App.vue sebagai layout default untuk semua halaman Inertia kecuali Login
       if (name !== 'Login') {
-        page.layout = page.layout || pages['./Pages/App.vue'].default || pages['./Pages/App.vue'];
+        page.layout = page.layout || App;
       }
 
       return page;

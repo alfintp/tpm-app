@@ -2,6 +2,7 @@
   <div class="space-y-6">
     <!-- Header -->
     <PageHeader
+    title="Manajemen User"
       subtitle="Ubah role user atau hapus akun pengguna sistem TPM"
       :badge="`Total: ${users.length} Pengguna`"
       
@@ -10,7 +11,7 @@
         <Button
           v-if="isAdmin"
           @click="openAddModal"
-          class="bg-gradient-to-tr from-brand-brown to-brand-gradation hover:opacity-90 text-brand-cream rounded-xl font-bold text-sm shadow-md gap-2"
+          class="bg-gradient-to-tr from-brand-brown to-brand-gradation hover:opacity-90 text-brand-cream rounded-xl font-bold text-sm shadow-md gap-2 hover:cursor-pointer"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
           Tambah User Baru
@@ -354,7 +355,7 @@ const props = defineProps({
   }
 });
 
-const { user: currentUser, isAdmin, isManager, isManagerOrAdmin } = useAuth();
+const { user: currentUser, isAdmin, isManager, isManagerOrAdmin, authReady } = useAuth();
 
 const searchQuery = ref('');
 const currentPage = ref(1);
@@ -676,6 +677,10 @@ function getConditionColor(pct) {
 }
 
 onMounted(() => {
-  fetchUsers();
+  if (authReady.value) fetchUsers();
+});
+
+watch(authReady, (ready) => {
+  if (ready && users.value.length === 0 && !loading.value) fetchUsers();
 });
 </script>

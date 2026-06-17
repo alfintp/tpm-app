@@ -45,7 +45,8 @@
             <TableRow
               v-for="(row, rowIndex) in rows"
               :key="row.id ?? rowIndex"
-              class="hover:bg-slate-50/30 transition-colors border-none"
+              :class="['hover:bg-slate-50/30 transition-colors border-none', rowClickable ? 'cursor-pointer hover:bg-indigo-50/40' : '']"
+              @click="rowClickable ? $emit('row-click', row) : undefined"
             >
               <TableCell
                 v-for="col in visibleColumns"
@@ -109,9 +110,10 @@ const props = defineProps({
   actionsLabel: { type: String, default: 'Aksi' },
   actionsAlign: { type: String, default: 'right' },
   actionsWidth: { type: String, default: 'w-[10%]' },
+  rowClickable: { type: Boolean, default: false },
 });
 
-defineEmits(['update:currentPage']);
+defineEmits(['update:currentPage', 'row-click']);
 
 const slots = useSlots();
 const hasActions = computed(() => !!slots.actions);

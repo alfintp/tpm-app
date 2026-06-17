@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 
 const user = ref(JSON.parse(localStorage.getItem('user_profile') || 'null'));
 const token = ref(localStorage.getItem('auth_token') || 'null');
+const authReady = ref(false);
 
 if (window.axios) {
   if (token.value && token.value !== 'null') {
@@ -102,17 +103,21 @@ export function useAuth() {
       } catch (error) {
         console.error('Profile fetch failed, logging out...', error);
         await logout();
+      } finally {
+        authReady.value = true;
       }
     } else {
       token.value = null;
       user.value = null;
       localStorage.removeItem('user_profile');
+      authReady.value = true;
     }
   }
 
   return {
     user,
     token,
+    authReady,
     isAuthenticated,
     role,
     isAdmin,

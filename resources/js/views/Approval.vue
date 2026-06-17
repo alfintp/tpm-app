@@ -2,6 +2,7 @@
   <div class="space-y-6">
     <!-- Header -->
     <PageHeader
+    title="Approval Laporan"
       :subtitle="isManagerOrAdmin ? 'Review dan approve laporan maintenance dari teknisi' : 'Status laporan maintenance yang sudah kamu kirimkan'"
     />
 
@@ -144,7 +145,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, watchEffect } from 'vue';
 import axios from 'axios';
 import { useAuth } from '../composables/useAuth.js';
 import PageHeader from '../components/PageHeader.vue';
@@ -172,7 +173,7 @@ const approvalColumns = [
   { key: 'approval_status',  label: 'Status',            width: 'w-[20%]', cellClass: 'align-top' },
 ];
 
-const { isManagerOrAdmin, user: currentUser } = useAuth();
+const { isManagerOrAdmin, user: currentUser, authReady } = useAuth();
 
 const decideModal = ref({ show: false, item: null, decision: 'approved', notes: '' });
 const detailModal = ref({ show: false, item: null });
@@ -209,7 +210,11 @@ const loadData = async () => {
 };
 
 onMounted(() => {
-  loadData();
+  if (authReady.value) loadData();
+});
+
+watch(authReady, (ready) => {
+  if (ready && items.value.length === 0 && !loading.value) loadData();
 });
 
 const pendingCount  = computed(() => items.value.filter(i => i.approval_status === 'pending').length);
