@@ -1,11 +1,11 @@
 <template>
   <SidebarProvider>
-    <Sidebar collapsible="offcanvas">
+    <Sidebar collapsible="icon">
       <!-- Header: Logo -->
       <SidebarHeader class="border-b border-sidebar-border px-3 py-3">
         <Link href="/" class="flex items-center gap-2 cursor-pointer overflow-hidden">
           <img :src="'/images/logo-ladang-lima.png'" alt="Logo" class="h-8 w-8 shrink-0 rounded-md object-contain">
-          <span class="font-bold text-brand-brown text-sm truncate group-data-[collapsible=icon]:hidden">Ladang Lima</span>
+          <span class="font-bold text-brand-brown text-sm truncate group-data-[collapsible=icon]:hidden">TPM Ladang Lima</span>
         </Link>
       </SidebarHeader>
 
@@ -15,7 +15,7 @@
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton as-child :is-active="isUrl('/')">
+                <SidebarMenuButton as-child :is-active="isUrl('/')" tooltip="Dashboard">
                   <Link href="/">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                     <span>Dashboard</span>
@@ -24,7 +24,7 @@
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton as-child :is-active="isUrl('/machines')">
+                <SidebarMenuButton as-child :is-active="isUrl('/machines')" tooltip="Machines">
                   <Link href="/machines">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     <span>Machines</span>
@@ -33,7 +33,7 @@
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton as-child :is-active="isUrl('/approvals')">
+                <SidebarMenuButton as-child :is-active="isUrl('/approvals')" tooltip="Approval">
                   <Link href="/approvals">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <span>Approval</span>
@@ -42,7 +42,7 @@
               </SidebarMenuItem>
 
               <SidebarMenuItem v-if="isManagerOrAdmin">
-                <SidebarMenuButton as-child :is-active="isUrl('/users')">
+                <SidebarMenuButton as-child :is-active="isUrl('/users')" tooltip="Users">
                   <Link href="/users">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     <span>Users</span>
@@ -51,7 +51,7 @@
               </SidebarMenuItem>
 
               <SidebarMenuItem v-if="isAdmin">
-                <SidebarMenuButton as-child :is-active="isUrl('/logs')">
+                <SidebarMenuButton as-child :is-active="isUrl('/logs')" tooltip="System Logs">
                   <Link href="/logs">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                     <span>System Logs</span>
@@ -65,7 +65,7 @@
 
       <!-- Footer: User profile + logout -->
       <SidebarFooter v-if="user" class="border-t border-sidebar-border p-3">
-        <div class="flex items-center gap-3 px-1 py-1.5 mb-2">
+        <div class="flex items-center gap-3 px-1 py-1.5 mb-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:mb-1">
           <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation flex items-center justify-center font-bold text-brand-cream shadow-md text-xs uppercase shrink-0">
             {{ initials }}
           </div>
@@ -78,7 +78,7 @@
         </div>
         <button
           @click="handleLogout"
-          class="w-full flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all border border-red-100/50 cursor-pointer group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center"
+          class="w-full flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all border border-red-100/50 cursor-pointer group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2"
         >
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           <span class="group-data-[collapsible=icon]:hidden">Keluar Sistem</span>

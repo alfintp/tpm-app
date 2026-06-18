@@ -369,7 +369,7 @@
                     Batal
                   </button>
                   <button
-                    @click="$emit('wizard-check', currentRow)"
+                    @click="handleWizardCheck(currentRow)"
                     :disabled="!canCheck(currentRow)"
                     :class="currentRow.checked
                       ? 'bg-green-600 hover:bg-green-700 text-white shadow-sm border-green-600'
@@ -435,7 +435,7 @@ const props = defineProps({
   isConditionValid: { type: Function, required: true },
 });
 
-defineEmits([
+const emit = defineEmits([
   'force-report',
   'update:filter',
   'condition-change',
@@ -449,6 +449,19 @@ defineEmits([
 const viewMode = ref('table');
 const search = ref('');
 const wizardIndex = ref(0);
+
+const handleWizardCheck = (row) => {
+  const wasChecked = row.checked;
+  emit('wizard-check', row);
+  // Auto-advance after a short delay so parent can update row.checked first
+  if (!wasChecked && wizardIndex.value < filteredRows.value.length - 1) {
+    setTimeout(() => {
+      if (wizardIndex.value < filteredRows.value.length - 1) {
+        wizardIndex.value++;
+      }
+    }, 350);
+  }
+};
 
 const filteredRows = computed(() => {
   if (!search.value) return props.rows;

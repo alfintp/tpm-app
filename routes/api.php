@@ -2,13 +2,13 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\MachineController;
-use App\Http\Controllers\Api\MaintenanceScheduleController;
-use App\Http\Controllers\Api\MaintenanceRecordController;
-use App\Http\Controllers\Api\MachineComponentController;
-use App\Http\Controllers\Api\ApprovalController;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\MachineController;
+use App\Http\Controllers\MaintenanceScheduleController;
+use App\Http\Controllers\MaintenanceRecordController;
+use App\Http\Controllers\MachineComponentController;
+use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
