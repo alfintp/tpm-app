@@ -84,7 +84,6 @@ const submit = async () => {
       await axios.post(`/api/machines/${props.machineId}/components`, form.value);
     }
     emit('saved');
-    showAlert('success', 'Berhasil', isEdit.value ? 'Komponen berhasil diperbarui!' : 'Komponen baru berhasil ditambahkan!');
   } catch (e) {
     console.error(e);
     const errorMsg = e.response?.data?.message || e.response?.data?.error || e.message;

@@ -4,7 +4,6 @@
     <div class="flex flex-col items-center mb-6">
       <img :src="'/images/logo-ladang-lima.png'" alt="Logo Ladang Lima" class="h-16 w-auto mb-3 drop-shadow-sm">
       <h1 class="text-2xl font-extrabold text-brand-brown tracking-tight">TPM System</h1>
-      <p class="text-sm text-slate-500 mt-1">Total Productive Maintenance · Ladang Lima</p>
     </div>
 
     <Card class="w-full max-w-sm shadow-xl border-slate-200">

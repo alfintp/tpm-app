@@ -63,6 +63,11 @@
             <p class="text-sm text-slate-500 font-medium">Kondisi Mesin (Avg Komponen)</p>
             <h3 :class="getColorTheme(machine.condition_pct).textClass" class="text-2xl font-bold">{{ getConditionLabel(machine.condition_pct) }}</h3>
             <p class="text-xs text-slate-400 mt-1">Dihitung dari {{ machine.components?.length ?? 0 }} komponen</p>
+            <p class="text-xs text-slate-500 mt-1.5 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+              <span v-if="machine.pic_mesin" class="font-semibold text-slate-700">{{ machine.pic_mesin.full_name }}</span>
+              <span v-else class="text-slate-400 italic">Belum ada PIC</span>
+            </p>
           </div>
         </div>
       </div>
@@ -74,7 +79,7 @@
         <button
           @click="switchTab('report')"
           :class="activeTab === 'report' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-          class="flex-1 sm:flex-none px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
+          class="flex-1 px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
         >
          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Laporan
@@ -83,7 +88,7 @@
         <button
           @click="switchTab('history')"
           :class="activeTab === 'history' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-          class="flex-1 sm:flex-none px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
+          class="flex-1 px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Riwayat Maintenance
@@ -91,7 +96,7 @@
         <button
           @click="switchTab('component')"
           :class="activeTab === 'component' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-          class="flex-1 sm:flex-none px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
+          class="flex-1 px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
         >
             <svg class="w-5 h-5 " fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           Daftar Komponen
@@ -247,7 +252,7 @@ const machineId = computed(() => {
   return null;
 });
 
-const activeTab = ref('report');
+const activeTab = ref(props.machine?.components?.length ? 'report' : 'component');
 const componentFilter = ref('unchecked_today');
 const submitting = ref(false);
 const componentRows = ref([]);
@@ -436,6 +441,7 @@ const rejectedChecks = computed(() => {
   }
   return map;
 });
+
 
 const getComponentActions = (componentId) => {
   const actions = [];

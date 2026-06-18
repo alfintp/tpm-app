@@ -19,12 +19,17 @@ use App\Http\Controllers\UserController;
 // Authentication Routes (unprotected)
 Route::post('/login', [AuthController::class, 'login']);
 
+// All other routes require authentication
 Route::middleware('auth:sanctum')->group(function () {
     // Auth profile & logout
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user/profile', [AuthController::class, 'profile']);
-    
-    // User management (admin & manager only inside controllers)
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
+    // User management
+    Route::get('/users', [MachineController::class, 'getUsers']);
     Route::get('/admin/users', [UserController::class, 'index']);
     Route::post('/admin/users', [UserController::class, 'store']);
     Route::put('/admin/users/{id}/role', [UserController::class, 'updateRole']);
@@ -33,54 +38,41 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/users/{id}', [UserController::class, 'update']);
     Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
     Route::get('/admin/logs', [UserController::class, 'activityLogs']);
-});
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+    // Machine Routes
+    Route::get('/machines', [MachineController::class, 'index']);
+    Route::post('/machines', [MachineController::class, 'store']);
+    Route::post('/machines/import', [MachineController::class, 'bulkStore']);
+    Route::get('/machines/check-kode', [MachineController::class, 'checkKode']);
+    Route::get('/machines/{id}', [MachineController::class, 'show']);
+    Route::put('/machines/{id}', [MachineController::class, 'update']);
+    Route::delete('/machines/{id}', [MachineController::class, 'destroy']);
 
-// Machine Routes
-Route::get('/machines', [MachineController::class, 'index'])->middleware('auth:sanctum');
-Route::post('/machines', [MachineController::class, 'store']);
-Route::post('/machines/import', [MachineController::class, 'bulkStore'])->middleware('auth:sanctum');
-Route::get('/machines/{id}', [MachineController::class, 'show'])->middleware('auth:sanctum');
-Route::put('/machines/{id}', [MachineController::class, 'update']);
-Route::delete('/machines/{id}', [MachineController::class, 'destroy']);
-Route::get('/users', [MachineController::class, 'getUsers']);
-Route::get('/machines/check-kode', [MachineController::class, 'checkKode']);
+    // Machine Components (nested under machine)
+    Route::get('/machines/{machineId}/components', [MachineComponentController::class, 'index']);
+    Route::post('/machines/{machineId}/components', [MachineComponentController::class, 'store']);
+    Route::post('/machines/{machineId}/components/import', [MachineComponentController::class, 'bulkStore']);
 
-// Machine Components (nested under machine)
-Route::get('/machines/{machineId}/components', [MachineComponentController::class, 'index']);
-Route::post('/machines/{machineId}/components', [MachineComponentController::class, 'store']);
-Route::post('/machines/{machineId}/components/import', [MachineComponentController::class, 'bulkStore'])->middleware('auth:sanctum');
+    // Machine Components (standalone)
+    Route::post('/components/import-global', [MachineComponentController::class, 'bulkStoreGlobal']);
+    Route::put('/components/{id}', [MachineComponentController::class, 'update']);
+    Route::delete('/components/{id}', [MachineComponentController::class, 'destroy']);
+    Route::get('/components/{id}/history', [MachineComponentController::class, 'history']);
 
-// Machine Components (standalone - for edit/delete/history)
-Route::post('/components/import-global', [MachineComponentController::class, 'bulkStoreGlobal'])->middleware('auth:sanctum');
-Route::put('/components/{id}', [MachineComponentController::class, 'update']);
-Route::delete('/components/{id}', [MachineComponentController::class, 'destroy']);
-Route::get('/components/{id}/history', [MachineComponentController::class, 'history']);
+    // Maintenance Schedules
+    Route::get('/schedules/notifications', [MaintenanceScheduleController::class, 'notifications']);
+    Route::get('/schedules', [MaintenanceScheduleController::class, 'index']);
+    Route::post('/schedules', [MaintenanceScheduleController::class, 'store']);
+    Route::get('/schedules/{id}', [MaintenanceScheduleController::class, 'show']);
+    Route::put('/schedules/{id}', [MaintenanceScheduleController::class, 'update']);
+    Route::delete('/schedules/{id}', [MaintenanceScheduleController::class, 'destroy']);
 
-// Maintenance Schedules
-Route::get('/schedules/notifications', [MaintenanceScheduleController::class, 'notifications']);
-Route::get('/schedules', [MaintenanceScheduleController::class, 'index']);
-Route::post('/schedules', [MaintenanceScheduleController::class, 'store']);
-Route::get('/schedules/{id}', [MaintenanceScheduleController::class, 'show']);
-Route::put('/schedules/{id}', [MaintenanceScheduleController::class, 'update']);
-Route::delete('/schedules/{id}', [MaintenanceScheduleController::class, 'destroy']);
+    // Maintenance Records
+    Route::get('/records', [MaintenanceRecordController::class, 'index']);
+    Route::post('/records', [MaintenanceRecordController::class, 'store']);
+    Route::get('/records/{id}', [MaintenanceRecordController::class, 'show']);
 
-// Maintenance Records
-Route::get('/records', [MaintenanceRecordController::class, 'index']);
-Route::post('/records', [MaintenanceRecordController::class, 'store'])->middleware('auth:sanctum');
-Route::get('/records/{id}', [MaintenanceRecordController::class, 'show']);
-
-// Approvals
-Route::get('/approvals', [ApprovalController::class, 'index'])->middleware('auth:sanctum');
-Route::post('/approvals/{recordId}/decide', [ApprovalController::class, 'decide'])->middleware('auth:sanctum');
-
-// Helper route - gets the logged in user or first user (dummy auth)
-Route::get('/dummy-user', function (Illuminate\Http\Request $request) {
-    if (auth('sanctum')->check()) {
-        return response()->json(auth('sanctum')->user());
-    }
-    return response()->json(\App\Models\User::first() ?? ['id' => null]);
+    // Approvals
+    Route::get('/approvals', [ApprovalController::class, 'index']);
+    Route::post('/approvals/{recordId}/decide', [ApprovalController::class, 'decide']);
 });

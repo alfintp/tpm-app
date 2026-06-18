@@ -38,7 +38,7 @@
     </PageHeader>
 
     <!-- Stats Summary -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
       <StatCard v-for="stat in stats" :key="stat.label" :value="stat.value" :label="stat.label" :color="stat.color" />
     </div>
 
@@ -61,7 +61,6 @@
         <option value="overdue">Telat / Overdue</option>
         <option value="today">Hari Ini</option>
         <option value="week">Minggu Ini</option>
-        <option value="upcoming">Mendatang</option>
       </select>
       <select v-model="sortBy" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
         <option value="name">Nama A-Z</option>
@@ -112,12 +111,10 @@
         <span v-else class="text-sm text-slate-400">-</span>
       </template>
 
-      <!-- Kolom: Status -->
-      <template #cell-status="{ row }">
-        <span :class="statusClass(row.status)" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold">
-          <span class="w-1.5 h-1.5 rounded-full mr-1.5" :class="statusDotClass(row.status)"></span>
-          {{ row.status }}
-        </span>
+      <!-- Kolom: PIC -->
+      <template #cell-pic_mesin_id="{ row }">
+        <span v-if="row.pic_mesin" class="text-sm font-semibold text-slate-700">{{ row.pic_mesin.full_name }}</span>
+        <span v-else class="text-xs text-slate-400">-</span>
       </template>
 
       <!-- Kolom: Kondisi -->
@@ -236,7 +233,7 @@ const machineColumns = [
   { key: 'name',             label: 'Nama Mesin', width: 'w-[25%]' },
   { key: 'location',         label: 'Lokasi',     width: 'w-[15%]' },
   { key: 'schedule',         label: 'Jadwal',     width: 'w-[20%]' },
-  { key: 'status',           label: 'Status',     width: 'w-[12%]' },
+  { key: 'pic_mesin_id',     label: 'PIC',        width: 'w-[15%]' },
   { key: 'condition_pct',    label: 'Kondisi',    width: 'w-[10%]', headerClass: 'text-center' },
   { key: 'components_count', label: 'Komponen',   width: 'w-[10%]', headerClass: 'text-center', cellClass: 'text-center' },
 ];
@@ -311,7 +308,6 @@ const stats = computed(() => {
     { label: 'Telat',      value: machineSchedules.filter(s => getDaysUntil(s.next_due_date) < 0).length,                                    color: 'red' },
     { label: 'Hari Ini',   value: machineSchedules.filter(s => getDaysUntil(s.next_due_date) === 0).length,                                   color: 'amber' },
     { label: 'Minggu Ini', value: machineSchedules.filter(s => getDaysUntil(s.next_due_date) > 0 && getDaysUntil(s.next_due_date) <= 7).length, color: 'blue' },
-    { label: 'Mendatang',  value: machineSchedules.filter(s => getDaysUntil(s.next_due_date) > 7).length,                                    color: 'slate' },
   ];
 });
 
@@ -387,6 +383,7 @@ const maintenanceAlerts = computed(() => {
 
     return {
       ...notif,
+      machine,
       totalComponents,
       checkedCount,
       uncheckedCount,

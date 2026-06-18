@@ -59,10 +59,6 @@
         <p class="font-medium text-slate-700 leading-relaxed break-words line-clamp-3 text-sm" :title="row.details ?? '-'">{{ row.details ?? '-' }}</p>
       </template>
 
-      <!-- Kolom: IP Address -->
-      <template #cell-ip_address="{ row }">
-        <span class="text-xs font-mono text-slate-400">{{ row.ip_address ?? '127.0.0.1' }}</span>
-      </template>
     </DataTable>
 
     <!-- Pagination -->
@@ -104,8 +100,7 @@ const columns = [
   { key: 'created_at',   label: 'Waktu',           width: 'w-[15%]', cellClass: 'whitespace-nowrap' },
   { key: 'user_fullname', label: 'Pengguna',         width: 'w-[18%]' },
   { key: 'activity',    label: 'Aktivitas',         width: 'w-[20%]', cellClass: 'whitespace-nowrap' },
-  { key: 'details',     label: 'Detail Tindakan',   width: 'w-[27%]', cellClass: 'max-w-0 whitespace-normal' },
-  { key: 'ip_address',  label: 'IP Address',        width: 'w-[15%]', cellClass: 'whitespace-nowrap' },
+  { key: 'details',     label: 'Detail Tindakan',   width: 'w-[40%]', cellClass: 'max-w-0 whitespace-normal' },
 ];
 
 const logTypes = [

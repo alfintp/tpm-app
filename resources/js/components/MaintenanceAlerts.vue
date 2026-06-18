@@ -35,6 +35,7 @@
           </div>
           <p class="text-xs text-slate-500 mt-0.5">
             <span class="capitalize">{{ alert.schedule_type }}</span> · Jadwal: {{ formatDate(alert.next_due_date) }}
+            <span v-if="alert.machine?.pic_mesin" class="text-slate-400"> · PIC: <span class="font-semibold text-slate-600">{{ alert.machine.pic_mesin.full_name }}</span></span>
             <span v-if="alert.isFullyChecked" class="text-green-600 font-semibold">
               · ✅ {{ alert.totalComponents }} komponen sudah dicek
             </span>

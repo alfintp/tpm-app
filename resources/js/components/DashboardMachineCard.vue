@@ -40,8 +40,9 @@
     <!-- Info rows -->
     <div class="space-y-2">
       <div class="flex items-center justify-between text-xs">
-        <span class="text-slate-500">Status:</span>
-        <span :class="statusBadge" class="px-2 py-1 rounded-full text-xs font-semibold">{{ machine.status }}</span>
+        <span class="text-slate-500">PIC:</span>
+        <span v-if="machine.pic_mesin" class="font-semibold text-slate-700 truncate max-w-[60%] text-right">{{ machine.pic_mesin.full_name }}</span>
+        <span v-else class="text-slate-400 italic">-</span>
       </div>
 
       <div v-if="schedule" class="flex items-center justify-between text-xs">
@@ -86,12 +87,6 @@ const theme = computed(() => {
   if (pct < 80) return { textClass: 'text-amber-500', bgClass: 'bg-amber-50 text-amber-700', gradClass: 'from-amber-50 to-white' };
   return           { textClass: 'text-green-500', bgClass: 'bg-green-50 text-green-700', gradClass: 'from-green-50 to-white' };
 });
-
-const statusBadge = computed(() => ({
-  active:      'bg-green-50 text-green-700',
-  maintenance: 'bg-amber-50 text-amber-700',
-  inactive:    'bg-slate-100 text-slate-600',
-}[props.machine.status] ?? 'bg-slate-100 text-slate-600'));
 
 const schedule = computed(() => {
   const schedules = props.machine.schedules;

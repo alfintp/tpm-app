@@ -9,7 +9,7 @@
             <h3 class="text-lg sm:text-2xl font-bold">Kalender Maintenance</h3>
             <p class="text-indigo-100 text-xs sm:text-sm mt-1">Jadwal maintenance semua mesin</p>
           </div>
-          <button @click="$emit('close')" class="p-2 hover:bg-white/20 rounded-xl transition-colors">
+          <button @click="$emit('close')" class="hover:cursor-pointer p-2 hover:bg-white/20 rounded-xl transition-colors">
             <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -17,13 +17,13 @@
         </div>
         <!-- Month Navigation -->
         <div class="flex items-center justify-between mt-3 sm:mt-4">
-          <button @click="previousMonth" class="p-2 hover:bg-white/20 rounded-xl transition-colors">
+          <button @click="previousMonth" class="hover:cursor-pointer p-2 hover:bg-white/20 rounded-xl transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
           </button>
           <h4 class="text-lg sm:text-xl font-semibold">{{ currentMonthYear }}</h4>
-          <button @click="nextMonth" class="p-2 hover:bg-white/20 rounded-xl transition-colors">
+          <button @click="nextMonth" class="hover:cursor-pointer p-2 hover:bg-white/20 rounded-xl transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>

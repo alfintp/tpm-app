@@ -439,8 +439,8 @@ async function handleEditUser() {
     // Sort list again by name
     users.value.sort((a, b) => a.full_name.localeCompare(b.full_name));
     
-    showAlert('success', 'Berhasil', response.data.message || 'Profil user berhasil diperbarui.');
     showEditModal.value = false;
+    showAlert('success', 'Berhasil', response.data.message || 'Profil user berhasil diperbarui.');
   } catch (error) {
     console.error('Failed to update user:', error);
     showAlert('error', 'Gagal', error.response?.data?.message || 'Gagal memperbarui profil user.');

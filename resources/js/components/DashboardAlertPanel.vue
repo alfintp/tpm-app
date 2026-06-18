@@ -65,6 +65,7 @@
                 <h4 class="text-base font-bold text-slate-800 truncate">{{ alert.machine?.name }}</h4>
                 <p class="text-xs text-slate-500 mt-0.5">
                   <span class="capitalize">{{ alert.schedule_type }}</span> · {{ formatDate(alert.next_due_date) }}
+                  <span v-if="alert.machine?.pic_mesin" class="text-slate-400"> · PIC: <span class="font-semibold text-slate-600">{{ alert.machine.pic_mesin.full_name }}</span></span>
                 </p>
               </div>
               <span :class="badgeClass(alert)" class="text-xs font-semibold bg-white px-3 py-1 rounded-full border border-current flex-shrink-0">

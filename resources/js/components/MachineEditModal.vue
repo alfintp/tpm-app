@@ -52,14 +52,6 @@
             <input type="date" v-model="form.maintenance_start_date" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
           </div>
         </div>
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-slate-700">Status</label>
-          <select v-model="form.status" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 cursor-pointer">
-            <option value="active">Active</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
       </div>
       <div class="px-8 pb-8 flex justify-end gap-3">
         <button @click="$emit('close')" class="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">Batal</button>

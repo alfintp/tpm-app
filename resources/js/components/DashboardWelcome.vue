@@ -2,8 +2,8 @@
   <div class="bg-gradient-to-tr from-brand-brown to-brand-gradation rounded-2xl p-6 text-white shadow-lg mt-4">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold mb-1">{{ greeting }}, {{ name }}! 👋</h1>
-        <p class="text-indigo-100 text-sm">{{ timeGreeting }}, ini adalah ringkasan status maintenance hari ini.</p>
+        <h1 class="text-2xl font-bold mb-1">{{ greeting }}, {{ name }}! 👋😮👍</h1>
+        <p class="text-indigo-100 text-sm">ringkasan status maintenance hari ini</p>
       </div>
       <div class="text-right">
         <p class="text-sm text-indigo-100">{{ today }}</p>

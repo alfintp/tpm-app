@@ -1,8 +1,19 @@
 <template>
-  <SidebarProvider>
+  <!-- Auth loading overlay -->
+  <div v-if="!authChecked" class="fixed inset-0 z-50 flex items-center justify-center bg-white">
+    <div class="flex flex-col items-center gap-3">
+      <svg class="animate-spin w-8 h-8 text-brand-brown" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      </svg>
+      <p class="text-sm font-medium text-slate-500">Memuat sesi...</p>
+    </div>
+  </div>
+
+  <SidebarProvider v-if="authChecked && isAuthenticated">
     <Sidebar collapsible="icon">
       <!-- Header: Logo -->
-      <SidebarHeader class="border-b border-sidebar-border px-3 py-3">
+      <SidebarHeader class="border-b border-sidebar-border px-3 py-3 mx-auto">
         <Link href="/" class="flex items-center gap-2 cursor-pointer overflow-hidden">
           <img :src="'/images/logo-ladang-lima.png'" alt="Logo" class="h-8 w-8 shrink-0 rounded-md object-contain">
           <span class="font-bold text-brand-brown text-sm truncate group-data-[collapsible=icon]:hidden">TPM Ladang Lima</span>
@@ -99,14 +110,15 @@
       </div>
     </SidebarInset>
 
-    <!-- Global Alert Modal -->
-    <AlertModal ref="alertModalRef" />
   </SidebarProvider>
+
+  <!-- Global Alert Modal — always mounted so alertRef is always available -->
+  <AlertModal ref="alertModalRef" />
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import { useAuth } from './composables/useAuth.js';
 import AlertModal from './components/AlertModal.vue';
 import { alertRef } from './composables/useAlert.js';
@@ -126,13 +138,18 @@ import {
 } from '../views/components/ui/sidebar/index.ts';
 
 const page = usePage();
-const { user, isAdmin, isManagerOrAdmin, initializeAuth } = useAuth();
+const { user, isAdmin, isManagerOrAdmin, isAuthenticated, authReady, initializeAuth } = useAuth();
 
 const alertModalRef = ref(null);
+const authChecked = ref(false);
 
 onMounted(async () => {
   alertRef.value = alertModalRef.value;
   await initializeAuth();
+  authChecked.value = true;
+  if (!isAuthenticated.value) {
+    router.visit('/login', { replace: true });
+  }
 });
 
 const isUrl = (url) => {
