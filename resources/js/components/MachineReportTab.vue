@@ -44,7 +44,7 @@
         <!-- Filter Bar -->
         <div class="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
           <!-- Mode Toggle -->
-          <div class="flex bg-slate-100 rounded-xl p-1 shadow-inner">
+          <!-- <div class="flex bg-slate-100 rounded-xl p-1 shadow-inner">
             <button
               @click="viewMode = 'table'"
               :class="viewMode === 'table' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
@@ -61,7 +61,7 @@
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
               Mode Mobile
             </button>
-          </div>
+          </div> -->
 
           <div class="flex flex-wrap items-center gap-3 flex-1 sm:justify-end">
             <SearchInput v-model="search" placeholder="Cari nama komponen..." class="flex-1 max-w-xs" />
@@ -80,6 +80,40 @@
             </button>
             <div class="text-xs text-slate-400">
               Menampilkan {{ filteredRows.length }} dari {{ rows.length }} komponen
+            </div>
+          </div>
+        </div>
+
+        <!-- Waktu Pengerjaan (per laporan) -->
+        <div v-if="filteredRows.length > 0" class="max-w-xl mx-auto mb-4">
+          <div class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+            <label class="text-xs font-bold text-slate-600 uppercase block mb-3">Waktu Pengerjaan</label>
+            <div class="flex flex-wrap items-end gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Jam Mulai</label>
+                <input
+                  :value="startTime"
+                  @input="$emit('update:startTime', $event.target.value)"
+                  type="time"
+                  required
+                  :disabled="isReportBlocked && !forceReport"
+                  class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-brown disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Jam Selesai</label>
+                <input
+                  :value="endTime"
+                  @input="$emit('update:endTime', $event.target.value)"
+                  type="time"
+                  required
+                  :disabled="isReportBlocked && !forceReport"
+                  class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-brown disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                />
+              </div>
+              <div v-if="durationLabel" class="text-sm font-semibold text-brand-gradation bg-white border border-brand-cream px-3 py-2 rounded-xl shadow-sm">
+                Durasi: {{ durationLabel }}
+              </div>
             </div>
           </div>
         </div>
@@ -313,7 +347,7 @@
                   </div>
                 </div>
                 <div v-if="!isInputDisabled(currentRow)" class="flex items-center justify-between gap-2 pt-1">
-                  <button v-for="preset in [100, 90, 80, 70, 60]" :key="preset" @click="$emit('wizard-preset', { row: currentRow, val: preset })" class="flex-1 py-1.5 border border-slate-200 hover:border-indigo-600 bg-white rounded-lg text-[10px] font-bold text-slate-600 hover:text-indigo-600 transition-all cursor-pointer">{{ preset }}%</button>
+                  <button v-for="preset in [60, 70, 80, 90, 100]" :key="preset" @click="$emit('wizard-preset', { row: currentRow, val: preset })" class="flex-1 py-1.5 border border-slate-200 hover:border-indigo-600 bg-white rounded-lg text-[10px] font-bold text-slate-600 hover:text-indigo-600 transition-all cursor-pointer">{{ preset }}%</button>
                 </div>
               </div>
 
@@ -409,7 +443,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import SearchInput from './SearchInput.vue';
 
 const props = defineProps({
@@ -433,6 +467,9 @@ const props = defineProps({
   isInputDisabled: { type: Function, required: true },
   canCheck: { type: Function, required: true },
   isConditionValid: { type: Function, required: true },
+  startTime: { type: String, default: '' },
+  endTime: { type: String, default: '' },
+  durationLabel: { type: String, default: '' },
 });
 
 const emit = defineEmits([
@@ -444,9 +481,11 @@ const emit = defineEmits([
   'wizard-preset',
   'start-edit',
   'cancel-edit',
+  'update:startTime',
+  'update:endTime',
 ]);
 
-const viewMode = ref('table');
+const viewMode = ref('wizard');
 const search = ref('');
 const wizardIndex = ref(0);
 
@@ -474,4 +513,12 @@ const currentRow = computed(() => {
   const idx = Math.min(Math.max(0, wizardIndex.value), filteredRows.value.length - 1);
   return filteredRows.value[idx];
 });
+
+watch(() => props.activeFilter, () => { wizardIndex.value = 0; });
+watch(search, () => { wizardIndex.value = 0; });
+watch(() => filteredRows.value.length, (newLen) => {
+  if (newLen === 0) wizardIndex.value = 0;
+  else if (wizardIndex.value >= newLen) wizardIndex.value = newLen - 1;
+});
+
 </script>

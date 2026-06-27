@@ -56,7 +56,7 @@
         </svg>
         <span class="truncate">{{ machine.location ?? '-' }}</span>
         <span v-if="machine.kota" class="ml-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase">
-          {{ machine.kota === 'sby' ? 'Sby' : 'Psn' }}
+          {{ machine.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}
         </span>
       </div>
     </div>

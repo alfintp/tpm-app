@@ -23,6 +23,10 @@ class Machine extends Model
         'maintenance_start_date',
     ];
 
+    protected $casts = [
+        'condition_pct' => 'integer',
+    ];
+
     public function schedules()
     {
         return $this->hasMany(MaintenanceSchedule::class);

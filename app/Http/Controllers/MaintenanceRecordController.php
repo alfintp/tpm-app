@@ -9,6 +9,7 @@ use App\Models\Machine;
 use App\Models\MachineComponent;
 use App\Models\MaintenanceSchedule;
 use App\Models\ActivityLog;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -17,17 +18,28 @@ class MaintenanceRecordController extends Controller
 {
     public function index()
     {
-        $records = MaintenanceRecord::with(['machine', 'technician', 'actions.component', 'approval'])->get();
+        $records = MaintenanceRecord::with(['machine', 'technician', 'actions.component', 'approvals'])->get();
         return response()->json($records);
     }
 
     public function store(Request $request)
     {
+        $authUser = $request->user();
+        if ($authUser && $authUser->role !== 'admin') {
+            $canReport = Role::active()->where('name', $authUser->role)->value('can_report');
+            if (!$canReport) {
+                return response()->json(['error' => 'Role Anda tidak memiliki izin untuk mengirim laporan.'], 403);
+            }
+        }
+
         $validated = $request->validate([
             'machine_id' => 'required|exists:machines,id',
             'technician_id' => 'nullable|exists:users,id',
             'schedule_id' => 'nullable|exists:maintenance_schedules,id',
             'maintenance_date' => 'required|date',
+            'start_time' => 'nullable|date_format:H:i',
+            'end_time' => 'nullable|date_format:H:i',
+            'duration_minutes' => 'nullable|integer|min:0',
             'notes' => 'nullable|string',
             'status' => 'required|in:planned,in_progress,completed,cancelled',
             'actions' => 'nullable|array',
@@ -43,9 +55,9 @@ class MaintenanceRecordController extends Controller
             $validated['technician_id'] = $request->user()->id;
         }
 
-        // City-based access check for technicians
+        // City-based access check
         $authUser = $request->user();
-        if ($authUser && $authUser->role === 'technician' && ($authUser->city ?? 'both') !== 'both') {
+        if ($authUser && ($authUser->city ?? 'both') !== 'both') {
             $machine = Machine::find($validated['machine_id']);
             if ($machine && $machine->kota !== $authUser->city) {
                 return response()->json([
@@ -89,7 +101,7 @@ class MaintenanceRecordController extends Controller
 
     public function show($id)
     {
-        $record = MaintenanceRecord::with(['machine', 'technician', 'actions.component', 'approval', 'schedule'])->findOrFail($id);
+        $record = MaintenanceRecord::with(['machine', 'technician', 'actions.component', 'approvals', 'schedule'])->findOrFail($id);
         return response()->json($record);
     }
 }

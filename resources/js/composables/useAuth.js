@@ -37,6 +37,8 @@ export function useAuth() {
   const isManager = computed(() => role.value === 'manager');
   const isTechnician = computed(() => role.value === 'technician');
   const isManagerOrAdmin = computed(() => role.value === 'admin' || role.value === 'manager');
+  const isApprover = computed(() => ['admin', 'karo', 'qc', 'wpv', 'manager'].includes(role.value));
+  const hasBothCities = computed(() => (user.value?.city ?? 'both') === 'both');
 
   async function login(email, password) {
     try {
@@ -124,6 +126,8 @@ export function useAuth() {
     isManager,
     isTechnician,
     isManagerOrAdmin,
+    isApprover,
+    hasBothCities,
     login,
     logout,
     initializeAuth,

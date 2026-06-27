@@ -12,6 +12,10 @@
             <div>
               <span class="text-sm font-bold text-slate-800">{{ formatDateTime(record.maintenance_date) }}</span>
               <p class="text-xs text-slate-400 mt-0.5">Teknisi: {{ record.technician?.full_name ?? '-' }}</p>
+              <p v-if="record.duration_minutes" class="text-xs text-brand-gradation font-semibold mt-0.5">
+                <span class="inline-block bg-brand-cream px-2 py-0.5 rounded-lg">Durasi: {{ formatDuration(record.duration_minutes) }}</span>
+                <span v-if="record.start_time || record.end_time" class="text-slate-400 font-normal">({{ record.start_time ?? '-' }} - {{ record.end_time ?? '-' }})</span>
+              </p>
             </div>
             <div class="flex items-center gap-2 flex-wrap justify-end">
               <span class="text-xs font-semibold px-2 py-1 rounded-lg" :class="{
@@ -19,18 +23,18 @@
                 'bg-amber-100 text-amber-700': record.status === 'in_progress',
                 'bg-slate-200 text-slate-700': record.status === 'planned'
               }">{{ record.status.toUpperCase() }}</span>
-
-              <span v-if="record.approval" class="text-xs font-semibold px-2 py-1 rounded-lg border" :class="{
-                'bg-amber-100 text-amber-800 border-amber-200': record.approval.decision === 'pending',
-                'bg-emerald-100 text-emerald-800 border-emerald-200': record.approval.decision === 'approved',
-                'bg-rose-100 text-rose-800 border-rose-200': record.approval.decision === 'rejected'
-              }">
-                {{ record.approval.decision === 'pending' ? 'MENUNGGU APPROVAL' : record.approval.decision === 'approved' ? 'DISETUJUI' : 'DITOLAK' }}
-              </span>
-              <span v-else class="text-xs font-semibold px-2 py-1 rounded-lg border bg-amber-100 text-amber-800 border-amber-200">
-                MENUNGGU APPROVAL
-              </span>
             </div>
+          </div>
+
+          <div class="mb-3">
+            <ApprovalProgress
+              v-if="flowSteps.length > 0"
+              :flow-steps="flowSteps"
+              v-bind="getRecordProgress(record)"
+            />
+            <span v-else class="text-xs font-semibold px-2 py-1 rounded-lg border bg-amber-100 text-amber-800 border-amber-200">
+              MENUNGGU APPROVAL
+            </span>
           </div>
 
           <p class="text-sm text-slate-600 italic mb-3">{{ record.notes || 'Tidak ada catatan.' }}</p>
@@ -38,12 +42,12 @@
           <div v-if="record.actions?.length > 0" class="space-y-2">
             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tindakan:</p>
             <div v-for="action in record.actions" :key="action.id" class="flex items-start gap-2 bg-white border border-slate-100 p-2 rounded-lg">
-              <span :class="actionTypeClass(action.action_type)" class="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0">{{ action.action_type }}</span>
+              <span :class="actionTypeClass(action.action_type)" class="text-xs font-semibold px-2 py-0.5 rounded-full shrink-0">{{ action.action_type }}</span>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-slate-800 truncate">{{ action.component?.name ?? '-' }}</p>
                 <p v-if="action.description" class="text-xs text-slate-500 mt-0.5">{{ action.description }}</p>
               </div>
-              <div class="text-xs text-slate-400 flex-shrink-0 text-right">
+              <div class="text-xs text-slate-400 shrink-0 text-right">
                 {{ action.condition_before_pct ?? '-' }}% → <span class="text-brand-gradation font-medium">{{ action.condition_after_pct ?? '-' }}%</span>
               </div>
             </div>
@@ -55,10 +59,54 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
+import ApprovalProgress from './ApprovalProgress.vue';
+
 const props = defineProps({
   records: { type: Array, default: () => [] },
   formatDateTime: { type: Function, required: true },
 });
+
+const flowSteps = ref([]);
+
+const loadFlowConfig = async () => {
+  try {
+    const res = await axios.get('/api/approval-flow');
+    flowSteps.value = res.data.steps || [];
+  } catch (e) {
+    console.error('Failed to load approval flow:', e);
+  }
+};
+
+onMounted(loadFlowConfig);
+
+const getRecordProgress = (record) => {
+  const latest = record.latest_approval;
+  const total = flowSteps.value.length;
+  if (total === 0) {
+    return { status: 'pending', currentStep: 1, completedSteps: 0, totalSteps: 0, pendingRole: null };
+  }
+  if (!latest) {
+    return { status: 'pending', currentStep: 1, completedSteps: 0, totalSteps: total, pendingRole: flowSteps.value[0]?.role };
+  }
+  if (latest.decision === 'rejected') {
+    return { status: 'rejected', currentStep: latest.step_order, completedSteps: latest.step_order - 1, totalSteps: total, pendingRole: null };
+  }
+  if (latest.decision === 'approved' && latest.step_order === total) {
+    return { status: 'approved', currentStep: total, completedSteps: total, totalSteps: total, pendingRole: null };
+  }
+  const currentStep = latest.step_order + 1;
+  return { status: 'pending', currentStep, completedSteps: latest.step_order, totalSteps: total, pendingRole: flowSteps.value[currentStep - 1]?.role };
+};
+
+const formatDuration = (minutes) => {
+  if (minutes === null || minutes === undefined) return '-';
+  if (minutes < 60) return `${minutes} menit`;
+  const h = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  return rem ? `${h} jam ${rem} menit` : `${h} jam`;
+};
 
 const actionTypeClass = (type) => {
   const map = {

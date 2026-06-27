@@ -37,7 +37,7 @@ class UserController extends Controller
             'full_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
-            'role' => 'required|string|in:admin,manager,technician',
+            'role' => 'required|string|exists:roles,name',
             'city' => 'nullable|string|in:pasuruan,sby,both',
         ]);
 
@@ -108,7 +108,7 @@ class UserController extends Controller
         }
 
         $request->validate([
-            'role' => 'required|string|in:admin,technician,manager',
+            'role' => 'required|string|exists:roles,name',
         ]);
 
         $user = User::findOrFail($id);

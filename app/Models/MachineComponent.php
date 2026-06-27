@@ -17,12 +17,14 @@ class MachineComponent extends Model
         'specification',
         'qty',
         'unit',
+        'difficulty',
         'last_replaced_at',
         'last_condition_pct',
     ];
 
     protected $casts = [
         'last_replaced_at' => 'date',
+        'last_condition_pct' => 'integer',
     ];
 
     public function machine()

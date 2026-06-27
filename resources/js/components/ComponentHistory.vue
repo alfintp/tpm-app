@@ -45,18 +45,20 @@
                 <div>
                   <span class="text-sm font-bold text-slate-800">{{ formatDateTime(item.record?.maintenance_date) }}</span>
                   <p class="text-xs text-slate-500 mt-0.5">Teknisi: {{ item.record?.technician?.full_name ?? '-' }}</p>
+                  <p v-if="item.record?.duration_minutes" class="text-xs text-brand-gradation font-semibold mt-0.5">
+                    <span class="inline-block bg-brand-cream px-2 py-0.5 rounded-lg">Durasi: {{ formatDuration(item.record.duration_minutes) }}</span>
+                  </p>
                 </div>
-                <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
+                <div class="flex flex-col items-end gap-1.5 shrink-0">
                   <span class="text-xs font-bold px-3 py-1 rounded-full uppercase" :class="getActionTypeClass(item.action_type)">{{ item.action_type }}</span>
-                  <span v-if="item.record?.approval" class="text-[10px] font-semibold px-2 py-0.5 rounded border" :class="{
-                    'bg-amber-100 text-amber-800 border-amber-200': item.record.approval.decision === 'pending',
-                    'bg-emerald-100 text-emerald-800 border-emerald-200': item.record.approval.decision === 'approved',
-                    'bg-rose-100 text-rose-800 border-rose-200': item.record.approval.decision === 'rejected'
-                  }">
-                    {{ item.record.approval.decision === 'pending' ? 'MENUNGGU' : (item.record.approval.decision === 'approved' ? 'DISETUJUI' : 'DITOLAK') }}
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded border" :class="approvalStateClass(item.record?.approval_state)">
+                    {{ approvalStateLabel(item.record?.approval_state) }}
                   </span>
-                  <span v-else class="text-[10px] font-semibold px-2 py-0.5 rounded border bg-amber-100 text-amber-800 border-amber-200">
-                    MENUNGGU
+                  <span v-if="item.record?.approval_state?.status === 'pending' && item.record.approval_state.pending_role" class="text-[9px] text-amber-600 font-medium">
+                    Menunggu: {{ item.record.approval_state.pending_role }}
+                  </span>
+                  <span v-if="item.record?.approval_state?.status === 'rejected' && item.record.approval_state.notes" class="text-[9px] text-rose-600 italic max-w-[150px] text-right line-clamp-2">
+                    {{ item.record.approval_state.notes }}
                   </span>
                 </div>
               </div>
@@ -67,7 +69,7 @@
                   <p class="text-xs text-slate-400 mb-1">Sebelum</p>
                   <span :class="getCondPctClass(item.condition_before_pct)" class="text-lg font-bold">{{ item.condition_before_pct ?? '-' }}%</span>
                 </div>
-                <svg class="w-5 h-5 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                <svg class="w-5 h-5 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                 <div class="text-center flex-1">
                   <p class="text-xs text-slate-400 mb-1">Sesudah</p>
                   <span :class="getCondPctClass(item.condition_after_pct)" class="text-lg font-bold">{{ item.condition_after_pct ?? '-' }}%</span>
@@ -133,6 +135,14 @@ const resetFilter = () => {
 
 onMounted(loadHistory);
 
+const formatDuration = (minutes) => {
+  if (minutes === null || minutes === undefined) return '-';
+  if (minutes < 60) return `${minutes} menit`;
+  const h = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  return rem ? `${h} jam ${rem} menit` : `${h} jam`;
+};
+
 const formatDateTime = (d) => {
   if (!d) return '-';
   return new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -154,5 +164,19 @@ const getCondPctClass = (pct) => {
   if (pct < 50) return 'text-red-500';
   if (pct < 80) return 'text-amber-500';
   return 'text-green-500';
+};
+
+const approvalStateClass = (state) => {
+  const s = state?.status;
+  if (s === 'approved') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+  if (s === 'rejected') return 'bg-rose-100 text-rose-800 border-rose-200';
+  return 'bg-amber-100 text-amber-800 border-amber-200';
+};
+
+const approvalStateLabel = (state) => {
+  const s = state?.status;
+  if (s === 'approved') return 'DISETUJUI';
+  if (s === 'rejected') return 'DITOLAK';
+  return 'MENUNGGU';
 };
 </script>

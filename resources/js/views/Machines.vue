@@ -29,7 +29,7 @@
         <Button
           v-if="isManagerOrAdmin"
           @click="openCreate"
-          class="bg-gradient-to-tr from-brand-brown to-brand-gradation text-white hover:opacity-90 rounded-xl font-semibold text-sm gap-2 shadow-md hover:cursor-pointer"
+          class="bg-linear-to-tr from-brand-brown to-brand-gradation text-white hover:opacity-90 rounded-xl font-semibold text-sm gap-2 shadow-md hover:cursor-pointer"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           Tambah Mesin
@@ -56,6 +56,11 @@
         placeholder="Cari nama mesin atau lokasi..."
         class="flex-1 min-w-[200px]"
       />
+      <select v-if="hasBothCities" v-model="filterKota" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+        <option value="">Semua Kota</option>
+        <option value="pasuruan">Pasuruan</option>
+        <option value="sby">Surabaya</option>
+      </select>
       <select v-model="filterSchedule" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
         <option value="">Semua Jadwal</option>
         <option value="overdue">Telat / Overdue</option>
@@ -73,14 +78,18 @@
     <!-- Machines Table -->
     <DataTable
       :columns="machineColumns"
-      :rows="filtered"
+      :rows="paginatedMachines"
       :loading="loading"
       loading-text="Memuat data mesin..."
       loading-subtext="Mengambil data dari server"
       empty-title="Tidak ada mesin ditemukan"
       empty-subtext="Coba ubah kata kunci pencarian atau filter"
       min-width="min-w-[700px]"
-      :paginate="false"
+      :paginate="true"
+      :current-page="currentPage"
+      :total-rows="filtered.length"
+      :per-page="perPage"
+      @update:current-page="currentPage = $event"
       actions-label=""
       actions-width="w-16"
       row-clickable
@@ -140,11 +149,6 @@
       </template>
     </DataTable>
 
-    <!-- Table Footer -->
-    <div v-if="!loading && filtered.length > 0" class="text-xs text-slate-400 px-1">
-      Menampilkan {{ filtered.length }} dari {{ allowedMachines.length }} mesin
-    </div>
-
     <!-- Create Machine Modal -->
     <MachineCreateModal v-if="showCreate" @close="showCreate = false" @saved="onMachineSaved" />
 
@@ -169,7 +173,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import MachineCreateModal from '../components/MachineCreateModal.vue';
@@ -211,7 +215,7 @@ const props = defineProps({
   }
 });
 
-const { isManagerOrAdmin, isAdmin, user } = useAuth();
+const { isManagerOrAdmin, isAdmin, user, hasBothCities } = useAuth();
 const machines = ref(props.machines || props.initialMachines || []);
 const schedules = ref(props.schedules || props.initialSchedules || []);
 const notifications = ref(props.notifications || props.initialNotifications || []);
@@ -219,12 +223,16 @@ const loading = ref(!props.machines && !props.initialMachines);
 const search = ref('');
 const filterSchedule = ref('');
 const sortBy = ref('name');
+const filterKota = ref('');
 const showCreate = ref(false);
+const currentPage = ref(1);
+const perPage = ref(10);
 
 const allowedMachines = computed(() => {
   let list = machines.value;
-  if (user.value?.role === 'technician' && user.value?.city && user.value.city !== 'both') {
-    list = list.filter(m => m.kota === user.value.city);
+  const city = user.value?.city;
+  if (city && city !== 'both') {
+    list = list.filter(m => m.kota === city);
   }
   return list;
 });
@@ -397,6 +405,11 @@ const maintenanceAlerts = computed(() => {
 const filtered = computed(() => {
   let list = allowedMachines.value;
   
+  // Apply kota filter (manager/admin only)
+  if (filterKota.value) {
+    list = list.filter(m => m.kota === filterKota.value);
+  }
+  
   // Apply search filter
   if (search.value) {
     const q = search.value.toLowerCase();
@@ -425,6 +438,13 @@ const filtered = computed(() => {
   
   return list;
 });
+
+const paginatedMachines = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filtered.value.slice(start, start + perPage.value);
+});
+
+watch([search, filterSchedule, sortBy, filterKota], () => { currentPage.value = 1; });
 
 const openCreate = () => { showCreate.value = true; };
 const onMachineSaved = async () => {
@@ -536,16 +556,16 @@ const downloadComponentTemplateGlobal = async () => {
   try {
     const XLSX = await loadSheetJS();
     const headers = [
-      ['Kode Mesin', 'Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kondisi Awal (%)']
+      ['Kode Mesin', 'Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kesulitan (ringan/sedang/berat)', 'Kondisi Awal (%)']
     ];
     const rows = [
-      ['LL-BLR-01', 'Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 100],
-      ['LL-PKG-01', 'Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 90]
+      ['LL-BLR-01', 'Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 'sedang', 100],
+      ['LL-PKG-01', 'Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 'ringan', 90]
     ];
-    
+
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
-    
+
     ws['!cols'] = [
       { wch: 15 }, // Kode Mesin
       { wch: 20 }, // Kategori
@@ -553,9 +573,10 @@ const downloadComponentTemplateGlobal = async () => {
       { wch: 30 }, // Spesifikasi
       { wch: 15 }, // Jumlah (Qty)
       { wch: 15 }, // Satuan
+      { wch: 25 }, // Kesulitan
       { wch: 20 }  // Kondisi Awal (%)
     ];
-    
+
     XLSX.utils.book_append_sheet(wb, ws, 'Template Import Komponen');
     XLSX.writeFile(wb, 'Format_Import_Komponen_Massal.xlsx');
   } catch (err) {
@@ -660,7 +681,11 @@ const importComponentsGlobal = async (file) => {
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (row.length === 0 || !row[0]) continue;
-          
+
+          const maybeDifficulty = row[6]?.toString()?.trim().toLowerCase() || '';
+          const hasDifficulty = ['ringan', 'sedang', 'berat'].includes(maybeDifficulty);
+          const lastConditionIndex = hasDifficulty ? 7 : 6;
+
           mappedComponents.push({
             machine_code: row[0]?.toString()?.trim() || '',
             category: row[1]?.toString()?.trim() || '',
@@ -668,8 +693,8 @@ const importComponentsGlobal = async (file) => {
             specification: row[3]?.toString()?.trim() || null,
             qty: parseInt(row[4]) || 1,
             unit: row[5]?.toString()?.trim() || 'Pcs',
-            last_condition_pct: parseFloat(row[6]) || 100,
-            maintenance_schedule: row[7]?.toString()?.trim() || null
+            difficulty: hasDifficulty ? maybeDifficulty : null,
+            last_condition_pct: parseFloat(row[lastConditionIndex]) || 100,
           });
         }
         

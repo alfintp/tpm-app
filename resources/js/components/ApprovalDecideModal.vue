@@ -1,22 +1,28 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+  <div v-if="show" class="fixed inset-0 z-60 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="$emit('close')"></div>
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm relative z-10 p-6 space-y-4">
       <h3 class="text-lg font-semibold text-slate-800">
-        {{ decision === 'approved' ? '✅ Setujui Report' : '❌ Tolak Report' }}
+        {{ decision === 'approved' ? 'Setujui Report' : 'Tolak Report' }}
       </h3>
       <p class="text-sm text-slate-500">
-        Mesin: <span class="font-semibold text-slate-700">{{ item?.machine_name }}</span>
+        Apakah Anda yakin ingin {{ decision === 'approved' ? 'menyetujui' : 'menolak' }} report untuk mesin
+        <span class="font-semibold text-slate-700">{{ item?.machine_name }}</span>?
       </p>
-      <div class="space-y-1.5">
-        <label class="text-sm font-medium text-slate-700">Catatan (opsional)</label>
+      <div class="space-y-1">
+        <label class="text-xs font-semibold text-slate-600">
+          Catatan {{ decision === 'rejected' ? '*' : '(opsional)' }}
+        </label>
         <textarea
-          :value="notes"
-          @input="$emit('update:notes', $event.target.value)"
+          v-model="notes"
+          :placeholder="decision === 'rejected' ? 'Wajib: Tuliskan alasan penolakan...' : 'Tambahkan catatan (opsional)'"
           rows="3"
-          class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 resize-none text-sm"
-          placeholder="Tambahkan catatan..."
+          class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-brown resize-none"
+          :class="decision === 'rejected' && showError && !notes.trim() ? 'border-red-400 ring-1 ring-red-400' : ''"
         ></textarea>
+        <p v-if="decision === 'rejected' && showError && !notes.trim()" class="text-xs text-red-500 font-medium">
+          Alasan penolakan wajib diisi.
+        </p>
       </div>
       <div class="flex justify-end gap-3 pt-2">
         <button
@@ -24,7 +30,7 @@
           class="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer text-sm"
         >Batal</button>
         <button
-          @click="$emit('submit')"
+          @click="handleSubmit"
           :disabled="loading"
           :class="decision === 'approved' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'"
           class="px-5 py-2.5 rounded-xl font-medium text-white transition-colors shadow-sm cursor-pointer disabled:opacity-70 text-sm flex items-center gap-2"
@@ -41,13 +47,32 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref, watch } from 'vue';
+
+const props = defineProps({
   show:     { type: Boolean, required: true },
   item:     { type: Object,  default: null },
   decision: { type: String,  default: 'approved' },
-  notes:    { type: String,  default: '' },
   loading:  { type: Boolean, default: false },
 });
 
-defineEmits(['close', 'submit', 'update:notes']);
+const emit = defineEmits(['close', 'submit']);
+
+const notes = ref('');
+const showError = ref(false);
+
+watch(() => props.show, (val) => {
+  if (val) {
+    notes.value = '';
+    showError.value = false;
+  }
+});
+
+const handleSubmit = () => {
+  if (props.decision === 'rejected' && !notes.value.trim()) {
+    showError.value = true;
+    return;
+  }
+  emit('submit', notes.value.trim());
+};
 </script>

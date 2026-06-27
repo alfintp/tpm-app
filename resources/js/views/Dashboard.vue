@@ -1,11 +1,10 @@
 <template>
   <div class="space-y-6">
     <!-- Welcome banner -->
-    <DashboardWelcome :user="user" />
 
     <!-- Quick stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <StatCard :value="machines.length"  label="Mesin Terdaftar" color="blue">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+      <StatCard :value="cityFilteredMachines.length"  label="Mesin Terdaftar" color="blue">
         <template #icon>
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
         </template>
@@ -44,6 +43,11 @@
         </h3>
         <div class="flex flex-wrap gap-2 items-center">
           <SearchInput v-model="machineSearch" placeholder="Cari mesin..." wrapper-class="w-44" />
+          <select v-if="hasBothCities" v-model="machineKota" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+            <option value="">Semua Kota</option>
+            <option value="pasuruan">Pasuruan</option>
+            <option value="sby">Surabaya</option>
+          </select>
           <select v-model="machineSort" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
             <option value="name">Nama A-Z</option>
             <option value="condition_asc">Kondisi Terendah</option>
@@ -69,58 +73,86 @@
       <!-- Cards -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <DashboardMachineCard
-          v-for="machine in filteredMachines"
+          v-for="machine in paginatedMachines"
           :key="machine.id"
           :machine="machine"
           @click="(m) => router.visit(`/machine/${m.id}`)"
         />
       </div>
+
+      <!-- Pagination -->
+      <TablePagination
+        v-if="filteredMachines.length > perPage"
+        v-model="currentPage"
+        :total="filteredMachines.length"
+        :per-page="perPage"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useAuth } from '../composables/useAuth.js';
-import DashboardWelcome from '../components/DashboardWelcome.vue';
 import DashboardAlertPanel from '../components/DashboardAlertPanel.vue';
 import DashboardMachineCard from '../components/DashboardMachineCard.vue';
 import StatCard from '../components/StatCard.vue';
 import SearchInput from '../components/SearchInput.vue';
+import TablePagination from '../components/TablePagination.vue';
 
 const props = defineProps({
   machines:      { type: Array, default: () => [] },
   notifications: { type: Array, default: () => [] },
 });
 
-const { user } = useAuth();
+const { user, isManagerOrAdmin, hasBothCities } = useAuth();
 
 const machines      = ref(props.machines);
 const notifications = ref(props.notifications);
 const loading       = ref(false);
 const machineSearch = ref('');
 const machineSort   = ref('name');
+const machineKota   = ref('');
+const currentPage   = ref(1);
+const perPage       = 12;
 
-const activeMachines   = computed(() => machines.value.filter(m => m.status === 'active').length);
-const healthyMachines  = computed(() => machines.value.filter(m => m.condition_pct > 80).length);
-const criticalMachines = computed(() => machines.value.filter(m => m.condition_pct < 50).length);
+const cityFilteredMachines = computed(() => {
+  const city = user.value?.city;
+  if (city && city !== 'both') {
+    return machines.value.filter(m => m.kota === city);
+  }
+  return machines.value;
+});
+
+const activeMachines   = computed(() => cityFilteredMachines.value.filter(m => m.status === 'active').length);
+const healthyMachines  = computed(() => cityFilteredMachines.value.filter(m => m.condition_pct > 80).length);
+const criticalMachines = computed(() => cityFilteredMachines.value.filter(m => m.condition_pct < 50).length);
 
 const filteredMachines = computed(() => {
-  let list = machines.value;
+  let list = cityFilteredMachines.value;
+  if (machineKota.value) {
+    list = list.filter(m => m.kota === machineKota.value);
+  }
   if (machineSearch.value) {
     const q = machineSearch.value.toLowerCase();
     list = list.filter(m =>
       m.name.toLowerCase().includes(q) ||
-      (m.location ?? '').toLowerCase().includes(q) ||
-      (m.kota ?? '').toLowerCase().includes(q)
+      (m.location ?? '').toLowerCase().includes(q)
     );
   }
-  if (machineSort.value === 'name')          list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-  if (machineSort.value === 'condition_asc') list = [...list].sort((a, b) => a.condition_pct - b.condition_pct);
+  if (machineSort.value === 'name')           list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+  if (machineSort.value === 'condition_asc')  list = [...list].sort((a, b) => a.condition_pct - b.condition_pct);
   if (machineSort.value === 'condition_desc') list = [...list].sort((a, b) => b.condition_pct - a.condition_pct);
   return list;
 });
+
+const paginatedMachines = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredMachines.value.slice(start, start + perPage);
+});
+
+watch([machineSearch, machineSort, machineKota], () => { currentPage.value = 1; });
 
 const maintenanceAlerts = computed(() => {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -134,7 +166,7 @@ const maintenanceAlerts = computed(() => {
     const daysUntil = Math.ceil((dueDate - today) / 86400000);
     if (daysUntil < -1) return null;
 
-    const machine = machines.value.find(m => m.id === notif.machine_id);
+    const machine = cityFilteredMachines.value.find(m => m.id === notif.machine_id);
     if (!machine) return null;
 
     const todayRecords = (machine.records || []).filter(r => r.status === 'completed' && isSameDay(r.maintenance_date, today));

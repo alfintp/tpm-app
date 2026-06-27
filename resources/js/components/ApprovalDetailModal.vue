@@ -7,12 +7,22 @@
       <div class="p-6 border-b border-slate-100 flex items-start justify-between">
         <div>
           <h3 class="text-xl font-bold text-slate-800">Detail Laporan</h3>
-          <p class="text-slate-500 text-xs mt-1">
-            Mesin: <span class="font-bold text-slate-700">{{ item?.machine_name }}</span> &bull;
-            Teknisi: <span class="font-bold text-slate-700">{{ item?.technician_name }}</span> &bull;
-            Waktu: <span class="font-bold text-slate-700">{{ formatDateTime(item?.maintenance_date) }}</span>
+          <p class="text-slate-500 text-xs mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 leading-relaxed">
+            <span>Mesin: <span class="font-bold text-slate-700">{{ item?.machine_name }}</span></span> &bull;
+            <span>Teknisi: <span class="font-bold text-slate-700">{{ item?.technician_name }}</span></span> &bull;
+            <span>Tanggal: <span class="font-bold text-slate-700">{{ formatDateTime(item?.maintenance_date) }}</span></span>
+            <template v-if="item?.start_time || item?.end_time">
+              &bull;
+              <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded-lg">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Jam: {{ formatTime(item.start_time) }} - {{ formatTime(item.end_time) }}
+              </span>
+            </template>
+            <span v-if="item?.duration_minutes" class="text-brand-gradation font-bold bg-brand-cream border border-brand-cream/40 px-2 py-0.5 rounded-lg text-[11px] inline-flex items-center gap-1 shadow-sm">
+              Durasi: {{ formatDuration(item.duration_minutes) }}
+            </span>
           </p>
-          <p v-if="item?.notes" class="text-xs text-slate-500 mt-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 italic">
+          <p v-if="item?.notes" class="text-xs text-slate-500 mt-2.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 italic">
             Catatan Teknisi: "{{ item.notes }}"
           </p>
         </div>
@@ -171,6 +181,23 @@ const filteredActions = computed(() => {
 
   return list;
 });
+
+const formatDuration = (minutes) => {
+  if (minutes === null || minutes === undefined) return '-';
+  if (minutes < 60) return `${minutes} menit`;
+  const h = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  return rem ? `${h} jam ${rem} menit` : `${h} jam`;
+};
+
+const formatTime = (timeStr) => {
+  if (!timeStr) return '-';
+  const parts = timeStr.split(':');
+  if (parts.length >= 2) {
+    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+  }
+  return timeStr;
+};
 
 const formatDateTime = (d) => {
   if (!d) return '-';

@@ -83,7 +83,7 @@ Route::get('/machine/{id}', function ($id) {
         'components', 
         'records.actions.component', 
         'records.technician', 
-        'records.approval', 
+        'records.latestApproval', 
         'picMesin'
     ])->findOrFail($id);
 

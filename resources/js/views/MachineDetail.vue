@@ -31,7 +31,7 @@
     <div v-if="nextSchedule" class="rounded-2xl border px-5 py-4 flex flex-wrap items-center justify-between gap-3"
       :class="maintenanceBannerClass">
       <div class="flex items-center gap-3">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
           :class="maintenanceBannerIconClass"
         ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         <div>
@@ -75,36 +75,38 @@
 
     <!-- Tabs -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div class="flex border-b border-slate-100">
+      <div class="flex overflow-x-auto border-b border-slate-100">
         <button
+          v-if="canReport"
           @click="switchTab('report')"
           :class="activeTab === 'report' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-          class="flex-1 px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
+          class="shrink-0 sm:flex-1 px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
         >
-         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Laporan
-          <span v-if="uncheckedTodayCount > 0" class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">{{ uncheckedTodayCount }} belum lapor</span>
+          <span v-if="uncheckedTodayCount > 0" class="hidden sm:inline-block text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">{{ uncheckedTodayCount }} belum lapor</span>
         </button>
         <button
           @click="switchTab('history')"
           :class="activeTab === 'history' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-          class="flex-1 px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
+          class="shrink-0 sm:flex-1 px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Riwayat Maintenance
         </button>
         <button
           @click="switchTab('component')"
           :class="activeTab === 'component' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-          class="flex-1 px-6 py-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-2"
+          class="shrink-0 sm:flex-1 px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
         >
-            <svg class="w-5 h-5 " fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           Daftar Komponen
         </button>
       </div>
 
       <!-- Tab 1: Report -->
       <MachineReportTab
+        v-if="canReport"
         v-show="activeTab === 'report'"
         :rows="filteredComponentRows"
         :has-components="!!machine.components?.length"
@@ -126,6 +128,9 @@
         :is-input-disabled="isInputDisabled"
         :can-check="canCheck"
         :is-condition-valid="isConditionValid"
+        :start-time="reportStartTime"
+        :end-time="reportEndTime"
+        :duration-label="reportDurationLabel"
         @force-report="handleForceReport"
         @update:filter="componentFilter = $event"
         @condition-change="onConditionChange"
@@ -134,6 +139,8 @@
         @wizard-preset="setWizardPreset($event.row, $event.val)"
         @start-edit="startEdit"
         @cancel-edit="cancelEdit"
+        @update:start-time="reportStartTime = $event"
+        @update:end-time="reportEndTime = $event"
       />
 
       <!-- Tab 2: Maintenance History -->
@@ -193,8 +200,8 @@
 
     <!-- Floating Save Button (FAB) -->
     <button
-      v-if="activeTab === 'report' && pendingCount > 0 && !(isReportBlocked && !forceReport)"
-      @click="submitReport(false)"
+      v-if="canReport && activeTab === 'report' && pendingCount > 0 && !(isReportBlocked && !forceReport)"
+      @click="openWorkTimeConfirm"
       :disabled="submitting"
       class="fixed bottom-6 right-6 z-50 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg transition-all cursor-pointer flex items-center gap-2 px-5 py-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
     >
@@ -203,8 +210,20 @@
       <span class="font-semibold">Simpan ({{ pendingCount }})</span>
     </button>
 
+    <!-- Work Time Confirmation Modal -->
+    <WorkTimeConfirmModal
+      :show="showWorkTimeConfirm"
+      :start-time="reportStartTime"
+      :end-time="reportEndTime"
+      :duration-label="reportDurationLabel"
+      @close="showWorkTimeConfirm = false"
+      @confirm="onWorkTimeConfirmed"
+      @update:start-time="reportStartTime = $event"
+      @update:end-time="reportEndTime = $event"
+    />
+
     <!-- Keyboard Shortcut Hint -->
-    <div v-if="activeTab === 'report' && pendingCount > 0" class="fixed bottom-6 right-24 z-40 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-60">
+    <div v-if="canReport && activeTab === 'report' && pendingCount > 0" class="fixed bottom-6 right-24 z-40 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-60">
       Ctrl+S
     </div>
 
@@ -217,6 +236,7 @@ import { showAlert, showUnsavedConfirm, showConfirm } from '../composables/useAl
 import ComponentForm from '../components/ComponentForm.vue';
 import ComponentHistory from '../components/ComponentHistory.vue';
 import MachineEditModal from '../components/MachineEditModal.vue';
+import WorkTimeConfirmModal from '../components/WorkTimeConfirmModal.vue';
 import { useAuth } from '../composables/useAuth.js';
 import { router } from '@inertiajs/vue3';
 import PageHeader from '../components/PageHeader.vue';
@@ -241,6 +261,25 @@ const props = defineProps({
 const { isManagerOrAdmin, isAdmin, user: authUser } = useAuth();
 const machine = ref(props.machine || props.initialMachine);
 const loading = ref(!machine.value);
+const roles = ref([]);
+const rolesLoaded = ref(false);
+
+const fetchRoles = async () => {
+  try {
+    const res = await axios.get('/api/roles');
+    roles.value = res.data || [];
+  } catch (e) {
+    console.error('Failed to fetch roles:', e);
+  } finally {
+    rolesLoaded.value = true;
+  }
+};
+
+const canReport = computed(() => {
+  if (isAdmin.value) return true;
+  const role = roles.value.find(r => r.name === authUser.value?.role);
+  return !!role?.can_report;
+});
 
 const machineId = computed(() => {
   if (machine.value) return machine.value.id;
@@ -252,13 +291,42 @@ const machineId = computed(() => {
   return null;
 });
 
-const activeTab = ref(props.machine?.components?.length ? 'report' : 'component');
+const activeTab = ref('component');
+
+watch([rolesLoaded, canReport], ([loaded, report]) => {
+  if (!loaded) return;
+  if (report && machine.value?.components?.length) {
+    activeTab.value = 'report';
+  }
+}, { immediate: true });
 const componentFilter = ref('unchecked_today');
 const submitting = ref(false);
 const componentRows = ref([]);
 const skipLeaveGuard = ref(false);
 const forceReport = ref(false);
 const forceReportLoading = ref(false);
+const reportStartTime = ref('');
+const reportEndTime = ref('');
+
+const reportDurationMinutes = computed(() => {
+  if (!reportStartTime.value || !reportEndTime.value) return null;
+  const [startH, startM] = reportStartTime.value.split(':').map(Number);
+  const [endH, endM] = reportEndTime.value.split(':').map(Number);
+  const start = startH * 60 + startM;
+  const end = endH * 60 + endM;
+  let diff = end - start;
+  if (diff < 0) diff += 24 * 60;
+  return diff;
+});
+
+const reportDurationLabel = computed(() => {
+  const m = reportDurationMinutes.value;
+  if (m === null || m < 0) return '';
+  if (m < 60) return `${m} menit`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem ? `${h} jam ${rem} menit` : `${h} jam`;
+});
 
 const showComponentImportModal = ref(false);
 const importingComponents = ref(false);
@@ -271,6 +339,9 @@ const historyComponent = ref(null);
 
 // Modal states for machine edit
 const showMachineEdit = ref(false);
+
+// Work time confirmation modal
+const showWorkTimeConfirm = ref(false);
 
 // Filter for component tab
 const componentCategoryFilter = ref('all');
@@ -306,7 +377,7 @@ const currentPeriodStart = computed(() => {
 const initialLoadDone = ref(false);
 
 const checkCityGuard = () => {
-  if (authUser.value?.role === 'technician' && authUser.value?.city && authUser.value.city !== 'both') {
+  if (authUser.value?.city && authUser.value.city !== 'both') {
     if (machine.value?.kota && machine.value.kota !== authUser.value.city) {
       showAlert('error', 'Akses Ditolak!', 'Anda tidak memiliki hak akses untuk melihat mesin ini.');
       router.visit('/machines');
@@ -343,8 +414,8 @@ const loadData = async () => {
 const handleKeydown = (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
-    if (activeTab.value === 'report' && pendingCount.value > 0 && !submitting.value) {
-      submitReport();
+    if (canReport.value && activeTab.value === 'report' && pendingCount.value > 0 && !submitting.value) {
+      openWorkTimeConfirm();
     }
   }
 };
@@ -353,6 +424,7 @@ let unregisterBeforeListener = null;
 
 onMounted(() => {
   loadData();
+  fetchRoles();
   window.addEventListener('keydown', handleKeydown);
 
   unregisterBeforeListener = router.on('before', (event) => {
@@ -393,7 +465,7 @@ const todayChecks = computed(() => {
     recDate.setHours(0, 0, 0, 0);
     // Only include records within the current maintenance period
     if (recDate < periodStart) continue;
-    const approvalStatus = record.approval?.decision ?? 'pending';
+    const approvalStatus = record.latest_approval?.decision ?? 'pending';
     // Rejected records are treated as if they never happened — allow re-submission
     if (approvalStatus === 'rejected') continue;
 
@@ -408,6 +480,8 @@ const todayChecks = computed(() => {
           description: action.description ?? '',
           isReplacement: action.action_type === 'replace',
           approvalStatus, // 'pending' | 'approved'
+          startTime: record.start_time,
+          endTime: record.end_time,
         };
       }
     }
@@ -425,7 +499,7 @@ const rejectedChecks = computed(() => {
     const recDate = new Date(record.maintenance_date);
     recDate.setHours(0, 0, 0, 0);
     if (recDate < periodStart) continue;
-    const approvalStatus = record.approval?.decision ?? 'pending';
+    const approvalStatus = record.latest_approval?.decision ?? 'pending';
     if (approvalStatus !== 'rejected') continue;
 
     for (const action of record.actions ?? []) {
@@ -434,7 +508,9 @@ const rejectedChecks = computed(() => {
       if (!map[id] || recDate > new Date(map[id].date)) {
         map[id] = {
           date: record.maintenance_date,
-          notes: record.approval?.notes ?? '',
+          notes: record.latest_approval?.notes ?? '',
+          startTime: record.start_time,
+          endTime: record.end_time,
         };
       }
     }
@@ -447,7 +523,7 @@ const getComponentActions = (componentId) => {
   const actions = [];
   for (const record of machine.value?.records ?? []) {
     // Only include actions from approved records for display purposes
-    const approvalStatus = record.approval?.decision ?? 'pending';
+    const approvalStatus = record.latest_approval?.decision ?? 'pending';
     if (approvalStatus !== 'approved') continue;
     for (const action of record.actions ?? []) {
       if (action.machine_component_id === componentId) {
@@ -492,11 +568,14 @@ const initComponentRows = () => {
       specification: comp.specification,
       qty: comp.qty,
       unit: comp.unit,
+      difficulty: comp.difficulty || null,
       lastConditionPct: comp.last_condition_pct,
       checkedToday: !!todayCheck,
       todayCondition: todayCheck?.condition ?? null,
       todayCheckedAt: todayCheck?.date ?? null,
       todayApprovalStatus: todayCheck?.approvalStatus ?? null,
+      startTime: todayCheck?.startTime ?? rejectedCheck?.startTime ?? null,
+      endTime: todayCheck?.endTime ?? rejectedCheck?.endTime ?? null,
       conditionPct: todayCheck?.condition ?? comp.last_condition_pct ?? null,
       originalCondition: todayCheck?.condition ?? comp.last_condition_pct ?? null,
       editing: false,
@@ -509,6 +588,18 @@ const initComponentRows = () => {
       rejectedNotes: rejectedCheck?.notes ?? null,
     };
   });
+
+  // Suggest start time for a new report; prefill existing report time if editing.
+  if (!reportStartTime.value) {
+    const savedStartRow = componentRows.value.find(r => r.startTime);
+    const savedEndRow = componentRows.value.find(r => r.endTime);
+    if (savedStartRow) {
+      reportStartTime.value = formatTimeForInput(savedStartRow.startTime);
+      if (savedEndRow) reportEndTime.value = formatTimeForInput(savedEndRow.endTime);
+    } else {
+      reportStartTime.value = new Date().toTimeString().slice(0, 5);
+    }
+  }
 };
 
 const replacementDates = computed(() => {
@@ -517,7 +608,7 @@ const replacementDates = computed(() => {
 
   for (const record of machine.value.records) {
     // Only count replacements from approved records
-    const approvalStatus = record.approval?.decision ?? 'pending';
+    const approvalStatus = record.latest_approval?.decision ?? 'pending';
     if (approvalStatus !== 'approved') continue;
     for (const action of record.actions ?? []) {
       if (action.action_type !== 'replace' || !action.machine_component_id) continue;
@@ -541,7 +632,7 @@ const getLastReplacementDate = (componentId) => {
 const getLastMaintenanceDate = (componentId) => {
   let latest = null;
   for (const record of machine.value?.records ?? []) {
-    const approvalStatus = record.approval?.decision ?? 'pending';
+    const approvalStatus = record.latest_approval?.decision ?? 'pending';
     if (approvalStatus !== 'approved') continue;
     for (const action of record.actions ?? []) {
       if (action.machine_component_id !== componentId) continue;
@@ -655,14 +746,17 @@ const sortedRecords = computed(() => {
   });
 });
 
-const uncheckedTodayCount = computed(() => componentRows.value.filter(r => !r.checkedToday).length);
+const isMandatory = (r) => r.difficulty === 'sedang' || r.difficulty === 'berat';
+const uncheckedTodayCount = computed(() => componentRows.value.filter(r => isMandatory(r) && !r.checkedToday).length);
 const checkedTodayCount = computed(() => componentRows.value.filter(r => r.checkedToday).length);
+const ringanCount = computed(() => componentRows.value.filter(r => r.difficulty === 'ringan' || !r.difficulty).length);
 const pendingCount = computed(() => componentRows.value.filter(r => r.checked).length);
 const hasUnsavedChanges = computed(() => pendingCount.value > 0);
 
 const filterOptions = computed(() => [
-  { value: 'unchecked_today', label: 'Belum Dilaporkan Periode Ini', count: uncheckedTodayCount.value },
+  { value: 'unchecked_today', label: 'Belum Dilaporkan (Wajib)', count: uncheckedTodayCount.value },
   { value: 'checked_today', label: 'Sudah Dilaporkan Periode Ini', count: checkedTodayCount.value },
+  { value: 'ringan', label: 'Ringan (Opsional)', count: ringanCount.value },
   { value: 'all', label: 'Semua', count: componentRows.value.length },
 ]);
 
@@ -671,9 +765,11 @@ const filteredComponentRows = computed(() => {
 
   // Apply filter by status
   if (componentFilter.value === 'unchecked_today') {
-    filtered = filtered.filter(r => !r.checkedToday);
+    filtered = filtered.filter(r => isMandatory(r) && !r.checkedToday);
   } else if (componentFilter.value === 'checked_today') {
     filtered = filtered.filter(r => r.checkedToday);
+  } else if (componentFilter.value === 'ringan') {
+    filtered = filtered.filter(r => r.difficulty === 'ringan' || !r.difficulty);
   }
 
   // Apply search filter
@@ -746,11 +842,26 @@ const onConditionChange = (row) => {
   }
 };
 
+const formatTimeForInput = (timeStr) => {
+  if (!timeStr) return '';
+  const parts = timeStr.split(':');
+  if (parts.length >= 2) {
+    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+  }
+  return timeStr;
+};
+
 const startEdit = (row) => {
   // Save original values so we can restore on cancel
   row._origConditionPct = row.conditionPct;
   row._origDescription = row.description;
   row._origIsReplacement = row.is_component_replacement;
+  row._origStartTime = row.startTime;
+  row._origEndTime = row.endTime;
+
+  reportStartTime.value = formatTimeForInput(row.startTime);
+  reportEndTime.value = formatTimeForInput(row.endTime);
+
   row.editing = true;
   row.checked = false;
   row.checkedAt = null;
@@ -764,6 +875,10 @@ const cancelEdit = (row) => {
   row.conditionPct = row._origConditionPct;
   row.description = row._origDescription;
   row.is_component_replacement = row._origIsReplacement;
+
+  reportStartTime.value = formatTimeForInput(row._origStartTime);
+  reportEndTime.value = formatTimeForInput(row._origEndTime);
+
   row.editing = false;
   row.checked = false;
   row.checkedAt = null;
@@ -804,6 +919,7 @@ const handleUnsavedAction = async () => {
 
 const switchTab = async (tab) => {
   if (tab === activeTab.value) return;
+  if (tab === 'report' && !canReport.value) return;
   const ok = await handleUnsavedAction();
   if (!ok) return;
   activeTab.value = tab;
@@ -842,7 +958,41 @@ const handleForceReport = async () => {
   }
 };
 
+const ensureWorkTime = () => {
+  const now = new Date().toTimeString().slice(0, 5);
+  if (!reportStartTime.value) reportStartTime.value = now;
+  if (!reportEndTime.value) reportEndTime.value = now;
+  // Ensure end time is at least 1 minute after start time
+  if (reportStartTime.value === reportEndTime.value) {
+    const [h, m] = reportEndTime.value.split(':').map(Number);
+    const totalMin = h * 60 + m + 1;
+    const newH = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
+    const newM = String(totalMin % 60).padStart(2, '0');
+    reportEndTime.value = `${newH}:${newM}`;
+  }
+};
+
+const openWorkTimeConfirm = () => {
+  if (activeTab.value !== 'report' || pendingCount.value === 0 || (isReportBlocked.value && !forceReport.value)) return;
+  ensureWorkTime();
+  showWorkTimeConfirm.value = true;
+};
+
+const onWorkTimeConfirmed = () => {
+  if (!reportStartTime.value || !reportEndTime.value) {
+    showAlert('warning', 'Waktu Belum Lengkap', 'Jam mulai dan jam selesai wajib diisi.');
+    return;
+  }
+  if (reportStartTime.value === reportEndTime.value) {
+    showAlert('warning', 'Waktu Tidak Valid', 'Jam mulai dan jam selesai tidak boleh sama. Minimal selisih 1 menit.');
+    return;
+  }
+  showWorkTimeConfirm.value = false;
+  submitReport(false);
+};
+
 const submitReport = async (redirect = true) => {
+  ensureWorkTime();
   const checkedRows = componentRows.value.filter(r => r.checked);
   if (checkedRows.length === 0) {
     showAlert('warning', 'Perhatian', 'Konfirmasi minimal satu komponen terlebih dahulu.');
@@ -868,6 +1018,9 @@ const submitReport = async (redirect = true) => {
       machine_id: machineId.value,
       schedule_id: forceReport.value ? null : (nextSchedule.value?.id || null),
       maintenance_date: new Date().toISOString(),
+      start_time: reportStartTime.value || null,
+      end_time: reportEndTime.value || null,
+      duration_minutes: reportDurationMinutes.value,
       status: 'completed',
       notes: `Maintenance report - ${checkedRows.length} komponen diperiksa`,
       actions,
@@ -884,7 +1037,10 @@ const submitReport = async (redirect = true) => {
       router.visit(`/machine/${machineId.value}`, { preserveState: false });
     } else {
       await loadData();
-      showAlert('success', 'Laporan Berhasil Dikirim!', successMsg);
+      reportStartTime.value = '';
+      reportEndTime.value = '';
+      await showAlert('success', 'Laporan Berhasil Dikirim!', successMsg);
+      activeTab.value = 'history';
       window.dispatchEvent(new CustomEvent('refresh-data'));
     }
     return true;
@@ -1030,16 +1186,16 @@ const downloadComponentTemplate = async () => {
   try {
     const XLSX = await loadSheetJS();
     const headers = [
-      ['Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kondisi Awal (%)']
+      ['Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kondisi Awal (%)', 'Kesulitan (ringan/sedang/berat)']
     ];
     const rows = [
-      ['Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 100],
-      ['Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 90]
+      ['Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 100, 'sedang'],
+      ['Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 90, 'ringan']
     ];
-    
+
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
-    
+
     ws['!cols'] = [
       { wch: 20 }, // Kategori
       { wch: 25 }, // Nama Komponen
@@ -1047,8 +1203,9 @@ const downloadComponentTemplate = async () => {
       { wch: 15 }, // Jumlah (Qty)
       { wch: 15 }, // Satuan
       { wch: 20 }, // Kondisi Awal (%)
+      { wch: 25 }, // Kesulitan
     ];
-    
+
     XLSX.utils.book_append_sheet(wb, ws, 'Template Import Komponen');
     XLSX.writeFile(wb, 'Format_Import_Komponen.xlsx');
   } catch (err) {
@@ -1083,7 +1240,7 @@ const importComponents = async (file) => {
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (row.length === 0 || !row[0]) continue;
-          
+
           mappedComponents.push({
             category: row[0]?.toString()?.trim() || '',
             name: row[1]?.toString()?.trim() || '',
@@ -1091,6 +1248,7 @@ const importComponents = async (file) => {
             qty: parseInt(row[3]) || 1,
             unit: row[4]?.toString()?.trim() || 'Pcs',
             last_condition_pct: parseFloat(row[5]) || 100,
+            difficulty: row[6]?.toString()?.trim() || null,
           });
         }
         

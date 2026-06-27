@@ -11,7 +11,7 @@
         <Button
           v-if="isAdmin"
           @click="openAddModal"
-          class="bg-gradient-to-tr from-brand-brown to-brand-gradation hover:opacity-90 text-brand-cream rounded-xl font-bold text-sm shadow-md gap-2 hover:cursor-pointer"
+          class="bg-linear-to-tr from-brand-brown to-brand-gradation hover:opacity-90 text-brand-cream rounded-xl font-bold text-sm shadow-md gap-2 hover:cursor-pointer"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
           Tambah User Baru
@@ -43,7 +43,7 @@
       <!-- Kolom: User (avatar + nama) -->
       <template #cell-full_name="{ row }">
         <div class="flex items-center gap-3">
-          <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-brand-brown to-brand-gradation text-brand-cream flex items-center justify-center font-bold text-sm shadow-inner uppercase flex-shrink-0">
+          <div class="h-10 w-10 rounded-full bg-linear-to-tr from-brand-brown to-brand-gradation text-brand-cream flex items-center justify-center font-bold text-sm shadow-inner uppercase shrink-0">
             {{ getInitials(row.full_name) }}
           </div>
           <div>
@@ -76,9 +76,9 @@
           :disabled="updatingId === row.id"
           class="bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-brown focus:border-brand-brown disabled:opacity-50 cursor-pointer"
         >
-          <option value="technician">Teknisi</option>
-          <option value="manager">Manajer</option>
-          <option value="admin">Admin</option>
+          <option v-for="role in activeRoles" :key="role.name" :value="role.name">
+            {{ role.display_name }} 
+          </option>
         </select>
       </template>
 
@@ -309,9 +309,9 @@
           <div class="space-y-1.5">
             <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Role *</label>
             <select v-model="addForm.role" required class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-brown focus:border-brand-brown text-slate-700 font-bold text-sm cursor-pointer">
-              <option value="technician">Teknisi (Technician)</option>
-              <option value="manager">Manajer (Manager)</option>
-              <option value="admin">Administrator (Admin)</option>
+              <option v-for="role in activeRoles" :key="role.name" :value="role.name">
+                {{ role.display_name }} 
+              </option>
             </select>
           </div>
 
@@ -363,6 +363,7 @@ const perPage = 15;
 
 const loading = ref(props.initialUsers === null);
 const users = ref(props.initialUsers || []);
+const roles = ref([]);
 const updatingId = ref(null);
 const updatingCityId = ref(null);
 const deletingId = ref(null);
@@ -558,14 +559,24 @@ async function fetchUsers() {
   if (props.initialUsers !== null) return;
   loading.value = true;
   try {
-    const response = await window.axios.get('/api/admin/users');
-    users.value = response.data;
+    const [usersResponse, rolesResponse] = await Promise.all([
+      window.axios.get('/api/admin/users'),
+      window.axios.get('/api/roles'),
+    ]);
+    users.value = usersResponse.data;
+    roles.value = Array.isArray(rolesResponse.data) ? rolesResponse.data : [];
   } catch (error) {
     console.error('Failed to fetch users:', error);
     showAlert('error', 'Error', 'Gagal memuat daftar user. Pastikan Anda memiliki akses yang tepat.');
   } finally {
     loading.value = false;
   }
+}
+
+const activeRoles = computed(() => roles.value.filter(r => r.is_active));
+
+function roleName(role) {
+  return roles.value.find(r => r.name === role)?.display_name ?? role;
 }
 
 async function handleRoleChange(user, newRole) {
@@ -624,12 +635,7 @@ function getInitials(name) {
 }
 
 function getRoleName(role) {
-  const names = {
-    admin: 'Admin',
-    manager: 'Manager',
-    technician: 'Teknisi'
-  };
-  return names[role] ?? role;
+  return roleName(role);
 }
 
 function getCityName(city) {

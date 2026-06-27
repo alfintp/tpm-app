@@ -15,15 +15,15 @@ class DatabaseSeeder extends Seeder
         User::create([
             'full_name' => 'Administrator',
             'email' => 'admin@tpm.com',
-            'password' => bcrypt('password'),
+            'password' => bcrypt('fufufafa'),
             'role' => 'admin',
             'city' => 'both',
         ]);
 
         User::create([
-            'full_name' => 'Ucup',
-            'email' => 'ucup@lsi.com',
-            'password' => bcrypt('password'),
+            'full_name' => 'Winarto',
+            'email' => 'winarto@lsi.com',
+            'password' => bcrypt('password123'),
             'role' => 'manager',
             'city' => 'both',
         ]);
@@ -31,14 +31,22 @@ class DatabaseSeeder extends Seeder
         User::create([
             'full_name' => 'Agus',
             'email' => 'agus@lsi.com',
-            'password' => bcrypt('password'),
+            'password' => bcrypt('password123'),
             'role' => 'technician',
-            'city' => 'pasuruan',
+            'city' => 'sby',
         ]);
         // user bahrul
         User::create([
             'full_name' => 'Bahrul',
             'email' => 'bahrul@lsi.com',
+            'password' => bcrypt('password'),
+            'role' => 'technician',
+            'city' => 'sby',
+        ]);
+        // user surya
+        User::create([
+            'full_name' => 'Surya',
+            'email' => 'surya@lsi.com',
             'password' => bcrypt('password'),
             'role' => 'technician',
             'city' => 'sby',
@@ -59,13 +67,13 @@ class DatabaseSeeder extends Seeder
             'role' => 'technician',
             'city' => 'pasuruan',
         ]);
-        // user surya
+        
         User::create([
-            'full_name' => 'Surya',
-            'email' => 'surya@lsi.com',
+            'full_name' => 'Rudi',
+            'email' => 'rudi@lsi.com',
             'password' => bcrypt('password'),
             'role' => 'technician',
-            'city' => 'sby',
+            'city' => 'pasuruan',
         ]);
 
 

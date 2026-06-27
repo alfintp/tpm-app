@@ -2,7 +2,7 @@
   <div class="bg-gradient-to-tr from-brand-brown to-brand-gradation rounded-2xl p-6 text-white shadow-lg mt-4">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold mb-1">{{ greeting }}, {{ name }}! 👋😮👍</h1>
+        <h1 class="text-2xl font-bold mb-1">Halo, {{ name }}! 👋</h1>
         <p class="text-indigo-100 text-sm">ringkasan status maintenance hari ini</p>
       </div>
       <div class="text-right">
@@ -27,16 +27,6 @@ const roleLabel = computed(() => {
   if (!role) return '';
   return role.charAt(0).toUpperCase() + role.slice(1);
 });
-
-const greeting = computed(() => {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Selamat Pagi';
-  if (hour < 15) return 'Selamat Siang';
-  if (hour < 18) return 'Selamat Sore';
-  return 'Selamat Malam';
-});
-
-const timeGreeting = computed(() => greeting.value);
 
 const today = computed(() =>
   new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })

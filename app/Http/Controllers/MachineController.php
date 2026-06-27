@@ -17,8 +17,8 @@ class MachineController extends Controller
 
         $query = Machine::with(['schedules', 'components', 'picMesin', 'records.actions']);
 
-        // Technicians can only see machines in their assigned city (unless city is 'both')
-        if ($authUser && $authUser->role === 'technician' && isset($authUser->city) && $authUser->city !== 'both') {
+        // Filter machines by user's assigned city (unless city is 'both')
+        if ($authUser && isset($authUser->city) && $authUser->city !== 'both') {
             $query->where('kota', $authUser->city);
         }
 
@@ -32,11 +32,11 @@ class MachineController extends Controller
     private function canAccessMachineCity(?string $machineKota): bool
     {
         $user = auth('sanctum')->user();
-        if (!$user || in_array($user->role, ['admin', 'manager'])) {
+        if (!$user) {
             return true;
         }
-        // Technician: city 'both' means unrestricted
-        if ($user->city === 'both') {
+        // city 'both' means unrestricted
+        if (($user->city ?? 'both') === 'both') {
             return true;
         }
         return $user->city === $machineKota;
@@ -44,7 +44,7 @@ class MachineController extends Controller
 
     public function show(Request $request, $id)
     {
-        $machine = Machine::with(['schedules', 'components', 'records.actions.component', 'records.technician', 'records.approval', 'picMesin'])->findOrFail($id);
+        $machine = Machine::with(['schedules', 'components', 'records.actions.component', 'records.technician', 'records.latestApproval', 'picMesin'])->findOrFail($id);
 
         if (!$this->canAccessMachineCity($machine->kota)) {
             return response()->json(['message' => 'Akses ditolak. Mesin ini berada di luar kota yang ditugaskan kepada Anda.'], 403);

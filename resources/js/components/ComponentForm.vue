@@ -32,6 +32,15 @@
             <input type="text" v-model="form.unit" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. pcs, set, meter">
           </div>
         </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-slate-700">Tingkat Kesulitan</label>
+          <select v-model="form.difficulty" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 bg-white">
+            <option value="">Pilih kesulitan</option>
+            <option value="ringan">Ringan</option>
+            <option value="sedang">Sedang</option>
+            <option value="berat">Berat</option>
+          </select>
+        </div>
         
       </div>
       <div class="px-8 py-5 border-t border-slate-100 bg-slate-50 flex justify-end space-x-3 rounded-b-3xl">
@@ -65,6 +74,7 @@ const form = ref({
   specification: props.component?.specification ?? '',
   qty: props.component?.qty ?? '',
   unit: props.component?.unit ?? '',
+  difficulty: props.component?.difficulty ?? '',
   last_condition_pct: props.component?.last_condition_pct ?? 100,
   last_replaced_at: props.component?.last_replaced_at ? props.component.last_replaced_at.split('T')[0] : '',
 });

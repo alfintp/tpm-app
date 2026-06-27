@@ -11,6 +11,7 @@
   </div>
 
   <SidebarProvider v-if="authChecked && isAuthenticated">
+    <SidebarMobileCloser />
     <Sidebar collapsible="icon">
       <!-- Header: Logo -->
       <SidebarHeader class="border-b border-sidebar-border px-3 py-3 mx-auto">
@@ -136,10 +137,10 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '../views/components/ui/sidebar/index.ts';
+import SidebarMobileCloser from './components/SidebarMobileCloser.vue';
 
 const page = usePage();
 const { user, isAdmin, isManagerOrAdmin, isAuthenticated, authReady, initializeAuth } = useAuth();
-
 const alertModalRef = ref(null);
 const authChecked = ref(false);
 

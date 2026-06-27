@@ -16,6 +16,23 @@
         {{ opt.label }}
         <span class="ml-1 opacity-80">({{ opt.count }})</span>
       </button>
+      <select
+        v-model="difficultyFilter"
+        class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white hover:border-brand-brown/50 focus:outline-none focus:ring-2 focus:ring-brand-brown/50 cursor-pointer"
+      >
+        <option value="all">Semua Kesulitan</option>
+        <option value="ringan">Ringan</option>
+        <option value="sedang">Sedang</option>
+        <option value="berat">Berat</option>
+      </select>
+      <select
+        v-model="conditionSort"
+        class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white hover:border-brand-brown/50 focus:outline-none focus:ring-2 focus:ring-brand-brown/50 cursor-pointer"
+      >
+        <option value="default">Urutan Kondisi</option>
+        <option value="lowest">Kondisi Terendah</option>
+        <option value="highest">Kondisi Tertinggi</option>
+      </select>
       <div class="ml-auto text-xs text-slate-400">
         Menampilkan {{ filteredComponents.length }} dari {{ components.length }} komponen
       </div>
@@ -66,6 +83,11 @@
           <div class="flex-1 cursor-pointer" @click="$emit('view-history', comp)">
             <div class="flex gap-2 mb-1.5">
               <span class="text-xs font-semibold text-brand-gradation bg-brand-cream px-2 py-0.5 rounded-full">{{ comp.category }}</span>
+              <span
+                v-if="comp.difficulty"
+                class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                :class="difficultyClass(comp.difficulty)"
+              >{{ difficultyLabel(comp.difficulty) }}</span>
             </div>
             <h4 class="font-bold text-slate-800 hover:text-brand-gradation transition-colors">{{ comp.name }}</h4>
             <p class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ comp.specification }}</p>
@@ -73,7 +95,7 @@
 
           <!-- Condition circle -->
           <div class="flex items-center gap-3 ml-3">
-            <div class="relative flex-shrink-0">
+            <div class="relative shrink-0">
               <svg class="w-14 h-14" viewBox="0 0 50 50" style="transform: rotate(-90deg)">
                 <circle class="text-slate-100 stroke-current" stroke-width="5" cx="25" cy="25" r="20" fill="transparent"/>
                 <circle :class="colorTheme(comp.last_condition_pct).textClass" class="stroke-current" stroke-width="5" stroke-linecap="round" cx="25" cy="25" r="20" fill="transparent"
@@ -131,6 +153,26 @@ defineEmits(['add', 'import', 'edit', 'delete', 'view-history']);
 
 const search = ref('');
 const categoryFilter = ref('all');
+const difficultyFilter = ref('all');
+const conditionSort = ref('default');
+
+const difficultyClass = (diff) => {
+  const map = {
+    ringan: 'bg-green-100 text-green-700',
+    sedang: 'bg-amber-100 text-amber-700',
+    berat: 'bg-red-100 text-red-700',
+  };
+  return map[diff] || 'bg-slate-100 text-slate-600';
+};
+
+const difficultyLabel = (diff) => {
+  const map = {
+    ringan: 'Ringan',
+    sedang: 'Sedang',
+    berat: 'Berat',
+  };
+  return map[diff] || diff;
+};
 
 const categoryOptions = computed(() => {
   const cats = new Set(props.components.map(c => c.category));
@@ -144,9 +186,23 @@ const categoryOptions = computed(() => {
 const filteredComponents = computed(() => {
   let list = props.components;
   if (categoryFilter.value !== 'all') list = list.filter(c => c.category === categoryFilter.value);
+  if (difficultyFilter.value !== 'all') list = list.filter(c => c.difficulty === difficultyFilter.value);
   if (search.value) {
     const q = search.value.toLowerCase();
     list = list.filter(c => c.name.toLowerCase().includes(q));
+  }
+  if (conditionSort.value === 'lowest') {
+    list = [...list].sort((a, b) => {
+      if (a.last_condition_pct == null) return 1;
+      if (b.last_condition_pct == null) return -1;
+      return a.last_condition_pct - b.last_condition_pct;
+    });
+  } else if (conditionSort.value === 'highest') {
+    list = [...list].sort((a, b) => {
+      if (a.last_condition_pct == null) return 1;
+      if (b.last_condition_pct == null) return -1;
+      return b.last_condition_pct - a.last_condition_pct;
+    });
   }
   return list;
 });

@@ -9,6 +9,7 @@ use App\Http\Controllers\MachineComponentController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\RoleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,7 +73,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/records', [MaintenanceRecordController::class, 'store']);
     Route::get('/records/{id}', [MaintenanceRecordController::class, 'show']);
 
+    // Roles
+    Route::get('/roles', [RoleController::class, 'index']);
+    Route::post('/roles', [RoleController::class, 'store']);
+    Route::put('/roles/{id}', [RoleController::class, 'update']);
+    Route::delete('/roles/{id}', [RoleController::class, 'destroy']);
+
     // Approvals
     Route::get('/approvals', [ApprovalController::class, 'index']);
     Route::post('/approvals/{recordId}/decide', [ApprovalController::class, 'decide']);
+    Route::get('/approval-flow', [ApprovalController::class, 'flowConfig']);
+    Route::put('/approval-flow', [ApprovalController::class, 'updateFlowConfig']);
 });

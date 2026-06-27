@@ -2,7 +2,7 @@
 <template>
   <Teleport to="body">
     <Transition name="alert-fade">
-      <div v-if="visible" class="fixed inset-0 z-[200] flex items-center justify-center">
+      <div v-if="visible" class="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-auto">
         <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="handleCancel"></div>
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden transform transition-all">
           <!-- Color bar top -->
@@ -91,6 +91,7 @@ function show(opts) {
   cancelText.value = opts.cancelText ?? 'Batal';
   discardText.value = opts.discardText ?? null;
   visible.value = true;
+  window.dispatchEvent(new CustomEvent('alert-modal-open'));
   return new Promise((resolve) => { resolveFn = resolve; });
 }
 

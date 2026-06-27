@@ -30,6 +30,7 @@ class MachineComponentController extends Controller
             'specification' => 'nullable|string|max:500',
             'qty' => 'nullable|string|max:50',
             'unit' => 'nullable|string|max:50',
+            'difficulty' => 'nullable|string|in:ringan,sedang,berat',
             'last_replaced_at' => 'nullable|date',
             'last_condition_pct' => 'nullable|numeric|min:0|max:100',
         ]);
@@ -70,6 +71,7 @@ class MachineComponentController extends Controller
             'components.*.specification' => 'nullable|string|max:500',
             'components.*.qty' => 'nullable|string|max:50',
             'components.*.unit' => 'nullable|string|max:50',
+            'components.*.difficulty' => 'nullable|string|in:ringan,sedang,berat',
             'components.*.last_condition_pct' => 'nullable|numeric|min:0|max:100',
         ]);
 
@@ -83,6 +85,7 @@ class MachineComponentController extends Controller
                     'specification' => $item['specification'] ?? null,
                     'qty' => $item['qty'] ?? null,
                     'unit' => $item['unit'] ?? null,
+                    'difficulty' => $item['difficulty'] ?? null,
                     'last_condition_pct' => $item['last_condition_pct'] ?? 100,
                 ]);
                 $createdCount++;
@@ -124,6 +127,7 @@ class MachineComponentController extends Controller
             'components.*.specification' => 'nullable|string|max:500',
             'components.*.qty' => 'nullable|string|max:50',
             'components.*.unit' => 'nullable|string|max:50',
+            'components.*.difficulty' => 'nullable|string|in:ringan,sedang,berat',
             'components.*.last_condition_pct' => 'nullable|numeric|min:0|max:100',
         ]);
 
@@ -156,6 +160,7 @@ class MachineComponentController extends Controller
                     'specification' => $item['specification'] ?? null,
                     'qty' => $item['qty'] ?? null,
                     'unit' => $item['unit'] ?? null,
+                    'difficulty' => $item['difficulty'] ?? null,
                     'last_condition_pct' => $item['last_condition_pct'] ?? 100,
                 ]);
                 $createdCount++;
@@ -188,6 +193,7 @@ class MachineComponentController extends Controller
             'specification' => 'nullable|string|max:500',
             'qty' => 'nullable|string|max:50',
             'unit' => 'nullable|string|max:50',
+            'difficulty' => 'nullable|string|in:ringan,sedang,berat',
             'last_replaced_at' => 'nullable|date',
             'last_condition_pct' => 'nullable|numeric|min:0|max:100',
         ]);
@@ -221,7 +227,7 @@ class MachineComponentController extends Controller
     {
         $component = MachineComponent::with(['machine'])->findOrFail($id);
 
-        $query = \App\Models\MaintenanceAction::with(['record.technician', 'record.approval'])
+        $query = \App\Models\MaintenanceAction::with(['record.technician', 'record.approvals'])
             ->where('machine_component_id', $id)
             ->orderBy('created_at', 'desc');
 
@@ -232,11 +238,50 @@ class MachineComponentController extends Controller
             $query->whereYear('created_at', $request->year);
         }
 
-        $history = $query->get();
+        $flowSteps = \App\Models\ApprovalFlowStep::active()->ordered()->get();
+        $totalSteps = $flowSteps->count();
+
+        $history = $query->get()->map(function ($action) use ($flowSteps, $totalSteps) {
+            $record = $action->record;
+            $approvalState = $this->computeApprovalState($record, $flowSteps, $totalSteps);
+            $action->record->setAttribute('approval_state', $approvalState);
+            return $action;
+        });
 
         return response()->json([
             'component' => $component,
             'history' => $history,
         ]);
+    }
+
+    private function computeApprovalState($record, $flowSteps, $totalSteps)
+    {
+        if (!$record || $totalSteps === 0) {
+            return ['status' => 'pending', 'pending_role' => null];
+        }
+
+        $decisions = $record->approvals->sortBy('step_order');
+
+        $rejected = $decisions->firstWhere('decision', 'rejected');
+        if ($rejected) {
+            return [
+                'status' => 'rejected',
+                'pending_role' => null,
+                'notes' => $rejected->notes,
+            ];
+        }
+
+        $approvedCount = $decisions->where('decision', 'approved')->count();
+        if ($approvedCount >= $totalSteps) {
+            return ['status' => 'approved', 'pending_role' => null];
+        }
+
+        $currentStep = $approvedCount + 1;
+        $pendingRole = $flowSteps->firstWhere('step_order', $currentStep)?->role;
+
+        return [
+            'status' => 'pending',
+            'pending_role' => $pendingRole,
+        ];
     }
 }

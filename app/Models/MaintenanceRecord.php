@@ -15,6 +15,9 @@ class MaintenanceRecord extends Model
         'technician_id',
         'schedule_id',
         'maintenance_date',
+        'start_time',
+        'end_time',
+        'duration_minutes',
         'condition_before_pct',
         'condition_after_pct',
         'notes',
@@ -45,8 +48,13 @@ class MaintenanceRecord extends Model
         return $this->hasMany(MaintenanceAction::class, 'record_id');
     }
 
-    public function approval()
+    public function approvals()
     {
-        return $this->hasOne(Approval::class, 'record_id');
+        return $this->hasMany(Approval::class, 'record_id')->orderBy('step_order');
+    }
+
+    public function latestApproval()
+    {
+        return $this->hasOne(Approval::class, 'record_id')->latest('step_order');
     }
 }
