@@ -84,4 +84,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/approvals/{recordId}/decide', [ApprovalController::class, 'decide']);
     Route::get('/approval-flow', [ApprovalController::class, 'flowConfig']);
     Route::put('/approval-flow', [ApprovalController::class, 'updateFlowConfig']);
+
+    // Holiday proxy — fetches Indonesian national holidays server-side (avoids browser CORS)
+    Route::get('/holidays', function (Request $request) {
+        $year = (int) $request->query('year', date('Y'));
+        $cacheKey = "holidays_{$year}";
+        $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addHours(24), function () use ($year) {
+            try {
+                $response = \Illuminate\Support\Facades\Http::timeout(10)
+                    ->get("https://api-hari-libur.vercel.app/api?year={$year}");
+                if ($response->successful()) {
+                    return $response->json('data', []);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("Holiday API fetch failed for {$year}: " . $e->getMessage());
+            }
+            return [];
+        });
+        return response()->json(['data' => $data]);
+    });
 });

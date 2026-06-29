@@ -10,7 +10,10 @@
           <p class="text-slate-500 text-xs mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 leading-relaxed">
             <span>Mesin: <span class="font-bold text-slate-700">{{ item?.machine_name }}</span></span> &bull;
             <span>Teknisi: <span class="font-bold text-slate-700">{{ item?.technician_name }}</span></span> &bull;
-            <span>Tanggal: <span class="font-bold text-slate-700">{{ formatDateTime(item?.maintenance_date) }}</span></span>
+            <span>Tanggal: <span class="font-bold text-slate-700">{{ formatDateTime(item?.maintenance_date) }}</span></span> &bull;
+            <span v-if="item?.is_unscheduled" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">Luar Jadwal</span>
+            <span v-else-if="item?.is_late" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-100 uppercase tracking-wider">Terlambat</span>
+            <span v-else class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 uppercase tracking-wider">Sesuai Jadwal</span>
             <template v-if="item?.start_time || item?.end_time">
               &bull;
               <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded-lg">

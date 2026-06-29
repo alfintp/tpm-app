@@ -49,13 +49,22 @@
     >
       <!-- Kolom: Mesin & Waktu -->
       <template #cell-machine_name="{ row }">
-        <p class="font-semibold text-slate-800 text-sm cursor-pointer hover:text-indigo-600 transition-colors" @click="goToMachine(row.machine_id)">{{ row.machine_name }}</p>
-        <p class="text-xs text-slate-400 mt-0.5">{{ formatDateTime(row.maintenance_date) }}</p>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <p class="font-semibold text-slate-800 text-sm cursor-pointer hover:text-indigo-600 transition-colors" @click="goToMachine(row.machine_id)">{{ row.machine_name }}</p>
+          <span v-if="row.is_unscheduled" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 tracking-wider uppercase shrink-0">Luar Jadwal</span>
+          <span v-else-if="row.is_late" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-100 tracking-wider uppercase shrink-0">Terlambat</span>
+          <span v-else class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 tracking-wider uppercase shrink-0">Sesuai Jadwal</span>
+        </div>
+        <div class="flex items-center gap-1.5 mt-0.5">
+          <span v-if="row.machine_kota" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wider">
+            {{ row.machine_kota === 'sby' ? 'Surabaya' : row.machine_kota === 'pasuruan' ? 'Pasuruan' : row.machine_kota }}
+          </span>
+          <p class="text-xs text-slate-400">{{ formatDateTime(row.maintenance_date) }}</p>
+        </div>
         <p v-if="row.duration_minutes" class="text-xs text-brand-gradation font-semibold mt-0.5">
           Durasi: {{ formatDuration(row.duration_minutes) }}
           <span v-if="row.start_time || row.end_time" class="text-slate-400 font-normal">({{ formatTime(row.start_time) }} - {{ formatTime(row.end_time) }})</span>
         </p>
-        <p v-if="row.notes" class="text-xs text-slate-500 mt-1 italic line-clamp-1">{{ row.notes }}</p>
       </template>
 
       <!-- Kolom: Teknisi -->

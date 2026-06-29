@@ -14,6 +14,8 @@ class MaintenanceRecord extends Model
         'machine_id',
         'technician_id',
         'schedule_id',
+        'is_unscheduled',
+        'is_late',
         'maintenance_date',
         'start_time',
         'end_time',
@@ -26,6 +28,8 @@ class MaintenanceRecord extends Model
 
     protected $casts = [
         'maintenance_date' => 'datetime',
+        'is_unscheduled' => 'boolean',
+        'is_late' => 'boolean',
     ];
 
     public function machine()

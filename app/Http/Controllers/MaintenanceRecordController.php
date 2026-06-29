@@ -36,6 +36,7 @@ class MaintenanceRecordController extends Controller
             'machine_id' => 'required|exists:machines,id',
             'technician_id' => 'nullable|exists:users,id',
             'schedule_id' => 'nullable|exists:maintenance_schedules,id',
+            'is_unscheduled' => 'nullable|boolean',
             'maintenance_date' => 'required|date',
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
@@ -76,6 +77,20 @@ class MaintenanceRecordController extends Controller
             $recordData = collect($validated)->except('actions')->toArray();
             $recordData['condition_before_pct'] = $beforeVals->count() ? round($beforeVals->avg(), 1) : null;
             $recordData['condition_after_pct'] = $afterVals->count() ? round($afterVals->avg(), 1) : null;
+
+            // Calculate if this submission is late
+            $isLate = false;
+            if (!empty($recordData['schedule_id']) && empty($recordData['is_unscheduled'])) {
+                $schedule = MaintenanceSchedule::find($recordData['schedule_id']);
+                if ($schedule) {
+                    $dueDate = Carbon::parse($schedule->next_due_date)->startOfDay();
+                    $maintenanceDate = Carbon::parse($recordData['maintenance_date'])->startOfDay();
+                    if ($maintenanceDate->greaterThan($dueDate)) {
+                        $isLate = true;
+                    }
+                }
+            }
+            $recordData['is_late'] = $isLate;
 
             $record = MaintenanceRecord::create($recordData);
 

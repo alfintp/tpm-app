@@ -51,6 +51,10 @@
                 </div>
                 <div class="flex flex-col items-end gap-1.5 shrink-0">
                   <span class="text-xs font-bold px-3 py-1 rounded-full uppercase" :class="getActionTypeClass(item.action_type)">{{ item.action_type }}</span>
+                  <div class="flex items-center gap-1">
+                    <span v-if="item.record?.is_unscheduled" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wide">Luar Jadwal</span>
+                    <span v-if="item.record?.is_late" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 uppercase tracking-wide">Terlambat</span>
+                  </div>
                   <span class="text-[10px] font-semibold px-2 py-0.5 rounded border" :class="approvalStateClass(item.record?.approval_state)">
                     {{ approvalStateLabel(item.record?.approval_state) }}
                   </span>

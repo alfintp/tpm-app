@@ -1017,12 +1017,13 @@ const submitReport = async (redirect = true) => {
     await axios.post('/api/records', {
       machine_id: machineId.value,
       schedule_id: forceReport.value ? null : (nextSchedule.value?.id || null),
+      is_unscheduled: forceReport.value,
       maintenance_date: new Date().toISOString(),
       start_time: reportStartTime.value || null,
       end_time: reportEndTime.value || null,
       duration_minutes: reportDurationMinutes.value,
       status: 'completed',
-      notes: `Maintenance report - ${checkedRows.length} komponen diperiksa`,
+      notes: `Maintenance report - ${checkedRows.length} komponen diperiksaaaa`,
       actions,
     });
 
@@ -1039,6 +1040,7 @@ const submitReport = async (redirect = true) => {
       await loadData();
       reportStartTime.value = '';
       reportEndTime.value = '';
+      forceReport.value = false;
       await showAlert('success', 'Laporan Berhasil Dikirim!', successMsg);
       activeTab.value = 'history';
       window.dispatchEvent(new CustomEvent('refresh-data'));

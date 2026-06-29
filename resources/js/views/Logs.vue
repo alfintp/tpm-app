@@ -11,7 +11,7 @@
     <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
       <SearchInput
         v-model="search"
-        placeholder="Cari aktivitas, nama pengguna, detail, atau IP..."
+        placeholder="Cari aktivitas, nama pengguna, detail"
       />
       <FilterTabs v-model="activeTypeFilter" :tabs="logTypes" />
     </div>
