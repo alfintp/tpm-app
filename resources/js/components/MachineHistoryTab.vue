@@ -31,8 +31,8 @@
 
           <div class="mb-3">
             <ApprovalProgress
-              v-if="flowSteps.length > 0"
-              :flow-steps="flowSteps"
+              v-if="getFlowStepsForRecord(record).length > 0"
+              :flow-steps="getFlowStepsForRecord(record)"
               v-bind="getRecordProgress(record)"
             />
             <span v-else class="text-xs font-semibold px-2 py-1 rounded-lg border bg-amber-100 text-amber-800 border-amber-200">
@@ -208,6 +208,15 @@ const loadFlowConfig = async () => {
 
 onMounted(loadFlowConfig);
 
+const getFlowStepsForRecord = (record) => {
+  const reporterRole = record.technician?.role || 'technician';
+  let steps = flowSteps.value.filter(s => s.reporter_role === reporterRole);
+  if (steps.length === 0 && reporterRole !== 'technician') {
+    steps = flowSteps.value.filter(s => s.reporter_role === 'technician');
+  }
+  return steps.sort((a, b) => a.step_order - b.step_order);
+};
+
 const getRecordApprovalState = (record) => {
   const progress = getRecordProgress(record);
   const s = progress.status;
@@ -220,21 +229,22 @@ const getRecordApprovalState = (record) => {
 
 const getRecordProgress = (record) => {
   const latest = record.latest_approval;
-  const total = flowSteps.value.length;
+  const steps = getFlowStepsForRecord(record);
+  const total = steps.length;
   if (total === 0) {
     return { status: 'pending', currentStep: 1, completedSteps: 0, totalSteps: 0, pendingRole: null };
   }
   if (!latest) {
-    return { status: 'pending', currentStep: 1, completedSteps: 0, totalSteps: total, pendingRole: flowSteps.value[0]?.role };
+    return { status: 'pending', currentStep: 1, completedSteps: 0, totalSteps: total, pendingRole: steps[0]?.role };
   }
   if (latest.decision === 'rejected') {
     return { status: 'rejected', currentStep: latest.step_order, completedSteps: latest.step_order - 1, totalSteps: total, pendingRole: null };
   }
-  if (latest.decision === 'approved' && latest.step_order === total) {
+  if (latest.decision === 'approved' && latest.step_order >= total) {
     return { status: 'approved', currentStep: total, completedSteps: total, totalSteps: total, pendingRole: null };
   }
   const currentStep = latest.step_order + 1;
-  return { status: 'pending', currentStep, completedSteps: latest.step_order, totalSteps: total, pendingRole: flowSteps.value[currentStep - 1]?.role };
+  return { status: 'pending', currentStep, completedSteps: latest.step_order, totalSteps: total, pendingRole: steps[currentStep - 1]?.role };
 };
 
 const formatDuration = (minutes) => {

@@ -76,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Roles
     Route::get('/roles', [RoleController::class, 'index']);
     Route::post('/roles', [RoleController::class, 'store']);
+    Route::put('/roles/bulk', [RoleController::class, 'bulkUpdate']);
     Route::put('/roles/{id}', [RoleController::class, 'update']);
     Route::delete('/roles/{id}', [RoleController::class, 'destroy']);
 

@@ -17,6 +17,7 @@ class RoleController extends Controller
             'display_name' => $r->display_name,
             'can_approve' => $r->can_approve,
             'can_report' => $r->can_report,
+            'required_difficulties' => $r->required_difficulties ?? [],
             'is_active' => $r->is_active,
         ]));
     }
@@ -33,6 +34,7 @@ class RoleController extends Controller
             'display_name' => 'required|string|max:100',
             'can_approve' => 'required|boolean',
             'can_report' => 'required|boolean',
+            'required_difficulties' => 'nullable|array',
         ]);
 
         $role = Role::create([
@@ -40,6 +42,7 @@ class RoleController extends Controller
             'display_name' => $validated['display_name'],
             'can_approve' => $validated['can_approve'],
             'can_report' => $validated['can_report'],
+            'required_difficulties' => $this->sanitizeDifficulties($validated['required_difficulties'] ?? []),
             'is_active' => true,
         ]);
 
@@ -60,12 +63,52 @@ class RoleController extends Controller
             'display_name' => 'required|string|max:100',
             'can_approve' => 'required|boolean',
             'can_report' => 'required|boolean',
+            'required_difficulties' => 'nullable|array',
             'is_active' => 'required|boolean',
         ]);
+
+        $validated['required_difficulties'] = $this->sanitizeDifficulties($validated['required_difficulties'] ?? []);
 
         $role->update($validated);
 
         return response()->json($role);
+    }
+
+    public function bulkUpdate(Request $request)
+    {
+        $authUser = $request->user();
+        if (!$authUser || $authUser->role !== 'admin') {
+            return response()->json(['message' => 'Hanya admin yang dapat mengelola role.'], 403);
+        }
+
+        $validated = $request->validate([
+            'roles' => 'required|array',
+            'roles.*.id' => 'required|string|exists:roles,id',
+            'roles.*.display_name' => 'required|string|max:100',
+            'roles.*.can_approve' => 'required|boolean',
+            'roles.*.can_report' => 'required|boolean',
+            'roles.*.required_difficulties' => 'nullable|array',
+        ]);
+
+        foreach ($validated['roles'] as $roleData) {
+            $role = Role::find($roleData['id']);
+            if ($role) {
+                $role->update([
+                    'display_name' => $roleData['display_name'],
+                    'can_approve' => $roleData['can_approve'],
+                    'can_report' => $roleData['can_report'],
+                    'required_difficulties' => $this->sanitizeDifficulties($roleData['required_difficulties'] ?? []),
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Semua role berhasil disimpan.']);
+    }
+
+    private function sanitizeDifficulties(array $items): array
+    {
+        $allowed = ['berat', 'sedang', 'ringan', 'none'];
+        return array_values(array_filter($items, fn ($v) => in_array($v, $allowed, true)));
     }
 
     public function destroy(Request $request, $id)

@@ -238,12 +238,11 @@ class MachineComponentController extends Controller
             $query->whereYear('created_at', $request->year);
         }
 
-        $flowSteps = \App\Models\ApprovalFlowStep::active()->ordered()->get();
-        $totalSteps = $flowSteps->count();
+        $allFlowSteps = \App\Models\ApprovalFlowStep::active()->ordered()->get();
 
-        $history = $query->get()->map(function ($action) use ($flowSteps, $totalSteps) {
+        $history = $query->get()->map(function ($action) use ($allFlowSteps) {
             $record = $action->record;
-            $approvalState = $this->computeApprovalState($record, $flowSteps, $totalSteps);
+            $approvalState = $this->computeApprovalState($record, $allFlowSteps);
             $action->record->setAttribute('approval_state', $approvalState);
             return $action;
         });
@@ -254,9 +253,26 @@ class MachineComponentController extends Controller
         ]);
     }
 
-    private function computeApprovalState($record, $flowSteps, $totalSteps)
+    private function computeApprovalState($record, $allFlowSteps)
     {
-        if (!$record || $totalSteps === 0) {
+        if (!$record) {
+            return ['status' => 'pending', 'pending_role' => null];
+        }
+
+        $reporterRole = $record->technician?->role ?? 'technician';
+
+        $steps = $allFlowSteps->filter(fn ($s) => $s->reporter_role === $reporterRole)
+            ->sortBy('step_order')
+            ->values();
+
+        if ($steps->isEmpty() && $reporterRole !== 'technician') {
+            $steps = $allFlowSteps->filter(fn ($s) => $s->reporter_role === 'technician')
+                ->sortBy('step_order')
+                ->values();
+        }
+
+        $totalSteps = $steps->count();
+        if ($totalSteps === 0) {
             return ['status' => 'pending', 'pending_role' => null];
         }
 
@@ -277,7 +293,7 @@ class MachineComponentController extends Controller
         }
 
         $currentStep = $approvedCount + 1;
-        $pendingRole = $flowSteps->firstWhere('step_order', $currentStep)?->role;
+        $pendingRole = $steps->firstWhere('step_order', $currentStep)?->role;
 
         return [
             'status' => 'pending',

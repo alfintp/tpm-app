@@ -190,6 +190,16 @@ const maintenanceAlerts = computed(() => {
     }
 
     return { ...notif, machine, totalComponents, checkedCount, uncheckedCount, isFullyChecked, isPartiallyChecked, daysUntil };
-  }).filter(Boolean);
+  }).filter(Boolean).sort((a, b) => {
+    const priority = (d) => {
+      if (d < 0)   return 0;
+      if (d === 0) return 1;
+      if (d === 1) return 2;
+      return 3;
+    };
+    const pa = priority(a.daysUntil), pb = priority(b.daysUntil);
+    if (pa !== pb) return pa - pb;
+    return a.daysUntil - b.daysUntil;
+  });
 });
 </script>

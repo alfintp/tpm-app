@@ -11,6 +11,7 @@ class ApprovalFlowStep extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
+        'reporter_role',
         'role',
         'step_order',
         'is_active',

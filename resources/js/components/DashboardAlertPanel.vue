@@ -8,12 +8,7 @@
         </svg>
         Maintenance Alerts
       </h3>
-      <button @click="$emit('view-all')" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 hover:cursor-pointer">
-        Lihat Semua
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-        </svg>
-      </button>
+      
     </div>
 
     <div class="p-6">
@@ -42,7 +37,7 @@
       <!-- Alert list -->
       <div v-else class="space-y-3">
         <div
-          v-for="alert in alerts"
+          v-for="alert in alerts.slice(0, 3)"
           :key="alert.id"
           :class="alertClass(alert)"
           class="group flex items-center p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer gap-4"
@@ -111,6 +106,16 @@
             </svg>
           </div>
         </div>
+
+        <!-- More alerts link -->
+        <button
+          v-if="alerts.length > 3"
+          @click="$emit('view-all')"
+          class="w-full mt-1 py-2.5 rounded-xl border border-dashed border-slate-200 text-xs font-semibold text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          +{{ alerts.length - 3 }} pengingat lainnya &mdash; Lihat Semua
+        </button>
       </div>
     </div>
   </div>
@@ -126,20 +131,26 @@ defineEmits(['view-all', 'click-alert']);
 
 const alertClass = (a) => {
   if (a.isFullyChecked)     return 'bg-green-50 border-green-200';
-  if (a.isPartiallyChecked) return 'bg-amber-50 border-amber-200';
-  return a.daysUntil < 0   ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200';
+  if (a.isPartiallyChecked) return 'bg-orange-50 border-orange-200';
+  if (a.daysUntil < 0)      return 'bg-red-50 border-red-200';
+  if (a.daysUntil === 0)    return 'bg-orange-50 border-orange-200';
+  return 'bg-amber-50 border-amber-200';
 };
 
 const iconClass = (a) => {
   if (a.isFullyChecked)     return 'bg-green-100 text-green-600';
-  if (a.isPartiallyChecked) return 'bg-amber-100 text-amber-600';
-  return a.daysUntil < 0   ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600';
+  if (a.isPartiallyChecked) return 'bg-orange-100 text-orange-600';
+  if (a.daysUntil < 0)      return 'bg-red-100 text-red-600';
+  if (a.daysUntil === 0)    return 'bg-orange-100 text-orange-600';
+  return 'bg-amber-100 text-amber-600';
 };
 
 const badgeClass = (a) => {
   if (a.isFullyChecked)     return 'text-green-600';
-  if (a.isPartiallyChecked) return 'text-amber-600';
-  return a.daysUntil < 0   ? 'text-red-600' : 'text-amber-600';
+  if (a.isPartiallyChecked) return 'text-orange-600';
+  if (a.daysUntil < 0)      return 'text-red-600';
+  if (a.daysUntil === 0)    return 'text-orange-600';
+  return 'text-amber-600';
 };
 
 const timeText = (dateStr) => {

@@ -281,6 +281,14 @@ const canReport = computed(() => {
   return !!role?.can_report;
 });
 
+const currentUserRequiredDifficulties = computed(() => {
+  const role = roles.value.find(r => r.name === authUser.value?.role);
+  if (!role || !role.required_difficulties || role.required_difficulties.length === 0) {
+    return null;
+  }
+  return role.required_difficulties;
+});
+
 const machineId = computed(() => {
   if (machine.value) return machine.value.id;
   
@@ -589,15 +597,13 @@ const initComponentRows = () => {
     };
   });
 
-  // Suggest start time for a new report; prefill existing report time if editing.
+  // Prefill times only when editing an existing (saved) record
   if (!reportStartTime.value) {
     const savedStartRow = componentRows.value.find(r => r.startTime);
     const savedEndRow = componentRows.value.find(r => r.endTime);
     if (savedStartRow) {
       reportStartTime.value = formatTimeForInput(savedStartRow.startTime);
       if (savedEndRow) reportEndTime.value = formatTimeForInput(savedEndRow.endTime);
-    } else {
-      reportStartTime.value = new Date().toTimeString().slice(0, 5);
     }
   }
 };
@@ -746,17 +752,24 @@ const sortedRecords = computed(() => {
   });
 });
 
-const isMandatory = (r) => r.difficulty === 'sedang' || r.difficulty === 'berat';
+const isMandatory = (r) => {
+  const reqDiffs = currentUserRequiredDifficulties.value;
+  if (!reqDiffs) {
+    return r.difficulty === 'ringan' || r.difficulty === 'sedang' || r.difficulty === 'berat';
+  }
+  const diff = r.difficulty || 'none';
+  return reqDiffs.includes(diff);
+};
 const uncheckedTodayCount = computed(() => componentRows.value.filter(r => isMandatory(r) && !r.checkedToday).length);
 const checkedTodayCount = computed(() => componentRows.value.filter(r => r.checkedToday).length);
-const ringanCount = computed(() => componentRows.value.filter(r => r.difficulty === 'ringan' || !r.difficulty).length);
+const optionalCount = computed(() => componentRows.value.filter(r => !isMandatory(r)).length);
 const pendingCount = computed(() => componentRows.value.filter(r => r.checked).length);
 const hasUnsavedChanges = computed(() => pendingCount.value > 0);
 
 const filterOptions = computed(() => [
   { value: 'unchecked_today', label: 'Belum Dilaporkan (Wajib)', count: uncheckedTodayCount.value },
   { value: 'checked_today', label: 'Sudah Dilaporkan Periode Ini', count: checkedTodayCount.value },
-  { value: 'ringan', label: 'Ringan (Opsional)', count: ringanCount.value },
+  { value: 'optional', label: 'Opsional', count: optionalCount.value },
   { value: 'all', label: 'Semua', count: componentRows.value.length },
 ]);
 
@@ -768,8 +781,8 @@ const filteredComponentRows = computed(() => {
     filtered = filtered.filter(r => isMandatory(r) && !r.checkedToday);
   } else if (componentFilter.value === 'checked_today') {
     filtered = filtered.filter(r => r.checkedToday);
-  } else if (componentFilter.value === 'ringan') {
-    filtered = filtered.filter(r => r.difficulty === 'ringan' || !r.difficulty);
+  } else if (componentFilter.value === 'optional') {
+    filtered = filtered.filter(r => !isMandatory(r));
   }
 
   // Apply search filter
@@ -959,17 +972,7 @@ const handleForceReport = async () => {
 };
 
 const ensureWorkTime = () => {
-  const now = new Date().toTimeString().slice(0, 5);
-  if (!reportStartTime.value) reportStartTime.value = now;
-  if (!reportEndTime.value) reportEndTime.value = now;
-  // Ensure end time is at least 1 minute after start time
-  if (reportStartTime.value === reportEndTime.value) {
-    const [h, m] = reportEndTime.value.split(':').map(Number);
-    const totalMin = h * 60 + m + 1;
-    const newH = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
-    const newM = String(totalMin % 60).padStart(2, '0');
-    reportEndTime.value = `${newH}:${newM}`;
-  }
+  // No auto-fill — user must fill manually. Only used as a no-op guard.
 };
 
 const openWorkTimeConfirm = () => {
@@ -1023,7 +1026,7 @@ const submitReport = async (redirect = true) => {
       end_time: reportEndTime.value || null,
       duration_minutes: reportDurationMinutes.value,
       status: 'completed',
-      notes: `Maintenance report - ${checkedRows.length} komponen diperiksaaaa`,
+      notes: `Maintenance report - ${checkedRows.length} komponen diperiksa`,
       actions,
     });
 

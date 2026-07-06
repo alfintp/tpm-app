@@ -1,6 +1,6 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-60 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-xl border border-slate-100 space-y-6">
+  <div v-if="show" class="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-xl border border-slate-100 space-y-6 my-auto">
       <!-- Header -->
       <div class="flex justify-between items-start">
         <div>
@@ -84,7 +84,6 @@
               <th class="px-3 py-2 text-left font-semibold">Tampilan</th>
               <th class="px-3 py-2 text-center font-semibold">Approve</th>
               <th class="px-3 py-2 text-center font-semibold">Report</th>
-              <th class="px-3 py-2 text-center font-semibold">Aktif</th>
               <th class="px-3 py-2 text-right font-semibold">Aksi</th>
             </tr>
           </thead>
@@ -108,13 +107,6 @@
               <td class="px-3 py-2 text-center">
                 <input
                   v-model="role.can_report"
-                  type="checkbox"
-                  class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                />
-              </td>
-              <td class="px-3 py-2 text-center">
-                <input
-                  v-model="role.is_active"
                   type="checkbox"
                   class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                 />

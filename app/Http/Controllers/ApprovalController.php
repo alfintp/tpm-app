@@ -23,6 +23,7 @@ class ApprovalController extends Controller
     {
         $steps = ApprovalFlowStep::active()->ordered()->get()->map(fn ($s) => [
             'id' => $s->id,
+            'reporter_role' => $s->reporter_role,
             'role' => $s->role,
             'step_order' => $s->step_order,
             'is_active' => $s->is_active,
@@ -33,6 +34,7 @@ class ApprovalController extends Controller
             'name' => $r->name,
             'display_name' => $r->display_name,
             'can_approve' => $r->can_approve,
+            'can_report' => $r->can_report,
             'is_active' => $r->is_active,
         ]);
 
@@ -55,7 +57,8 @@ class ApprovalController extends Controller
         }
 
         $validated = $request->validate([
-            'steps' => 'required|array|min:1|max:10',
+            'steps' => 'present|array',
+            'steps.*.reporter_role' => 'required|string|max:50',
             'steps.*.role' => 'required|in:' . implode(',', $approvableRoles),
         ]);
 
@@ -64,13 +67,22 @@ class ApprovalController extends Controller
             // Remove old flow steps so step_order can be reused without unique conflicts
             ApprovalFlowStep::query()->delete();
 
-            $order = 1;
+            // Group input steps by reporter_role to assign step_order sequentially
+            $groupedSteps = [];
             foreach ($validated['steps'] as $step) {
-                ApprovalFlowStep::create([
-                    'role' => $step['role'],
-                    'step_order' => $order++,
-                    'is_active' => true,
-                ]);
+                $groupedSteps[$step['reporter_role']][] = $step['role'];
+            }
+
+            foreach ($groupedSteps as $reporterRole => $approverRoles) {
+                $order = 1;
+                foreach ($approverRoles as $role) {
+                    ApprovalFlowStep::create([
+                        'reporter_role' => $reporterRole,
+                        'role' => $role,
+                        'step_order' => $order++,
+                        'is_active' => true,
+                    ]);
+                }
             }
 
             DB::commit();
@@ -165,12 +177,25 @@ class ApprovalController extends Controller
             'notes.min' => 'Alasan penolakan minimal 3 karakter.',
         ]);
 
-        $flowSteps = ApprovalFlowStep::active()->ordered()->get();
-        if ($flowSteps->isEmpty()) {
-            return response()->json(['message' => 'Alur approval belum dikonfigurasi.'], 400);
+        $record = MaintenanceRecord::with(['actions', 'machine', 'approvals'])->findOrFail($recordId);
+        
+        $reporterRole = $record->technician?->role ?? 'technician';
+        $flowSteps = ApprovalFlowStep::active()
+            ->where('reporter_role', $reporterRole)
+            ->ordered()
+            ->get();
+            
+        if ($flowSteps->isEmpty() && $reporterRole !== 'technician') {
+            $flowSteps = ApprovalFlowStep::active()
+                ->where('reporter_role', 'technician')
+                ->ordered()
+                ->get();
         }
 
-        $record = MaintenanceRecord::with(['actions', 'machine', 'approvals'])->findOrFail($recordId);
+        if ($flowSteps->isEmpty()) {
+            return response()->json(['message' => 'Alur approval belum dikonfigurasi untuk role pembuat laporan.'], 400);
+        }
+
         $state = $this->recordApprovalState($record, $flowSteps);
 
         if ($state['approval_status'] === 'rejected') {
@@ -259,7 +284,19 @@ class ApprovalController extends Controller
 
     private function recordApprovalState(MaintenanceRecord $record, $flowSteps)
     {
-        $steps = $flowSteps->sortBy('step_order')->values();
+        $reporterRole = $record->technician?->role ?? 'technician';
+        
+        // Filter flow steps by reporter role of the record, fallback to technician if none configured
+        $steps = $flowSteps->filter(fn ($s) => $s->reporter_role === $reporterRole)
+            ->sortBy('step_order')
+            ->values();
+            
+        if ($steps->isEmpty() && $reporterRole !== 'technician') {
+            $steps = $flowSteps->filter(fn ($s) => $s->reporter_role === 'technician')
+                ->sortBy('step_order')
+                ->values();
+        }
+
         $totalSteps = $steps->count();
         $decisions = $record->approvals->sortBy('step_order');
 

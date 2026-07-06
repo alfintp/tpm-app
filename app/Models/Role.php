@@ -15,6 +15,7 @@ class Role extends Model
         'display_name',
         'can_approve',
         'can_report',
+        'required_difficulties',
         'is_active',
     ];
 
@@ -22,6 +23,7 @@ class Role extends Model
         'can_approve' => 'boolean',
         'can_report'  => 'boolean',
         'is_active'   => 'boolean',
+        'required_difficulties' => 'array',
     ];
 
     public function scopeActive($query)

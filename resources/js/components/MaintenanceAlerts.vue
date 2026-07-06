@@ -67,21 +67,27 @@ const isAlertOverdue = (dateStr) => {
 };
 
 const getAlertClasses = (alert) => {
-  if (alert.isFullyChecked)    return 'bg-green-50 border-green-200';
-  if (alert.isPartiallyChecked) return 'bg-amber-50 border-amber-200';
-  return isAlertOverdue(alert.next_due_date) ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200';
+  if (alert.isFullyChecked)     return 'bg-green-50 border-green-200';
+  if (alert.isPartiallyChecked) return 'bg-orange-50 border-orange-200';
+  if (alert.daysUntil < 0)      return 'bg-red-50 border-red-200';
+  if (alert.daysUntil === 0)    return 'bg-orange-50 border-orange-200';
+  return 'bg-amber-50 border-amber-200';
 };
 
 const getAlertIconClasses = (alert) => {
-  if (alert.isFullyChecked)    return 'bg-green-100 text-green-600';
-  if (alert.isPartiallyChecked) return 'bg-amber-100 text-amber-600';
-  return isAlertOverdue(alert.next_due_date) ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600';
+  if (alert.isFullyChecked)     return 'bg-green-100 text-green-600';
+  if (alert.isPartiallyChecked) return 'bg-orange-100 text-orange-600';
+  if (alert.daysUntil < 0)      return 'bg-red-100 text-red-600';
+  if (alert.daysUntil === 0)    return 'bg-orange-100 text-orange-600';
+  return 'bg-amber-100 text-amber-600';
 };
 
 const getAlertBadgeClasses = (alert) => {
-  if (alert.isFullyChecked)    return 'text-green-600';
-  if (alert.isPartiallyChecked) return 'text-amber-600';
-  return isAlertOverdue(alert.next_due_date) ? 'text-red-600' : 'text-amber-600';
+  if (alert.isFullyChecked)     return 'text-green-600';
+  if (alert.isPartiallyChecked) return 'text-orange-600';
+  if (alert.daysUntil < 0)      return 'text-red-600';
+  if (alert.daysUntil === 0)    return 'text-orange-600';
+  return 'text-amber-600';
 };
 
 const getAlertTimeText = (dateStr) => {

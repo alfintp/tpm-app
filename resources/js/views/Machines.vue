@@ -399,7 +399,17 @@ const maintenanceAlerts = computed(() => {
       isPartiallyChecked,
       daysUntil
     };
-  }).filter(item => item !== null);
+  }).filter(item => item !== null).sort((a, b) => {
+    const priority = (d) => {
+      if (d < 0)  return 0; // overdue
+      if (d === 0) return 1; // today
+      if (d === 1) return 2; // tomorrow
+      return 3;
+    };
+    const pa = priority(a.daysUntil), pb = priority(b.daysUntil);
+    if (pa !== pb) return pa - pb;
+    return a.daysUntil - b.daysUntil;
+  });
 });
 
 const filtered = computed(() => {
