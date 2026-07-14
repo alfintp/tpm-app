@@ -9,7 +9,7 @@ export function useAuth() {
     user: computed(() => page.props.auth?.user),
     isAuthenticated: computed(() => !!page.props.auth?.user),
     isAdmin: computed(() => page.props.auth?.user?.role === 'admin'),
-    isManager: computed(() => page.props.auth?.user?.role === 'manager'),
+    isManager: computed(() => page.props.auth?.user?.is_manager ?? false),
     isTechnician: computed(() => page.props.auth?.user?.role === 'technician'),
   };
 }

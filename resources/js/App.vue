@@ -154,8 +154,10 @@ onMounted(async () => {
 });
 
 const isUrl = (url) => {
-  if (url === '/') return page.url === '/';
-  return page.url.startsWith(url);
+  const currentUrl = page?.url || (typeof window !== 'undefined' ? window.location.pathname : '');
+  if (!currentUrl) return false;
+  if (url === '/') return currentUrl === '/';
+  return currentUrl.startsWith(url);
 };
 
 const initials = computed(() => {

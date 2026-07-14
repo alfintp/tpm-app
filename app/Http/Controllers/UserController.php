@@ -12,14 +12,14 @@ class UserController extends Controller
     public function index(Request $request)
     {
         // Require manager or admin role
-        if (!in_array($request->user()->role, ['admin', 'manager'])) {
+        if (!$request->user()->is_manager && $request->user()->role !== 'admin') {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
         $query = User::orderBy('full_name');
 
         // Manager cannot see admin users
-        if ($request->user()->role === 'manager') {
+        if ($request->user()->is_manager) {
             $query->where('role', '!=', 'admin');
         }
 
@@ -103,7 +103,7 @@ class UserController extends Controller
     public function updateRole(Request $request, $id)
     {
         // Require manager or admin role
-        if (!in_array($request->user()->role, ['admin', 'manager'])) {
+        if (!$request->user()->is_manager && $request->user()->role !== 'admin') {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
@@ -137,7 +137,7 @@ class UserController extends Controller
     public function destroy(Request $request, $id)
     {
         // Require manager or admin role
-        if (!in_array($request->user()->role, ['admin', 'manager'])) {
+        if (!$request->user()->is_manager && $request->user()->role !== 'admin') {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 

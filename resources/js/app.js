@@ -1,6 +1,7 @@
 import './bootstrap';
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
+import { RouterView } from 'vue-router';
 import { router } from './router';
 import App from './App.vue';
 
@@ -68,7 +69,10 @@ if (isInertia) {
   });
 } else if (el) {
   // --- BOOT OLD VUE ROUTER SPA ---
-  const app = createApp(App);
+  // Render RouterView sebagai default slot di dalam App.vue agar layout sidebar tetap muncul dan konten halaman ter-render
+  const app = createApp({
+    render: () => h(App, null, { default: () => h(RouterView) })
+  });
   app.use(router);
   app.mount('#app');
 }

@@ -15,6 +15,7 @@ class Role extends Model
         'display_name',
         'can_approve',
         'can_report',
+        'is_manager',
         'required_difficulties',
         'is_active',
     ];
@@ -22,6 +23,7 @@ class Role extends Model
     protected $casts = [
         'can_approve' => 'boolean',
         'can_report'  => 'boolean',
+        'is_manager'  => 'boolean',
         'is_active'   => 'boolean',
         'required_difficulties' => 'array',
     ];

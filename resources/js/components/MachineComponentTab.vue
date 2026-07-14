@@ -24,6 +24,7 @@
         <option value="ringan">Ringan</option>
         <option value="sedang">Sedang</option>
         <option value="berat">Berat</option>
+        <option value="none">Tanpa Kesulitan</option>
       </select>
       <select
         v-model="conditionSort"
@@ -51,7 +52,17 @@
           class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors shadow-sm cursor-pointer"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          Import Excel
+          Import Komponen
+        </button>
+        <button
+          v-if="isAdmin"
+          @click="$emit('import-indicators')"
+          class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors shadow-sm cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6 4h6"/>
+          </svg>
+          Import Indikator
         </button>
         <button
           v-if="isManagerOrAdmin"
@@ -81,13 +92,19 @@
       >
         <div class="flex justify-between items-start">
           <div class="flex-1 cursor-pointer" @click="$emit('view-history', comp)">
-            <div class="flex gap-2 mb-1.5">
+            <div class="flex gap-2 mb-1.5 flex-wrap">
               <span class="text-xs font-semibold text-brand-gradation bg-brand-cream px-2 py-0.5 rounded-full">{{ comp.category }}</span>
               <span
                 v-if="comp.difficulty"
                 class="text-xs font-semibold px-2 py-0.5 rounded-full"
                 :class="difficultyClass(comp.difficulty)"
               >{{ difficultyLabel(comp.difficulty) }}</span>
+              <span
+                class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                :class="comp.indicators?.length ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'"
+              >
+                {{ comp.indicators?.length ?? 0 }} indikator
+              </span>
             </div>
             <h4 class="font-bold text-slate-800 hover:text-brand-gradation transition-colors">{{ comp.name }}</h4>
             <p class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ comp.specification }}</p>
@@ -149,7 +166,7 @@ const props = defineProps({
   getLastMaintenance: { type: Function, required: true },
 });
 
-defineEmits(['add', 'import', 'edit', 'delete', 'view-history']);
+defineEmits(['add', 'import', 'import-indicators', 'edit', 'delete', 'view-history']);
 
 const search = ref('');
 const categoryFilter = ref('all');
@@ -186,7 +203,13 @@ const categoryOptions = computed(() => {
 const filteredComponents = computed(() => {
   let list = props.components;
   if (categoryFilter.value !== 'all') list = list.filter(c => c.category === categoryFilter.value);
-  if (difficultyFilter.value !== 'all') list = list.filter(c => c.difficulty === difficultyFilter.value);
+  if (difficultyFilter.value !== 'all') {
+    if (difficultyFilter.value === 'none') {
+      list = list.filter(c => !c.difficulty);
+    } else {
+      list = list.filter(c => c.difficulty === difficultyFilter.value);
+    }
+  }
   if (search.value) {
     const q = search.value.toLowerCase();
     list = list.filter(c => c.name.toLowerCase().includes(q));

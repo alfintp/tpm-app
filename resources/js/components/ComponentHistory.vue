@@ -80,6 +80,48 @@
                 </div>
               </div>
 
+              <!-- Indicator values (if any) -->
+              <div v-if="item.indicator_values && item.indicator_values.length > 0" class="mt-3 space-y-1.5">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Parameter Indikator:</p>
+                <div
+                  v-for="(iv, ivIdx) in item.indicator_values"
+                  :key="ivIdx"
+                  class="flex items-center gap-2"
+                >
+                  <span
+                    :class="iv.value
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-red-50 text-red-700 border-red-200'"
+                    class="text-[10px] font-bold px-2 py-0.5 rounded-md border leading-none shrink-0"
+                  >
+                    {{ iv.value ? 'OK' : 'Tidak OK' }}
+                  </span>
+                  <span class="text-xs text-slate-700 font-medium">{{ iv.indicator?.name ?? '-' }}</span>
+                  <span
+                    v-if="iv.indicator?.description"
+                    class="relative group cursor-pointer shrink-0"
+                    @click.stop="toggleTooltip(item.id, ivIdx)"
+                  >
+                    <svg class="w-3.5 h-3.5 text-slate-400 hover:text-indigo-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                    <div class="pointer-events-none absolute z-30 hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 bg-slate-800 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2 shadow-xl">
+                      <p class="font-bold text-slate-200 mb-0.5">Keterangan Indikator</p>
+                      <p>{{ iv.indicator.description }}</p>
+                      <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                    </div>
+                    <div
+                      v-if="activeTooltip === `${item.id}-${ivIdx}`"
+                      class="absolute z-30 bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 bg-slate-800 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2 shadow-xl"
+                      @click.stop
+                    >
+                      <p class="font-bold text-slate-200 mb-0.5">Keterangan Indikator</p>
+                      <p>{{ iv.indicator.description }}</p>
+                      <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                    </div>
+                  </span>
+                </div>
+              </div>
               <p v-if="item.description" class="text-sm text-slate-600 mt-2 italic">"{{ item.description }}"</p>
             </div>
           </div>
@@ -103,6 +145,12 @@ const loading = ref(true);
 const currentYear = new Date().getFullYear();
 const filterMonth = ref('');
 const filterYear = ref(currentYear);
+const activeTooltip = ref(null);
+
+const toggleTooltip = (itemId, ivIdx) => {
+  const key = `${itemId}-${ivIdx}`;
+  activeTooltip.value = activeTooltip.value === key ? null : key;
+};
 
 const months = [
   { value: 1, label: 'Januari' }, { value: 2, label: 'Februari' }, { value: 3, label: 'Maret' },

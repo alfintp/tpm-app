@@ -56,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Machine Components (standalone)
     Route::post('/components/import-global', [MachineComponentController::class, 'bulkStoreGlobal']);
+    Route::post('/components/import-indicators', [MachineComponentController::class, 'bulkImportIndicators']);
     Route::put('/components/{id}', [MachineComponentController::class, 'update']);
     Route::delete('/components/{id}', [MachineComponentController::class, 'destroy']);
     Route::get('/components/{id}/history', [MachineComponentController::class, 'history']);

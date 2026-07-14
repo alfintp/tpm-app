@@ -20,6 +20,14 @@
           Import Komponen
         </Button>
         <Button
+          v-if="isAdmin"
+          @click="showIndicatorImportModal = true"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm gap-2 hover:cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6 4h6"/></svg>
+          Import Indikator
+        </Button>
+        <Button
           @click="showCalendarModal = true"
           class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm gap-2 hover:cursor-pointer"
         >
@@ -61,6 +69,30 @@
         <option value="pasuruan">Pasuruan</option>
         <option value="sby">Surabaya</option>
       </select>
+      <div class="relative">
+        <input
+          v-model="locationSearch"
+          @focus="showLocationDropdown = true"
+          @blur="handleLocationBlur"
+          @input="handleLocationInput"
+          type="text"
+          placeholder="Lokasi / Area"
+          class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40"
+        />
+        <div
+          v-if="showLocationDropdown && filteredLocations.length > 0"
+          class="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"
+        >
+          <div
+            v-for="loc in filteredLocations"
+            :key="loc"
+            @mousedown="selectLocation(loc)"
+            class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer"
+          >
+            {{ loc }}
+          </div>
+        </div>
+      </div>
       <select v-model="filterSchedule" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
         <option value="">Semua Jadwal</option>
         <option value="overdue">Telat / Overdue</option>
@@ -111,10 +143,15 @@
 
       <!-- Kolom: Jadwal -->
       <template #cell-schedule="{ row }">
-        <div v-if="getMachineSchedule(row)" class="flex items-center gap-2 flex-wrap">
-          <span class="text-sm font-medium text-slate-700">{{ formatDate(getMachineSchedule(row).next_due_date) }}</span>
-          <span :class="urgencyClass(getMachineSchedule(row).next_due_date).badge" class="px-2 py-0.5 rounded-full text-xs font-bold">
-            {{ urgencyClass(getMachineSchedule(row).next_due_date).label }}
+        <div v-if="getMachineSchedule(row)" class="space-y-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-sm font-medium text-slate-700">{{ formatDate(getMachineSchedule(row).next_due_date) }}</span>
+            <span :class="urgencyClass(getMachineSchedule(row).next_due_date).badge" class="px-2 py-0.5 rounded-full text-xs font-bold">
+              {{ urgencyClass(getMachineSchedule(row).next_due_date).label }}
+            </span>
+          </div>
+          <span class="text-[11px] font-semibold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md">
+            {{ frequencyLabel(getMachineSchedule(row).interval_days) }}
           </span>
         </div>
         <span v-else class="text-sm text-slate-400">-</span>
@@ -161,6 +198,11 @@
       @download-template="importType === 'machine' ? downloadMachineTemplate() : downloadComponentTemplateGlobal()"
       @import="handleImportFile"
     />
+    <IndicatorImportModal
+      v-if="showIndicatorImportModal"
+      @close="showIndicatorImportModal = false"
+      @imported="onIndicatorImported"
+    />
 
     <!-- Calendar Modal -->
     <MachineCalendarModal
@@ -185,6 +227,7 @@ import DataTable from '../components/DataTable.vue';
 import StatCard from '../components/StatCard.vue';
 import MaintenanceAlerts from '../components/MaintenanceAlerts.vue';
 import MachineImportModal from '../components/MachineImportModal.vue';
+import IndicatorImportModal from '../components/IndicatorImportModal.vue';
 import MachineCalendarModal from '../components/MachineCalendarModal.vue';
 import Button from '../../views/components/ui/button/Button.vue';
 
@@ -224,6 +267,9 @@ const search = ref('');
 const filterSchedule = ref('');
 const sortBy = ref('name');
 const filterKota = ref('');
+const locationSearch = ref('');
+const showLocationDropdown = ref(false);
+const selectedLocation = ref('');
 const showCreate = ref(false);
 const currentPage = ref(1);
 const perPage = ref(10);
@@ -248,6 +294,7 @@ const machineColumns = [
 
 const showImportModal = ref(false);
 const importing = ref(false);
+const showIndicatorImportModal = ref(false);
 const showCalendarModal = ref(false);
 
 const loadData = async () => {
@@ -304,6 +351,11 @@ const urgencyClass = (dateStr) => {
   return { badge: 'bg-slate-100 text-slate-600', label: `${days} hari lagi` };
 };
 
+const frequencyLabel = (days) => {
+  const map = { 7: '4x/bulan', 14: '2x/bulan', 28: '1x/bulan', 56: '1x/2 bulan', 84: '1x/3 bulan' };
+  return map[Number(days)] ?? `Setiap ${days} hari`;
+};
+
 const formatDate = (d) => {
   if (!d) return '-';
   return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -318,6 +370,35 @@ const stats = computed(() => {
     { label: 'Minggu Ini', value: machineSchedules.filter(s => getDaysUntil(s.next_due_date) > 0 && getDaysUntil(s.next_due_date) <= 7).length, color: 'blue' },
   ];
 });
+
+// Location filter logic
+const uniqueLocations = computed(() => {
+  const locations = new Set();
+  allowedMachines.value.forEach(m => {
+    if (m.location) locations.add(m.location);
+  });
+  return Array.from(locations).sort();
+});
+
+const filteredLocations = computed(() => {
+  if (!locationSearch.value) return uniqueLocations.value;
+  const q = locationSearch.value.toLowerCase();
+  return uniqueLocations.value.filter(loc => loc.toLowerCase().includes(q));
+});
+
+const handleLocationBlur = () => {
+  setTimeout(() => { showLocationDropdown.value = false; }, 200);
+};
+
+const handleLocationInput = () => {
+  showLocationDropdown.value = true;
+};
+
+const selectLocation = (loc) => {
+  locationSearch.value = loc;
+  selectedLocation.value = loc;
+  showLocationDropdown.value = false;
+};
 
 // Maintenance alerts - show from H-1 (1 day before) and hide if maintenance already done
 const maintenanceAlerts = computed(() => {
@@ -336,21 +417,36 @@ const maintenanceAlerts = computed(() => {
     const dueDate = new Date(notif.next_due_date);
     dueDate.setHours(0, 0, 0, 0);
 
-    // Show alert from H-1 (1 day before due date)
     const daysUntil = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-    if (daysUntil < -1) return null; // Hide if more than 1 day overdue
+    // Only show alerts from H-1 up to end of same calendar month as due date
+    const dueMonth = dueDate.getMonth();
+    const dueYear  = dueDate.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayYear  = today.getFullYear();
+    // Hide if due date is in a past month (already passed the month boundary)
+    if (dueYear < todayYear || (dueYear === todayYear && dueMonth < todayMonth)) return null;
+    // Hide if more than 1 day in the future (not yet H-1)
+    if (daysUntil > 1) return null;
 
     const machine = allowedMachines.value.find(m => m.id === notif.machine_id);
     if (!machine) return null;
 
-    // Calculate component check status today
-    const todayRecords = (machine.records || []).filter(r => r.status === 'completed' && isSameDay(r.maintenance_date, today));
+    // Period start for this schedule: start of the month of dueDate
+    const periodStart = new Date(dueYear, dueMonth, 1);
+    periodStart.setHours(0, 0, 0, 0);
+
+    // Calculate component check status within this period (periodStart..today)
+    const periodRecords = (machine.records || []).filter(r => {
+      if (r.status !== 'completed') return false;
+      const approvalStatus = r.latest_approval?.decision ?? 'pending';
+      if (approvalStatus === 'rejected') return false;
+      const recDate = new Date(r.maintenance_date); recDate.setHours(0, 0, 0, 0);
+      return recDate >= periodStart && recDate <= today;
+    });
     const checkedComponentIds = new Set();
-    todayRecords.forEach(r => {
+    periodRecords.forEach(r => {
       (r.actions || []).forEach(a => {
-        if (a.machine_component_id) {
-          checkedComponentIds.add(a.machine_component_id);
-        }
+        if (a.machine_component_id) checkedComponentIds.add(a.machine_component_id);
       });
     });
 
@@ -358,9 +454,7 @@ const maintenanceAlerts = computed(() => {
     let checkedCount = 0;
     if (machine.components) {
       machine.components.forEach(c => {
-        if (checkedComponentIds.has(c.id)) {
-          checkedCount++;
-        }
+        if (checkedComponentIds.has(c.id)) checkedCount++;
       });
     }
 
@@ -368,26 +462,8 @@ const maintenanceAlerts = computed(() => {
     const isFullyChecked = totalComponents > 0 && checkedCount === totalComponents;
     const isPartiallyChecked = checkedCount > 0 && checkedCount < totalComponents;
 
-    // Check if maintenance has been done recently (within the last interval, but not today)
-    const lastRecord = machine.records
-      .filter(r => r.status === 'completed')
-      .sort((a, b) => new Date(b.maintenance_date) - new Date(a.maintenance_date))[0];
-
-    let isDoneRecently = false;
-    if (lastRecord) {
-      const lastMaintenanceDate = new Date(lastRecord.maintenance_date);
-      lastMaintenanceDate.setHours(0, 0, 0, 0);
-
-      const previousDueDate = new Date(dueDate);
-      previousDueDate.setDate(previousDueDate.getDate() - (notif.interval_days || 7));
-
-      isDoneRecently = lastMaintenanceDate >= previousDueDate;
-    }
-
-    // Filter out if done recently but not touched today — except always show H-1 (tomorrow) alerts
-    if (isDoneRecently && !isFullyChecked && !isPartiallyChecked && daysUntil !== 1) {
-      return null;
-    }
+    // Hide alert only if fully checked in this period
+    if (isFullyChecked && daysUntil > 0) return null;
 
     return {
       ...notif,
@@ -414,18 +490,23 @@ const maintenanceAlerts = computed(() => {
 
 const filtered = computed(() => {
   let list = allowedMachines.value;
-  
+
   // Apply kota filter (manager/admin only)
   if (filterKota.value) {
     list = list.filter(m => m.kota === filterKota.value);
   }
-  
+
+  // Apply location filter
+  if (selectedLocation.value) {
+    list = list.filter(m => m.location === selectedLocation.value);
+  }
+
   // Apply search filter
   if (search.value) {
     const q = search.value.toLowerCase();
     list = list.filter(m => m.name.toLowerCase().includes(q) || (m.location ?? '').toLowerCase().includes(q));
   }
-  
+
   // Apply schedule filter
   if (filterSchedule.value) {
     list = list.filter(m => {
@@ -439,13 +520,13 @@ const filtered = computed(() => {
       return true;
     });
   }
-  
+
   // Apply sort
   if (sortBy.value === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
   if (sortBy.value === 'name_desc') list = [...list].sort((a, b) => b.name.localeCompare(a.name));
   if (sortBy.value === 'condition_asc') list = [...list].sort((a, b) => a.condition_pct - b.condition_pct);
   if (sortBy.value === 'condition_desc') list = [...list].sort((a, b) => b.condition_pct - a.condition_pct);
-  
+
   return list;
 });
 
@@ -454,7 +535,7 @@ const paginatedMachines = computed(() => {
   return filtered.value.slice(start, start + perPage.value);
 });
 
-watch([search, filterSchedule, sortBy, filterKota], () => { currentPage.value = 1; });
+watch([search, filterSchedule, sortBy, filterKota, selectedLocation], () => { currentPage.value = 1; });
 
 const openCreate = () => { showCreate.value = true; };
 const onMachineSaved = async () => {
@@ -732,6 +813,12 @@ const importComponentsGlobal = async (file) => {
     showAlert('error', 'Gagal!', 'Terjadi kesalahan sistem.');
     importing.value = false;
   }
+};
+
+const onIndicatorImported = async () => {
+  showIndicatorImportModal.value = false;
+  await loadData();
+  showAlert('success', 'Berhasil!', 'Indikator komponen berhasil diimport.');
 };
 
 const formatDateISO = (val) => {

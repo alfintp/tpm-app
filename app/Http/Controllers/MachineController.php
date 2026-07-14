@@ -15,7 +15,7 @@ class MachineController extends Controller
     {
         $authUser = auth('sanctum')->user();
 
-        $query = Machine::with(['schedules', 'components', 'picMesin', 'records.actions']);
+        $query = Machine::with(['schedules', 'components.indicators', 'picMesin', 'records.actions.indicatorValues']);
 
         // Filter machines by user's assigned city (unless city is 'both')
         if ($authUser && isset($authUser->city) && $authUser->city !== 'both') {
@@ -44,7 +44,15 @@ class MachineController extends Controller
 
     public function show(Request $request, $id)
     {
-        $machine = Machine::with(['schedules', 'components', 'records.actions.component', 'records.technician', 'records.latestApproval', 'picMesin'])->findOrFail($id);
+        $machine = Machine::with([
+            'schedules',
+            'components.indicators',
+            'records.actions.component.indicators',
+            'records.actions.indicatorValues',
+            'records.technician',
+            'records.latestApproval',
+            'picMesin'
+        ])->findOrFail($id);
 
         if (!$this->canAccessMachineCity($machine->kota)) {
             return response()->json(['message' => 'Akses ditolak. Mesin ini berada di luar kota yang ditugaskan kepada Anda.'], 403);

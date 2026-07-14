@@ -58,7 +58,7 @@
 
   <!-- Action detail modal -->
   <Teleport to="body">
-    <div v-if="actionModal.show" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+    <div v-if="actionModal.show" class="fixed inset-0 z-70 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="actionModal.show = false"></div>
       <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[85vh] relative z-10 flex flex-col overflow-hidden">
 
@@ -69,7 +69,7 @@
             <p class="text-slate-500 text-xs mt-1.5">Tanggal: <span class="font-bold text-slate-700">{{ actionModal.date }}</span></p>
             <p v-if="actionModal.notes" class="text-xs text-slate-500 mt-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 italic">Catatan: "{{ actionModal.notes }}"</p>
           </div>
-          <button @click="actionModal.show = false" class="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer flex-shrink-0">
+          <button @click="actionModal.show = false" class="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shrink-0">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -103,28 +103,71 @@
             <thead class="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
               <tr>
                 <th class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">Nama Komponen</th>
-                <th class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">Tindakan</th>
-                <th class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">Kondisi</th>
-                <th class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-3">Keterangan</th>
+                <th class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Tindakan</th>
+                <th class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Kondisi</th>
+                <th class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Indikator / Keterangan</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              <tr v-for="(action, idx) in filteredActions" :key="idx" class="hover:bg-slate-50/50 transition-colors">
+              <tr v-for="(action, idx) in filteredActions" :key="idx" class="hover:bg-slate-50/50 transition-colors align-top">
                 <td class="px-6 py-3.5">
                   <span class="text-sm font-semibold text-slate-800">{{ action.component?.name ?? '-' }}</span>
                 </td>
-                <td class="px-6 py-3.5">
+                <td class="px-4 py-3.5">
                   <span :class="actionTypeClass(action.action_type)" class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full capitalize">{{ action.action_type }}</span>
                 </td>
-                <td class="px-6 py-3.5">
+                <td class="px-4 py-3.5">
                   <div class="flex items-center gap-1.5 text-xs text-slate-600">
                     <span>{{ action.condition_before_pct ?? '-' }}%</span>
                     <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     <span class="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">{{ action.condition_after_pct ?? '-' }}%</span>
                   </div>
                 </td>
-                <td class="px-6 py-3.5">
-                  <span class="text-xs text-slate-600 italic">{{ action.description || '-' }}</span>
+                <td class="px-4 py-3.5">
+                  <!-- Indicators list (if any) -->
+                  <div v-if="action.indicator_values && action.indicator_values.length > 0" class="space-y-1.5">
+                    <div
+                      v-for="(iv, ivIdx) in action.indicator_values"
+                      :key="ivIdx"
+                      class="flex items-center gap-2"
+                    >
+                      <span
+                        :class="iv.value
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-red-50 text-red-700 border-red-200'"
+                        class="text-[10px] font-bold px-2 py-0.5 rounded-md border leading-none shrink-0"
+                      >
+                        {{ iv.value ? 'OK' : 'Tidak OK' }}
+                      </span>
+                      <span class="text-xs text-slate-700 font-medium">{{ iv.indicator?.name ?? '-' }}</span>
+                      <span
+                        v-if="iv.indicator?.description"
+                        class="relative group cursor-pointer shrink-0"
+                        @click.stop="toggleTooltip(idx, ivIdx)"
+                      >
+                        <svg class="w-3.5 h-3.5 text-slate-400 hover:text-indigo-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="pointer-events-none absolute z-30 hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 bg-slate-800 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2 shadow-xl">
+                          <p class="font-bold text-slate-200 mb-0.5">Keterangan Indikator</p>
+                          <p>{{ iv.indicator.description }}</p>
+                          <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                        </div>
+                        <div
+                          v-if="activeTooltip === `${idx}-${ivIdx}`"
+                          class="absolute z-30 bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 bg-slate-800 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2 shadow-xl"
+                          @click.stop
+                        >
+                          <p class="font-bold text-slate-200 mb-0.5">Keterangan Indikator</p>
+                          <p>{{ iv.indicator.description }}</p>
+                          <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                        </div>
+                      </span>
+                    </div>
+                  </div>
+                  <!-- Fallback: description text -->
+                  <span v-else class="text-xs text-slate-500 italic">{{ action.description || '-' }}</span>
+                  <p v-if="action.indicator_values?.length > 0 && action.description" class="text-xs text-slate-400 italic mt-1.5">{{ action.description }}</p>
                 </td>
               </tr>
               <tr v-if="filteredActions.length === 0">
@@ -161,10 +204,17 @@ const flowSteps = ref([]);
 const actionModal      = ref({ show: false, date: '', notes: '', actions: [] });
 const actionSearch     = ref('');
 const actionActiveTab  = ref('all');
+const activeTooltip    = ref(null);
+
+const toggleTooltip = (idx, ivIdx) => {
+  const key = `${idx}-${ivIdx}`;
+  activeTooltip.value = activeTooltip.value === key ? null : key;
+};
 
 const openActionModal = (record) => {
   actionSearch.value    = '';
   actionActiveTab.value = 'all';
+  activeTooltip.value   = null;
   actionModal.value = {
     show:    true,
     date:    props.formatDateTime(record.maintenance_date),

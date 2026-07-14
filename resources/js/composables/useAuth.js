@@ -34,10 +34,10 @@ export function useAuth() {
   const role = computed(() => user.value?.role || 'technician');
   
   const isAdmin = computed(() => role.value === 'admin');
-  const isManager = computed(() => role.value === 'manager');
+  const isManager = computed(() => user.value?.is_manager ?? false);
   const isTechnician = computed(() => role.value === 'technician');
-  const isManagerOrAdmin = computed(() => role.value === 'admin' || role.value === 'manager');
-  const isApprover = computed(() => ['admin', 'karo', 'qc', 'wpv', 'manager'].includes(role.value));
+  const isManagerOrAdmin = computed(() => isAdmin.value || isManager.value);
+  const isApprover = computed(() => isAdmin.value || (user.value?.can_approve ?? false));
   const hasBothCities = computed(() => (user.value?.city ?? 'both') === 'both');
 
   async function login(email, password) {

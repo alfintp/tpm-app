@@ -6,31 +6,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
-class MaintenanceAction extends Model
+class ComponentIndicator extends Model
 {
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'record_id',
         'machine_component_id',
-        'action_type',
-        'condition_before_pct',
-        'condition_after_pct',
+        'name',
         'description',
+        'sort_order',
     ];
-
-    public function record()
-    {
-        return $this->belongsTo(MaintenanceRecord::class, 'record_id');
-    }
 
     public function component()
     {
         return $this->belongsTo(MachineComponent::class, 'machine_component_id');
     }
 
-    public function indicatorValues()
+    public function actionValues()
     {
-        return $this->hasMany(MaintenanceActionIndicator::class, 'maintenance_action_id');
+        return $this->hasMany(MaintenanceActionIndicator::class, 'component_indicator_id');
     }
 }

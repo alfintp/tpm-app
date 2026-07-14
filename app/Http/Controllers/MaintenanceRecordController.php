@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\MaintenanceRecord;
 use App\Models\MaintenanceAction;
+use App\Models\MaintenanceActionIndicator;
 use App\Models\Machine;
 use App\Models\MachineComponent;
+use App\Models\ComponentIndicator;
 use App\Models\MaintenanceSchedule;
 use App\Models\ActivityLog;
 use App\Models\Role;
@@ -49,6 +51,9 @@ class MaintenanceRecordController extends Controller
             'actions.*.condition_before_pct' => 'nullable|numeric|min:0|max:100',
             'actions.*.condition_after_pct' => 'nullable|numeric|min:0|max:100',
             'actions.*.description' => 'nullable|string',
+            'actions.*.indicator_values' => 'nullable|array',
+            'actions.*.indicator_values.*.component_indicator_id' => 'required|exists:component_indicators,id',
+            'actions.*.indicator_values.*.value' => 'required|boolean',
         ]);
 
         // Always use the authenticated user as the technician
@@ -100,14 +105,31 @@ class MaintenanceRecordController extends Controller
 
             if (!empty($validated['actions'])) {
                 foreach ($validated['actions'] as $actionData) {
-                    $record->actions()->create($actionData);
+                    $indicatorValues = $actionData['indicator_values'] ?? [];
+                    unset($actionData['indicator_values']);
+
+                    // Auto-calculate condition_after_pct from indicator values if provided
+                    if (!empty($indicatorValues)) {
+                        $trueCount = collect($indicatorValues)->where('value', true)->count();
+                        $totalCount = count($indicatorValues);
+                        $actionData['condition_after_pct'] = $totalCount > 0
+                            ? round(($trueCount / $totalCount) * 100, 1)
+                            : ($actionData['condition_after_pct'] ?? null);
+                    }
+
+                    $action = $record->actions()->create($actionData);
+
+                    foreach ($indicatorValues as $indicatorValue) {
+                        $action->indicatorValues()->create($indicatorValue);
+                    }
+
                     // NOTE: component and machine condition updates are deferred until approval
                 }
             }
 
             DB::commit();
 
-            return response()->json($record->load(['actions.component']), 201);
+            return response()->json($record->load(['actions.component', 'actions.indicatorValues.indicator']), 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Failed to create record: ' . $e->getMessage()], 500);
@@ -116,7 +138,9 @@ class MaintenanceRecordController extends Controller
 
     public function show($id)
     {
-        $record = MaintenanceRecord::with(['machine', 'technician', 'actions.component', 'approvals', 'schedule'])->findOrFail($id);
+        $record = MaintenanceRecord::with([
+            'machine', 'technician', 'actions.component', 'actions.indicatorValues.indicator', 'approvals', 'schedule'
+        ])->findOrFail($id);
         return response()->json($record);
     }
 }

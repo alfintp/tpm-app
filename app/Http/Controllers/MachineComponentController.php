@@ -5,15 +5,17 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use App\Models\MachineComponent;
+use App\Models\ComponentIndicator;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MachineComponentController extends Controller
 {
     public function index($machineId)
     {
         $machine = Machine::findOrFail($machineId);
-        return response()->json($machine->components()->orderBy('category')->orderBy('name')->get());
+        return response()->json($machine->components()->with('indicators')->orderBy('category')->orderBy('name')->get());
     }
 
     public function store(Request $request, $machineId)
@@ -33,6 +35,10 @@ class MachineComponentController extends Controller
             'difficulty' => 'nullable|string|in:ringan,sedang,berat',
             'last_replaced_at' => 'nullable|date',
             'last_condition_pct' => 'nullable|numeric|min:0|max:100',
+            'indicators' => 'nullable|array',
+            'indicators.*.name' => 'required|string|max:255',
+            'indicators.*.description' => 'nullable|string|max:500',
+            'indicators.*.sort_order' => 'nullable|integer',
         ]);
 
         // Set default values if not provided
@@ -40,7 +46,20 @@ class MachineComponentController extends Controller
             $validated['last_condition_pct'] = 100;
         }
 
+        $indicators = $validated['indicators'] ?? [];
+        unset($validated['indicators']);
+
         $component = $machine->components()->create($validated);
+
+        foreach ($indicators as $index => $indicator) {
+            $component->indicators()->create([
+                'name' => $indicator['name'],
+                'description' => $indicator['description'] ?? null,
+                'sort_order' => $indicator['sort_order'] ?? $index,
+            ]);
+        }
+
+        $component->load('indicators');
 
         ActivityLog::log('Tambah Komponen', "Menambahkan komponen baru: {$component->name} ({$component->category}) pada mesin: {$machine->name}");
 
@@ -196,6 +215,11 @@ class MachineComponentController extends Controller
             'difficulty' => 'nullable|string|in:ringan,sedang,berat',
             'last_replaced_at' => 'nullable|date',
             'last_condition_pct' => 'nullable|numeric|min:0|max:100',
+            'indicators' => 'nullable|array',
+            'indicators.*.id' => 'nullable|uuid',
+            'indicators.*.name' => 'required|string|max:255',
+            'indicators.*.description' => 'nullable|string|max:500',
+            'indicators.*.sort_order' => 'nullable|integer',
         ]);
 
         // Set default value if not provided
@@ -203,7 +227,13 @@ class MachineComponentController extends Controller
             $validated['last_condition_pct'] = 100;
         }
 
+        $indicators = $validated['indicators'] ?? [];
+        unset($validated['indicators']);
+
         $component->update($validated);
+
+        $this->syncIndicators($component, $indicators);
+        $component->load('indicators');
 
         $machineName = $component->machine ? $component->machine->name : 'Mesin';
         ActivityLog::log('Edit Komponen', "Memperbarui komponen: {$component->name} ({$component->category}) pada mesin: {$machineName}");
@@ -227,7 +257,7 @@ class MachineComponentController extends Controller
     {
         $component = MachineComponent::with(['machine'])->findOrFail($id);
 
-        $query = \App\Models\MaintenanceAction::with(['record.technician', 'record.approvals'])
+        $query = \App\Models\MaintenanceAction::with(['record.technician', 'record.approvals', 'indicatorValues.indicator'])
             ->where('machine_component_id', $id)
             ->orderBy('created_at', 'desc');
 
@@ -251,6 +281,113 @@ class MachineComponentController extends Controller
             'component' => $component,
             'history' => $history,
         ]);
+    }
+
+    private function syncIndicators($component, $indicators)
+    {
+        if (empty($indicators)) {
+            $component->indicators()->delete();
+            return;
+        }
+
+        $existingIds = $component->indicators()->pluck('id')->toArray();
+        $keptIds = [];
+
+        foreach ($indicators as $index => $indicator) {
+            $data = [
+                'name' => $indicator['name'],
+                'description' => $indicator['description'] ?? null,
+                'sort_order' => $indicator['sort_order'] ?? $index,
+            ];
+
+            if (!empty($indicator['id']) && in_array($indicator['id'], $existingIds)) {
+                $component->indicators()->where('id', $indicator['id'])->update($data);
+                $keptIds[] = $indicator['id'];
+            } else {
+                $created = $component->indicators()->create($data);
+                $keptIds[] = $created->id;
+            }
+        }
+
+        $component->indicators()->whereNotIn('id', $keptIds)->delete();
+    }
+
+    public function bulkImportIndicators(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.machine_code' => 'required|string',
+            'items.*.component_name' => 'required|string',
+            'items.*.indicators' => 'required|array',
+            'items.*.indicators.*.name' => 'required|string|max:255',
+            'items.*.indicators.*.description' => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $machineCodes = collect($request->items)->pluck('machine_code')->unique()->toArray();
+            $machines = Machine::whereIn('kode', $machineCodes)->get()->keyBy('kode');
+
+            $missingCodes = [];
+            foreach ($machineCodes as $code) {
+                if (!$machines->has($code)) {
+                    $missingCodes[] = $code;
+                }
+            }
+            if (!empty($missingCodes)) {
+                return response()->json([
+                    'message' => 'Kode mesin tidak ditemukan: ' . implode(', ', $missingCodes),
+                    'missing_codes' => $missingCodes,
+                ], 422);
+            }
+
+            $componentNamesByMachine = collect($request->items)->groupBy('machine_code')->map(function ($group) {
+                return $group->pluck('component_name')->unique()->toArray();
+            });
+
+            $componentsByKey = [];
+            foreach ($machines as $code => $machine) {
+                $names = $componentNamesByMachine[$code] ?? [];
+                $machineComponents = $machine->components()
+                    ->whereIn('name', $names)
+                    ->with('indicators')
+                    ->get()
+                    ->keyBy('name');
+                foreach ($machineComponents as $name => $component) {
+                    $componentsByKey[$code . '|' . $name] = $component;
+                }
+            }
+
+            $missingComponents = [];
+            $importedCount = 0;
+
+            foreach ($request->items as $item) {
+                $key = $item['machine_code'] . '|' . $item['component_name'];
+                if (!isset($componentsByKey[$key])) {
+                    $missingComponents[] = $item['machine_code'] . ' - ' . $item['component_name'];
+                    continue;
+                }
+
+                $component = $componentsByKey[$key];
+                $this->syncIndicators($component, $item['indicators']);
+                $importedCount += count($item['indicators']);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => "Berhasil mengimpor {$importedCount} indikator.",
+                'count' => $importedCount,
+                'missing_components' => array_unique($missingComponents),
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Gagal mengimpor indikator: ' . $e->getMessage()], 500);
+        }
     }
 
     private function computeApprovalState($record, $allFlowSteps)

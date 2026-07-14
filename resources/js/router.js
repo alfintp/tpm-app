@@ -3,6 +3,7 @@ import { useAuth } from './composables/useAuth.js';
 
 import Dashboard from './views/Dashboard.vue';
 import MachineDetail from './views/MachineDetail.vue';
+import Report from './views/Report.vue';
 import Machines from './views/Machines.vue';
 import Approval from './views/Approval.vue';
 import Login from './views/Login.vue';
@@ -26,6 +27,13 @@ const routes = [
         path: '/machine/:id', 
         component: MachineDetail, 
         name: 'machine-detail', 
+        props: true,
+        meta: { requiresAuth: true }
+    },
+    { 
+        path: '/report/:id', 
+        component: Report, 
+        name: 'report', 
         props: true,
         meta: { requiresAuth: true }
     },

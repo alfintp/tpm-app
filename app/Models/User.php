@@ -45,4 +45,21 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    protected $appends = ['is_manager', 'can_approve'];
+
+    public function roleRelation()
+    {
+        return $this->belongsTo(Role::class, 'role', 'name');
+    }
+
+    public function getIsManagerAttribute(): bool
+    {
+        return $this->roleRelation?->is_manager ?? Role::where('name', $this->role)->value('is_manager') ?? false;
+    }
+
+    public function getCanApproveAttribute(): bool
+    {
+        return $this->roleRelation?->can_approve ?? Role::where('name', $this->role)->value('can_approve') ?? false;
+    }
 }

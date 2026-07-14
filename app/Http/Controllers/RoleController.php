@@ -17,6 +17,7 @@ class RoleController extends Controller
             'display_name' => $r->display_name,
             'can_approve' => $r->can_approve,
             'can_report' => $r->can_report,
+            'is_manager' => $r->is_manager,
             'required_difficulties' => $r->required_difficulties ?? [],
             'is_active' => $r->is_active,
         ]));
@@ -84,23 +85,60 @@ class RoleController extends Controller
         $validated = $request->validate([
             'roles' => 'required|array',
             'roles.*.id' => 'required|string|exists:roles,id',
+            'roles.*.name' => 'required|string|max:50|alpha_dash',
             'roles.*.display_name' => 'required|string|max:100',
             'roles.*.can_approve' => 'required|boolean',
             'roles.*.can_report' => 'required|boolean',
             'roles.*.required_difficulties' => 'nullable|array',
         ]);
 
+        $systemRoles = ['admin', 'technician'];
+        $submittedNames = [];
+
         foreach ($validated['roles'] as $roleData) {
-            $role = Role::find($roleData['id']);
-            if ($role) {
+            $name = strtolower($roleData['name']);
+            $id = $roleData['id'];
+
+            if (in_array($name, $submittedNames, true)) {
+                return response()->json(['message' => "Nama role '{$roleData['name']}' duplikat dalam data yang dikirim."], 422);
+            }
+            $submittedNames[] = $name;
+
+            $role = Role::find($id);
+            if (!$role) continue;
+
+            if (in_array($role->name, $systemRoles, true) && $role->name !== $name) {
+                return response()->json(['message' => "Role bawaan sistem '{$role->name}' tidak dapat diubah namanya."], 422);
+            }
+
+            if (Role::where('name', $name)->where('id', '!=', $id)->exists()) {
+                return response()->json(['message' => "Nama role '{$roleData['name']}' sudah digunakan."], 422);
+            }
+        }
+
+        DB::transaction(function () use ($validated) {
+            foreach ($validated['roles'] as $roleData) {
+                $role = Role::find($roleData['id']);
+                if (!$role) continue;
+
+                $oldName = $role->name;
+                $newName = strtolower($roleData['name']);
+
+                if ($oldName !== $newName) {
+                    DB::table('users')->where('role', $oldName)->update(['role' => $newName]);
+                    DB::table('approval_flow_steps')->where('role', $oldName)->update(['role' => $newName]);
+                    DB::table('approval_flow_steps')->where('reporter_role', $oldName)->update(['reporter_role' => $newName]);
+                }
+
                 $role->update([
+                    'name' => $newName,
                     'display_name' => $roleData['display_name'],
                     'can_approve' => $roleData['can_approve'],
                     'can_report' => $roleData['can_report'],
                     'required_difficulties' => $this->sanitizeDifficulties($roleData['required_difficulties'] ?? []),
                 ]);
             }
-        }
+        });
 
         return response()->json(['message' => 'Semua role berhasil disimpan.']);
     }
@@ -121,7 +159,7 @@ class RoleController extends Controller
         $role = Role::findOrFail($id);
 
         // Prevent deletion of built-in system roles
-        if (in_array($role->name, ['admin', 'technician', 'manager'])) {
+        if (in_array($role->name, ['admin', 'technician']) || $role->is_manager) {
             return response()->json(['message' => 'Role bawaan sistem tidak dapat dihapus.'], 422);
         }
 

@@ -32,6 +32,11 @@ class MachineComponent extends Model
         return $this->belongsTo(Machine::class);
     }
 
+    public function indicators()
+    {
+        return $this->hasMany(ComponentIndicator::class, 'machine_component_id')->orderBy('sort_order');
+    }
+
     protected static function booted()
     {
         static::saved(function ($component) {

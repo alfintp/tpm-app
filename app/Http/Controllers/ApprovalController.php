@@ -104,9 +104,10 @@ class ApprovalController extends Controller
         $isApprover = $role === 'admin' || in_array($role, $approvingRoles);
 
         $baseQuery = MaintenanceRecord::with([
-            'machine',
+            'machine.components',
             'technician',
             'actions.component',
+            'actions.indicatorValues.indicator',
             'approvals.approver',
         ])
         ->where('status', 'completed')
@@ -139,6 +140,11 @@ class ApprovalController extends Controller
                     'condition_before'   => $a->condition_before_pct,
                     'condition_after'    => $a->condition_after_pct,
                     'description'        => $a->description,
+                    'indicator_values'   => $a->indicatorValues->map(fn($iv) => [
+                        'indicator_name'        => $iv->indicator?->name,
+                        'indicator_description' => $iv->indicator?->description,
+                        'value'                 => (bool) $iv->value,
+                    ])->values(),
                 ]),
                 'approval_status' => $state['approval_status'],
                 'approval_id'     => $state['approval_id'],
@@ -151,6 +157,7 @@ class ApprovalController extends Controller
                 'pending_role'    => $state['pending_role'],
                 'approvals'       => $state['approvals'],
                 'flow_steps'        => $state['flow_steps'],
+                'component_stats'   => $this->computeComponentStats($record),
             ];
         });
 
@@ -260,9 +267,13 @@ class ApprovalController extends Controller
                 if ($record->schedule_id) {
                     $schedule = MaintenanceSchedule::find($record->schedule_id);
                     if ($schedule) {
-                        $schedule->update([
-                            'next_due_date' => Carbon::parse($schedule->next_due_date)->addDays($schedule->interval_days),
-                        ]);
+                        $newDue = Carbon::parse($schedule->next_due_date)->addDays($schedule->interval_days);
+                        // Clamp to end of that month so maintenance never spills into the following month
+                        $endOfMonth = $newDue->copy()->endOfMonth()->startOfDay();
+                        if ($newDue->gt($endOfMonth)) {
+                            $newDue = $endOfMonth;
+                        }
+                        $schedule->update(['next_due_date' => $newDue]);
                     }
                 }
             }
@@ -353,6 +364,43 @@ class ApprovalController extends Controller
             'pending_role' => $pendingRole,
             'approvals' => $this->mapApprovals($decisions),
             'flow_steps' => $steps,
+        ];
+    }
+
+    private function computeComponentStats(MaintenanceRecord $record)
+    {
+        $allComponents = $record->machine?->components ?? collect();
+        $totalComponents = $allComponents->count();
+
+        // Get all unique component IDs that were reported in this record
+        $reportedComponentIds = $record->actions->pluck('machine_component_id')->unique();
+
+        $buckets = [
+            ['key' => 'teknisi', 'display_name' => 'Teknisi', 'difficulties' => ['berat', 'sedang', 'none', null]],
+            ['key' => 'operator', 'display_name' => 'Operator', 'difficulties' => ['ringan']],
+        ];
+
+        $roleStats = collect($buckets)->map(function ($bucket) use ($allComponents, $reportedComponentIds) {
+            $applicable = $allComponents->filter(function ($comp) use ($bucket) {
+                $diff = $comp->difficulty ?? null;
+                return in_array($diff, $bucket['difficulties'], true);
+            });
+
+            $applicableTotal = $applicable->count();
+            $applicableIds = $applicable->pluck('id');
+            $reported = $reportedComponentIds->intersect($applicableIds)->count();
+
+            return [
+                'role'         => $bucket['key'],
+                'display_name' => $bucket['display_name'],
+                'reported'     => $reported,
+                'total'        => $applicableTotal,
+            ];
+        })->filter(fn ($s) => $s['total'] > 0)->values();
+
+        return [
+            'total_components' => $totalComponents,
+            'roles'            => $roleStats,
         ];
     }
 

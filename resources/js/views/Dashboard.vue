@@ -48,6 +48,30 @@
             <option value="pasuruan">Pasuruan</option>
             <option value="sby">Surabaya</option>
           </select>
+          <div class="relative">
+            <input
+              v-model="locationSearch"
+              @focus="showLocationDropdown = true"
+              @blur="handleLocationBlur"
+              @input="handleLocationInput"
+              type="text"
+              placeholder="Lokasi / Area"
+              class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40"
+            />
+            <div
+              v-if="showLocationDropdown && filteredLocations.length > 0"
+              class="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"
+            >
+              <div
+                v-for="loc in filteredLocations"
+                :key="loc"
+                @mousedown="selectLocation(loc)"
+                class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                {{ loc }}
+              </div>
+            </div>
+          </div>
           <select v-model="machineSort" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
             <option value="name">Nama A-Z</option>
             <option value="condition_asc">Kondisi Terendah</option>
@@ -114,6 +138,8 @@ const loading       = ref(false);
 const machineSearch = ref('');
 const machineSort   = ref('name');
 const machineKota   = ref('');
+const locationSearch = ref('');
+const showLocationDropdown = ref(false);
 const currentPage   = ref(1);
 const perPage       = 12;
 
@@ -125,6 +151,36 @@ const cityFilteredMachines = computed(() => {
   return machines.value;
 });
 
+const uniqueLocations = computed(() => {
+  const locations = new Set();
+  cityFilteredMachines.value.forEach(m => {
+    if (m.location) locations.add(m.location);
+  });
+  return Array.from(locations).sort();
+});
+
+const filteredLocations = computed(() => {
+  if (!locationSearch.value) return uniqueLocations.value;
+  const q = locationSearch.value.toLowerCase();
+  return uniqueLocations.value.filter(loc => loc.toLowerCase().includes(q));
+});
+
+const selectedLocation = ref('');
+
+const handleLocationBlur = () => {
+  setTimeout(() => { showLocationDropdown.value = false; }, 200);
+};
+
+const handleLocationInput = () => {
+  showLocationDropdown.value = true;
+};
+
+const selectLocation = (loc) => {
+  locationSearch.value = loc;
+  selectedLocation.value = loc;
+  showLocationDropdown.value = false;
+};
+
 const activeMachines   = computed(() => cityFilteredMachines.value.filter(m => m.status === 'active').length);
 const healthyMachines  = computed(() => cityFilteredMachines.value.filter(m => m.condition_pct > 80).length);
 const criticalMachines = computed(() => cityFilteredMachines.value.filter(m => m.condition_pct < 50).length);
@@ -133,6 +189,9 @@ const filteredMachines = computed(() => {
   let list = cityFilteredMachines.value;
   if (machineKota.value) {
     list = list.filter(m => m.kota === machineKota.value);
+  }
+  if (selectedLocation.value) {
+    list = list.filter(m => m.location === selectedLocation.value);
   }
   if (machineSearch.value) {
     const q = machineSearch.value.toLowerCase();
@@ -152,7 +211,7 @@ const paginatedMachines = computed(() => {
   return filteredMachines.value.slice(start, start + perPage);
 });
 
-watch([machineSearch, machineSort, machineKota], () => { currentPage.value = 1; });
+watch([machineSearch, machineSort, machineKota, selectedLocation], () => { currentPage.value = 1; });
 
 const maintenanceAlerts = computed(() => {
   const today = new Date(); today.setHours(0,0,0,0);

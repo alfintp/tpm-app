@@ -1,7 +1,7 @@
 <template>
   <!-- Day Detail Modal -->
   <Teleport to="body">
-    <div v-if="dayModal.show" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="dayModal.show = false">
+    <div v-if="dayModal.show" class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="dayModal.show = false">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
         <!-- Header -->
         <div class="flex items-center justify-between p-4 border-b border-slate-100">
@@ -31,7 +31,7 @@
                 ⟶ Jadwal dipindah ke {{ formatRescheduledDate(machine.rescheduledTo) }}
               </div>
             </div>
-            <div class="flex-shrink-0 pt-0.5">
+            <div class="shrink-0 pt-0.5">
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
                 :class="{
                   'bg-green-100 text-green-700':  machine.status === 'completed',
@@ -53,7 +53,7 @@
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
 
       <!-- Calendar Header -->
-      <div class="bg-gradient-to-tr from-brand-brown to-brand-gradation text-white p-4 sm:p-6 flex-shrink-0">
+      <div class="bg-linear-to-tr from-brand-brown to-brand-gradation text-white p-4 sm:p-6 shrink-0">
         <div class="flex items-center justify-between gap-4">
           <div>
             <h3 class="text-lg sm:text-2xl font-bold">Kalender Maintenance</h3>
@@ -345,23 +345,37 @@ const nextMonth = () => {
   else currentMonth.value++;
 };
 
-// Build projected schedule entries: { originalTime, shiftedTime }
-const buildProjections = (nextDueDate, intervalDays) => {
+// Build projected schedule entries covering the currently viewed month.
+// Walks backward from next_due_date to reach dates in or before viewMonthStart,
+// then forward to cover viewMonthEnd. This ensures mesin whose next_due was
+// already advanced to a future month still appear in past months on the calendar.
+const buildProjections = (nextDueDate, intervalDays, viewMonthStart, viewMonthEnd) => {
+  if (!intervalDays || intervalDays <= 0) return [];
+  const intervalMs = intervalDays * 86400000;
   const base = new Date(nextDueDate); base.setHours(0, 0, 0, 0);
-  const projections = [];
+
+  // Walk base backward until we are at or before viewMonthStart
   let raw = new Date(base);
-  for (let k = 0; k < 20; k++) {
-    const shifted = advancePastOffDays(raw);
-    projections.push({ originalTime: raw.getTime(), shiftedTime: shifted.getTime(), shiftedDate: shifted });
-    const next = new Date(shifted);
-    next.setDate(shifted.getDate() + intervalDays);
-    raw = next;
-    if (Math.round((raw - base) / (1000 * 60 * 60 * 24)) > 60) break;
+  let safety = 0;
+  while (raw > viewMonthStart && safety++ < 200) {
+    raw = new Date(raw.getTime() - intervalMs);
+  }
+
+  const projections = [];
+  safety = 0;
+  // Walk forward, collect all entries that fall within viewMonthStart..viewMonthEnd (+7 days buffer)
+  const limit = new Date(viewMonthEnd.getTime() + 7 * 86400000);
+  while (raw <= limit && safety++ < 200) {
+    if (raw >= new Date(viewMonthStart.getTime() - 7 * 86400000)) {
+      const shifted = advancePastOffDays(raw);
+      projections.push({ originalTime: raw.getTime(), shiftedTime: shifted.getTime(), shiftedDate: shifted });
+    }
+    raw = new Date(raw.getTime() + intervalMs);
   }
   return projections;
 };
 
-const getMachinesForDate = (date) => {
+const getMachinesForDate = (date, viewMonthStart, viewMonthEnd) => {
   const targetDate = new Date(date); targetDate.setHours(0, 0, 0, 0);
   const targetTime = targetDate.getTime();
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -379,7 +393,7 @@ const getMachinesForDate = (date) => {
     }
     (machine.schedules ?? []).forEach(sched => {
       if (sched.is_active === false) return;
-      const projections = buildProjections(sched.next_due_date, sched.interval_days);
+      const projections = buildProjections(sched.next_due_date, sched.interval_days, viewMonthStart, viewMonthEnd);
 
       // Case 1: this date is a shifted (working-day) scheduled date
       const shiftedMatch = projections.find(p => p.shiftedTime === targetTime);
@@ -408,6 +422,9 @@ const getMachinesForDate = (date) => {
 
 const calendarDays = computed(() => {
   const firstDay = new Date(currentYear.value, currentMonth.value, 1);
+  firstDay.setHours(0, 0, 0, 0);
+  const lastDay = new Date(currentYear.value, currentMonth.value + 1, 0);
+  lastDay.setHours(0, 0, 0, 0);
   const startDate = new Date(firstDay);
   startDate.setDate(startDate.getDate() - firstDay.getDay());
   const today = new Date(); today.setHours(0,0,0,0);
@@ -423,7 +440,7 @@ const calendarDays = computed(() => {
       isSunday: date.getDay() === 0,
       isHolidayDay: isHoliday(dateStr),
       holidayName: getHolidayName(dateStr),
-      machines: getMachinesForDate(date),
+      machines: getMachinesForDate(date, firstDay, lastDay),
     };
   });
 });

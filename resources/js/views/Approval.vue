@@ -234,7 +234,15 @@
             </thead>
             <tbody class="divide-y divide-slate-100">
               <tr v-for="role in localRoles" :key="role.id" class="hover:bg-slate-50">
-                <td class="px-3 py-2 text-slate-700 font-medium">{{ role.name }}</td>
+                <td class="px-3 py-2">
+                  <input
+                    v-if="roleEditMode && !isCoreSystemRole(role)"
+                    v-model="role.name"
+                    type="text"
+                    class="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                  />
+                  <span v-else class="text-xs text-slate-700 font-medium">{{ role.name }}</span>
+                </td>
                 <td class="px-3 py-2">
                   <input
                     v-if="roleEditMode"
@@ -291,7 +299,7 @@
           </button>
           <button
             @click="saveAllRoles"
-            :disabled="roleConfigLoading"
+            :disabled="roleConfigLoading || !isRoleNamesValid"
             class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
           >
             <svg v-if="roleConfigLoading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -754,9 +762,26 @@ const isNewRoleValid = computed(() => {
     newRole.value.display_name.trim().length > 0;
 });
 
-const isSystemRole = (role) => {
-  return ['admin', 'technician', 'manager'].includes(role.name);
+const isCoreSystemRole = (role) => {
+  return ['admin', 'technician'].includes(role.name);
 };
+
+const isSystemRole = (role) => {
+  return isCoreSystemRole(role) || role.is_manager;
+};
+
+const isRoleNamesValid = computed(() => {
+  const names = localRoles.value.map(r => r.name.trim().toLowerCase());
+  if (new Set(names).size !== names.length) return false;
+  return localRoles.value.every(r => {
+    const name = r.name.trim();
+    if (!name) return false;
+    if (!/^[a-z0-9_]+$/.test(name)) return false;
+    const originalName = rolesBackup.value.find(rb => rb.id === r.id)?.name;
+    if (isCoreSystemRole(r) && name !== originalName) return false;
+    return true;
+  });
+});
 
 const toggleDifficulty = (role, diffValue) => {
   if (!role.required_difficulties) role.required_difficulties = [];
@@ -794,6 +819,7 @@ const saveAllRoles = async () => {
     await axios.put('/api/roles/bulk', {
       roles: localRoles.value.map(r => ({
         id: r.id,
+        name: r.name,
         display_name: r.display_name,
         can_approve: r.can_approve,
         can_report: r.can_report,

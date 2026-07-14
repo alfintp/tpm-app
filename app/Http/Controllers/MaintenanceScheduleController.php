@@ -17,14 +17,33 @@ class MaintenanceScheduleController extends Controller
     
     public function notifications()
     {
-        // Find schedules where next_due_date is tomorrow, today, or in the past (overdue)
+        $today = Carbon::today();
         $tomorrow = Carbon::tomorrow();
-        
-        $schedules = MaintenanceSchedule::with('machine')
+        $monthStart = Carbon::today()->startOfMonth();
+        $monthEnd = Carbon::today()->endOfMonth();
+
+        // Base query: schedules with next_due <= tomorrow OR schedules that were advanced
+        // but have no approved record in the current month
+        $schedules = MaintenanceSchedule::with(['machine.records.latestApproval', 'machine.components'])
             ->where('is_active', true)
-            ->where('next_due_date', '<=', $tomorrow)
+            ->where(function ($query) use ($tomorrow, $monthStart, $monthEnd) {
+                // Case 1: next_due is within H-1..tomorrow
+                $query->where('next_due_date', '<=', $tomorrow)
+                    // OR Case 2: next_due is in the future (already advanced) but no approved
+                    // record exists in the current month for this machine
+                    ->orWhere(function ($q) use ($monthStart, $monthEnd) {
+                        $q->where('next_due_date', '>', Carbon::tomorrow())
+                            ->whereDoesntHave('machine.records', function ($recordQ) use ($monthStart, $monthEnd) {
+                                $recordQ->where('status', 'completed')
+                                    ->whereHas('latestApproval', function ($approvalQ) {
+                                        $approvalQ->where('decision', 'approved');
+                                    })
+                                    ->whereBetween('maintenance_date', [$monthStart, $monthEnd]);
+                            });
+                    });
+            })
             ->get();
-            
+
         return response()->json($schedules);
     }
 

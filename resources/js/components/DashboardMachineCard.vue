@@ -4,7 +4,7 @@
     class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-lg transition-all relative overflow-hidden group cursor-pointer transform hover:-translate-y-1 duration-300"
   >
     <!-- Gradient corner -->
-    <div :class="['absolute top-0 right-0 w-24 h-24 rounded-bl-full -z-10 opacity-50 group-hover:scale-110 transition-transform bg-gradient-to-br', theme.gradClass]" />
+    <div :class="['absolute top-0 right-0 w-24 h-24 rounded-bl-full -z-10 opacity-50 group-hover:scale-110 transition-transform bg-linear-to-br', theme.gradClass]" />
 
     <!-- Header -->
     <div class="flex justify-between items-start mb-4">
@@ -12,7 +12,7 @@
         <h4 class="font-semibold text-slate-800 leading-tight truncate">{{ machine.name }}</h4>
         <p class="text-xs text-slate-400 mt-1 truncate">{{ machine.location ?? '-' }}</p>
       </div>
-      <div :class="[theme.bgClass, 'p-2 rounded-lg flex-shrink-0']">
+      <div :class="[theme.bgClass, 'p-2 rounded-lg shrink-0']">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -51,11 +51,10 @@
       </div>
 
       <div class="flex items-center text-xs text-slate-500">
-        <svg class="w-3.5 h-3.5 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-3.5 h-3.5 mr-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
         </svg>
-        <span class="truncate">{{ machine.location ?? '-' }}</span>
-        <span v-if="machine.kota" class="ml-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase">
+        <span v-if="machine.kota" class="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase">
           {{ machine.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}
         </span>
       </div>

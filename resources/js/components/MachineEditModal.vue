@@ -44,12 +44,18 @@
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Durasi Maintenance (hari)</label>
-            <input type="number" v-model="form.maintenance_duration" min="1" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700" placeholder="e.g. 30">
+            <label class="text-sm font-medium text-slate-700">Frekuensi Maintenance</label>
+            <select v-model="frequencyOption" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 cursor-pointer">
+              <option value="">Tidak ada jadwal</option>
+              <option v-for="opt in frequencyOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+            <p v-if="frequencyOption" class="text-xs text-slate-400">Interval: setiap {{ form.maintenance_duration }} hari</p>
+            <p v-else class="text-xs text-slate-400">Jadwal maintenance akan dihapus jika dikosongkan.</p>
           </div>
           <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Tanggal Maintenance</label>
-            <input type="date" v-model="form.maintenance_start_date" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700">
+            <label class="text-sm font-medium text-slate-700">Tanggal Maintenance Berikutnya</label>
+            <input type="date" v-model="form.maintenance_start_date" :disabled="!frequencyOption" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
+            <p v-if="frequencyOption" class="text-xs text-slate-400">Tanggal ini akan dipakai sebagai jadwal bulan ini/berikutnya.</p>
           </div>
         </div>
       </div>
@@ -65,7 +71,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -74,6 +80,22 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved']);
 const saving = ref(false);
 const users = ref([]);
+
+const frequencyOptions = [
+  { label: '4x sebulan (setiap minggu)', value: 7 },
+  { label: '2x sebulan', value: 14 },
+  { label: '1x sebulan', value: 28 },
+  { label: '1x per 2 bulan', value: 56 },
+  { label: '1x per 3 bulan', value: 84 },
+];
+
+const frequencyOption = ref('');
+
+watch(frequencyOption, (val) => {
+  form.value.maintenance_duration = val ? Number(val) : null;
+  if (!val) form.value.maintenance_start_date = '';
+});
+
 const form = ref({ 
   kode: '',
   name: '', 
@@ -98,6 +120,9 @@ const loadUsers = async () => {
 onMounted(() => {
   loadUsers();
   if (props.machine) {
+    const dur = props.machine.maintenance_duration ?? null;
+    const knownValues = [7, 14, 28, 56, 84];
+    frequencyOption.value = (dur && knownValues.includes(Number(dur))) ? Number(dur) : '';
     form.value = {
       kode: props.machine.kode ?? '',
       name: props.machine.name ?? '',
@@ -106,7 +131,7 @@ onMounted(() => {
       kota: props.machine.kota ?? 'pasuruan',
       status: props.machine.status ?? 'active',
       pic_mesin_id: props.machine.pic_mesin_id ?? '',
-      maintenance_duration: props.machine.maintenance_duration ?? null,
+      maintenance_duration: dur,
       maintenance_start_date: props.machine.maintenance_start_date ?? ''
     };
   }

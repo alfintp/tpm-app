@@ -80,14 +80,32 @@ Route::get('/machines', function () {
 Route::get('/machine/{id}', function ($id) {
     $machine = \App\Models\Machine::with([
         'schedules', 
-        'components', 
-        'records.actions.component', 
+        'components.indicators', 
+        'records.actions.component.indicators', 
+        'records.actions.indicatorValues.indicator', 
         'records.technician', 
         'records.latestApproval', 
         'picMesin'
     ])->findOrFail($id);
 
     return Inertia::render('MachineDetail', [
+        'machine' => $machine
+    ]);
+});
+
+// Halaman Baru Pembuatan Laporan (Report Page) kustom
+Route::get('/report/{id}', function ($id) {
+    $machine = \App\Models\Machine::with([
+        'schedules', 
+        'components.indicators', 
+        'records.actions.component.indicators', 
+        'records.actions.indicatorValues', 
+        'records.technician', 
+        'records.latestApproval', 
+        'picMesin'
+    ])->findOrFail($id);
+
+    return Inertia::render('Report', [
         'machine' => $machine
     ]);
 });
