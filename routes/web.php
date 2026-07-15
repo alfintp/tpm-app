@@ -94,20 +94,8 @@ Route::get('/machine/{id}', function ($id) {
 });
 
 // Halaman Baru Pembuatan Laporan (Report Page) kustom
-Route::get('/report/{id}', function ($id) {
-    $machine = \App\Models\Machine::with([
-        'schedules', 
-        'components.indicators', 
-        'records.actions.component.indicators', 
-        'records.actions.indicatorValues', 
-        'records.technician', 
-        'records.latestApproval', 
-        'picMesin'
-    ])->findOrFail($id);
-
-    return Inertia::render('Report', [
-        'machine' => $machine
-    ]);
+Route::get('/report', function () {
+    return Inertia::render('Report');
 });
 
 // Halaman Approval menggunakan Inertia

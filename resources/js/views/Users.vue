@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="w-full max-w-5xl mx-auto space-y-6">
     <!-- Header -->
     <PageHeader
     title="Manajemen User"
@@ -35,10 +35,11 @@
       loading-subtext="Mengambil data dari server"
       empty-title="Tidak Ada User"
       empty-subtext="Belum ada user terdaftar di dalam sistem."
-      min-width="min-w-[900px]"
+      min-width="min-w-[900px] lg:min-w-[700px]"
+      table-class="table-auto lg:table-fixed"
       :paginate="false"
       actions-align="right"
-      actions-width="w-[12%]"
+      actions-width="w-[14%]"
     >
       <!-- Kolom: User (avatar + nama) -->
       <template #cell-full_name="{ row }">
@@ -52,13 +53,9 @@
               <span v-if="row.id === currentUser?.id" class="ml-1.5 text-xs bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded">Anda</span>
             </div>
             <div class="text-xs text-slate-400 font-medium">Terdaftar {{ formatDate(row.created_at) }}</div>
+            <div v-if="isAdmin" class="text-xs text-slate-500 truncate">{{ row.email }}</div>
           </div>
         </div>
-      </template>
-
-      <!-- Kolom: Email (Admin only) -->
-      <template #cell-email="{ row }">
-        <span class="text-sm font-medium text-slate-600">{{ row.email }}</span>
       </template>
 
       <!-- Kolom: Role badge -->
@@ -74,10 +71,10 @@
           :value="row.role"
           @change="handleRoleChange(row, $event.target.value)"
           :disabled="updatingId === row.id"
-          class="bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-brown focus:border-brand-brown disabled:opacity-50 cursor-pointer"
+          class="w-full bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-brand-brown focus:border-brand-brown disabled:opacity-50 cursor-pointer"
         >
           <option v-for="role in activeRoles" :key="role.name" :value="role.name">
-            {{ role.display_name }} 
+            {{ role.display_name }}
           </option>
         </select>
       </template>
@@ -113,7 +110,7 @@
 
       <!-- Slot Actions: Edit, Password, Hapus (Admin only) -->
       <template v-if="isAdmin" #actions="{ row }">
-        <div class="flex items-center justify-end gap-1.5">
+        <div class="flex flex-nowrap items-center justify-end gap-1.5">
           <Button
             variant="outline" size="sm"
             @click="openEditModal(row)"
@@ -369,12 +366,11 @@ const updatingCityId = ref(null);
 const deletingId = ref(null);
 
 const userColumns = computed(() => [
-  { key: 'full_name',    label: 'User',        width: 'w-[22%]' },
-  { key: 'email',        label: 'Email',        width: 'w-[18%]', show: isAdmin.value },
-  { key: 'role',         label: isAdmin.value ? 'Role Saat Ini' : 'Role', width: 'w-[12%]' },
-  { key: 'role_select',  label: 'Ubah Role',   width: 'w-[14%]', show: isAdmin.value },
-  { key: 'city',         label: 'Kota',         width: 'w-[14%]' },
-  { key: 'machines_pic', label: 'Mesin (PIC)',  width: 'w-[12%]', show: isAdmin.value || isManager.value },
+  { key: 'full_name',    label: 'User',        width: 'w-[36%]', cellClass: 'break-words' },
+  { key: 'role',         label: 'Role',        width: 'w-[20%]', show: !isAdmin.value },
+  { key: 'role_select',  label: 'Role',        width: 'w-[20%]', show: isAdmin.value },
+  { key: 'city',         label: 'Kota',        width: 'w-[14%]', cellClass: 'break-words' },
+  { key: 'machines_pic', label: 'Mesin (PIC)', width: 'w-[16%]', show: isAdmin.value || isManager.value },
 ]);
 
 watch(searchQuery, () => { currentPage.value = 1; });

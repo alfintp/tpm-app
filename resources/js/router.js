@@ -31,10 +31,9 @@ const routes = [
         meta: { requiresAuth: true }
     },
     { 
-        path: '/report/:id', 
+        path: '/report', 
         component: Report, 
-        name: 'report', 
-        props: true,
+        name: 'report',
         meta: { requiresAuth: true }
     },
     { 

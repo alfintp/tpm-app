@@ -33,6 +33,6 @@ defineProps({
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
   badge: { type: String, default: '' },
-  card: { type: Boolean, default: false },
+  card: { type: Boolean, default: true },
 });
 </script>

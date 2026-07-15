@@ -1,498 +1,602 @@
 <template>
-  <div class="min-h-screen bg-white text-slate-800 flex flex-col font-sans antialiased">
-    <!-- Header Bar -->
-    <header class="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
-      <div class="flex items-center gap-3.5">
-        <button
-          @click="goBack"
-          class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-          </svg>
-          Kembali
-        </button>
-        <h1 class="text-sm md:text-base font-black uppercase tracking-wider text-slate-800 flex items-center gap-2 flex-wrap">
-          <span>Maintenance Inspection Report:</span>
-          <span class="text-brand-brown bg-brand-cream px-2.5 py-0.5 rounded-lg border border-brand-brown/20 font-mono text-xs md:text-sm">
-            {{ machine?.name || 'Loading...' }} ({{ machine?.kode || '-' }})
-          </span>
-        </h1>
-      </div>
-      <div>
-        <button
-          @click="triggerSaveReport"
-          :disabled="submitting || !hasCheckedComponents"
-          class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed text-white font-bold text-xs md:text-sm rounded-xl shadow-lg hover:shadow-emerald-900/10 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-500/20"
-        >
-          <svg v-if="submitting" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-          </svg>
-          Simpan Laporan
-        </button>
-      </div>
-    </header>
+  <div class="space-y-4 pb-24">
 
-    <div v-if="loading" class="flex-1 flex flex-col items-center justify-center gap-4 text-slate-500">
-      <svg class="animate-spin h-10 w-10 text-brand-brown" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
-      <p class="font-bold text-sm tracking-wide text-brand-brown/80">Memuat modul inspeksi mesin...</p>
+    <!-- ══════════════════════════════════════════════════════════════
+         PAGE TITLE
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="w-full max-w-5xl mx-auto">
+      <PageHeader title="Laporan Maintenance" subtitle="Pilih mesin dan jadwal untuk memulai laporan pemeriksaan" />
     </div>
 
-    <div v-else-if="machine" class="flex-1 flex flex-col overflow-hidden">
-      <!-- Compliance Bar Section -->
-      <div class="bg-slate-50 border-b border-slate-200 p-4">
-        <div class="max-w-7xl mx-auto flex flex-col gap-2">
-          <div class="flex items-center justify-between text-xs md:text-sm font-bold uppercase tracking-wider">
-            <span class="text-slate-600">Total Machine Compliance</span>
-            <span :class="complianceColorClass">{{ totalCompliance }}%</span>
-          </div>
-          <div class="w-full bg-slate-200 h-4 rounded-full overflow-hidden border border-slate-300 p-0.5">
+    <!-- ══════════════════════════════════════════════════════════════
+         CARD 0: PILIH MESIN
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+        <svg class="w-4 h-4 text-brand-brown shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <h2 class="text-sm font-bold text-slate-700">Pilih Mesin</h2>
+      </div>
+      <div class="p-5">
+        <!-- Machine loading -->
+        <div v-if="machinesLoading" class="flex items-center gap-2 text-slate-400 text-sm">
+          <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          Memuat daftar mesin...
+        </div>
+        <!-- Machine combobox -->
+        <div v-else class="space-y-3">
+          <div class="relative" v-click-outside="closeCombobox">
+            <div class="relative">
+              <input
+                ref="comboboxInput"
+                v-model="machineSearch"
+                @focus="comboboxOpen = true"
+                @input="comboboxOpen = true"
+                @keydown.escape="closeCombobox"
+                @keydown.enter.prevent="selectFirstFiltered"
+                placeholder="Ketik nama mesin..."
+                class="w-full text-sm border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-brand-brown text-slate-700 bg-white pr-10"
+                autocomplete="off"
+              />
+              <button
+                v-if="machineSearch || machine"
+                @click="clearMachine"
+                type="button"
+                aria-label="Hapus pilihan mesin"
+                class="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+              <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </div>
+            <!-- Dropdown -->
             <div
-              :class="complianceBarClass"
-              class="h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2 text-[10px] font-black text-white"
-              :style="{ width: `${totalCompliance}%` }"
+              v-if="comboboxOpen && filteredMachines.length > 0"
+              class="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
             >
-              <span v-if="totalCompliance > 10">{{ totalCompliance }}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Layout: Sidebar & Content -->
-      <main class="flex-1 flex flex-col md:flex-row overflow-hidden max-w-7xl w-full mx-auto p-4 gap-4 bg-white">
-        
-        <!-- Left Sidebar: Component List -->
-        <section class="w-full md:w-80 flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden shrink-0 shadow-lg">
-          <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-            <span class="text-xs font-black uppercase tracking-wider text-slate-700">Daftar Komponen</span>
-            <span class="px-2 py-0.5 bg-brand-cream border border-brand-brown/20 rounded-full text-[10px] font-bold text-brand-brown">
-              {{ checkedCount }}/{{ componentsList.length }} Selesai
-            </span>
-          </div>
-
-          <div class="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
-            <button
-              v-for="comp in componentsList"
-              :key="comp.id"
-              @click="selectComponent(comp)"
-              :class="[
-                activeComponent?.id === comp.id
-                  ? 'bg-brand-brown text-white border-brand-brown shadow-md shadow-brand-brown/10'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200',
-                'w-full flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer group'
-              ]"
-            >
-              <div class="flex items-center gap-2.5 min-w-0">
-                <span class="shrink-0 flex items-center justify-center">
-                  <span v-if="comp.checked" class="text-emerald-400">
-                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </span>
-                  <span v-else-if="comp.inProgress" class="text-amber-400">
-                    <svg class="w-4.5 h-4.5 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </span>
-                  <span v-else class="text-slate-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" stroke-width="2" />
-                    </svg>
-                  </span>
-                </span>
-                <span class="font-bold text-sm truncate uppercase tracking-wide group-hover:translate-x-0.5 transition-transform duration-200">
-                  {{ comp.name }}
-                </span>
-              </div>
-              <div class="text-right shrink-0">
-                <span v-if="comp.checked" class="text-xs font-black text-emerald-500">
-                  {{ comp.conditionPct }}% OK
-                </span>
-                <span v-else-if="comp.inProgress" class="text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md animate-pulse">
-                  {{ comp.conditionPct }}% Cek
-                </span>
-                <span v-else class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">
-                  Pending
-                </span>
-              </div>
-            </button>
-          </div>
-        </section>
-
-        <!-- Right Side: Selected Component Inspection Form -->
-        <section v-if="activeComponent" class="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-lg">
-          <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2">
-            <div>
-              <h2 class="font-black text-sm md:text-base text-slate-800 uppercase tracking-wider">
-                {{ activeComponent.name }}
-              </h2>
-              <p class="text-[11px] text-slate-500 font-semibold uppercase mt-0.5">
-                Kategori: {{ activeComponent.category || '-' }} · Spec: {{ activeComponent.specification || '-' }}
-              </p>
-            </div>
-            <div class="flex items-center gap-2.5">
-              <span class="text-xs font-bold text-slate-600">Status:</span>
-              <span
-                v-if="activeComponent.checked"
-                class="px-2.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md text-xs font-black uppercase tracking-wider"
-              >
-                {{ activeComponent.conditionPct }}% OK
-              </span>
-              <span
-                v-else-if="activeComponent.inProgress"
-                class="px-2.5 py-0.5 bg-amber-50 text-amber-600 border border-amber-200 rounded-md text-xs font-black uppercase tracking-wider animate-pulse"
-              >
-                {{ activeComponent.conditionPct }}% Checking...
-              </span>
-              <span
-                v-else
-                class="px-2.5 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-md text-xs font-black uppercase tracking-wider"
-              >
-                0% Pending
-              </span>
-            </div>
-          </div>
-
-          <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-            <!-- Parameter Checklist (If Component Has Indicators) -->
-            <div v-if="hasIndicators" class="space-y-4">
-              <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-                <span class="text-xs font-black uppercase tracking-wider text-brand-brown">Parameter Checklist</span>
-                <span class="text-[10px] font-bold text-slate-500">PASS / FAIL</span>
-              </div>
-
-              <div class="divide-y divide-slate-100 space-y-4">
-                <div
-                  v-for="ind in activeComponent.indicators"
-                  :key="ind.id"
-                  class="flex items-center justify-between gap-4 pt-4 first:pt-0"
-                >
-                  <div class="min-w-0 flex-1">
-                    <h4 class="font-black text-xs md:text-sm text-slate-800 uppercase tracking-wide">
-                      {{ ind.name }}
-                    </h4>
-                    <p class="text-xs text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">
-                      {{ ind.description || 'Tidak ada deskripsi detail parameter.' }}
-                    </p>
-                  </div>
-
-                  <!-- Custom Toggle Switch (Mockup style) -->
-                  <button
-                    @click="toggleIndicator(activeComponent, ind.id)"
-                    class="shrink-0 flex items-center justify-between w-20 h-7 rounded-full p-1 transition-all duration-300 focus:outline-none cursor-pointer relative shadow-inner overflow-hidden border"
-                    :class="[
-                      activeComponent.indicatorValues[ind.id]
-                        ? 'bg-emerald-500 border-emerald-400 text-white'
-                        : 'bg-slate-200 border-slate-300 text-slate-500'
-                    ]"
-                  >
-                    <span
-                      class="text-[9px] font-black uppercase select-none z-10 transition-all duration-300"
-                      :class="activeComponent.indicatorValues[ind.id] ? 'pl-2 text-white' : 'pr-2 ml-auto text-slate-600'"
-                    >
-                      {{ activeComponent.indicatorValues[ind.id] ? 'PASS' : 'FAIL' }}
-                    </span>
-                    <div
-                      class="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300"
-                      :style="{
-                        left: activeComponent.indicatorValues[ind.id] ? 'calc(100% - 22px)' : '3px'
-                      }"
-                    ></div>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Manual Slider Input (If Component Has NO Indicators) -->
-            <div v-else class="space-y-4 bg-slate-50 border border-slate-200 rounded-xl p-5">
-              <h3 class="text-xs font-black uppercase tracking-wider text-brand-brown border-b border-slate-200 pb-2 mb-4">
-                Input Kondisi Manual
-              </h3>
-              <p class="text-xs text-slate-500 leading-relaxed mb-4">
-                Komponen ini tidak memiliki daftar indikator khusus. Silakan geser slider atau klik preset di bawah ini untuk menilai kondisinya saat ini:
-              </p>
-
-              <!-- Condition Percent Slider -->
-              <div class="space-y-2">
-                <div class="flex justify-between items-center">
-                  <span class="text-xs font-bold text-slate-700">Persentase Kondisi:</span>
-                  <span :class="condClass(activeComponent.conditionPct)" class="text-lg font-black font-mono">
-                    {{ activeComponent.conditionPct }}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  v-model.number="activeComponent.conditionPct"
-                  @input="activeComponent.inProgress = true"
-                  class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-brown focus:outline-none"
-                />
-              </div>
-
-              <!-- Preset buttons -->
-              <div class="grid grid-cols-4 gap-2 pt-2">
+              <template v-for="(group, city) in filteredGroupedMachines" :key="city">
+                <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide bg-slate-50 border-b border-slate-100">{{ cityLabel(city) }}</div>
                 <button
-                  v-for="p in presets"
-                  :key="p.val"
-                  @click="applyPreset(activeComponent, p.val)"
-                  class="px-2.5 py-2 rounded-xl text-center border font-bold text-[10px] md:text-xs tracking-wider uppercase transition-colors cursor-pointer"
+                  v-for="m in group" :key="m.id"
+                  @mousedown.prevent="pickMachine(m)"
                   :class="[
-                    activeComponent.conditionPct === p.val
-                      ? 'bg-brand-brown text-white border-brand-brown'
-                      : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'
+                    selectedMachineId === m.id ? 'bg-brand-cream' : 'hover:bg-slate-50',
+                    machineScheduleStatus(m).rowClass
                   ]"
+                  class="w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer flex items-center justify-between gap-3"
                 >
-                  {{ p.label }} ({{ p.val }}%)
+                  <span :class="selectedMachineId === m.id ? 'font-bold text-brand-brown' : 'text-slate-700'">{{ m.name }}</span>
+                  <span
+                    v-if="machineScheduleStatus(m).label"
+                    :class="machineScheduleStatus(m).badgeClass"
+                    class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+                  >{{ machineScheduleStatus(m).label }}</span>
                 </button>
-              </div>
+              </template>
             </div>
-
-            <!-- Comment & Action Block -->
-            <div class="border-t border-slate-200 pt-5 space-y-4">
-              <!-- Replacemement component toggle -->
-              <div class="flex items-center justify-between bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
-                <div>
-                  <h4 class="font-bold text-xs md:text-sm text-slate-800 uppercase tracking-wide">
-                    Penggantian Komponen
-                  </h4>
-                  <p class="text-[11px] text-slate-500 mt-0.5">
-                    Aktifkan opsi ini jika komponen baru saja diganti baru (Replace).
-                  </p>
-                </div>
-                <button
-                  @click="activeComponent.is_component_replacement = !activeComponent.is_component_replacement"
-                  class="shrink-0 flex items-center justify-between w-14 h-6 rounded-full p-1 transition-all duration-300 focus:outline-none cursor-pointer relative shadow-inner overflow-hidden border"
-                  :class="[
-                    activeComponent.is_component_replacement
-                      ? 'bg-amber-500 border-amber-400 text-white'
-                      : 'bg-slate-200 border-slate-300 text-slate-500'
-                  ]"
-                >
-                  <div
-                    class="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white shadow-md transition-all duration-300"
-                    :style="{
-                      left: activeComponent.is_component_replacement ? '33px' : '3px'
-                    }"
-                  ></div>
-                </button>
-              </div>
-
-              <!-- Comment Input Field -->
-              <div v-if="showCommentBox" class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex justify-between">
-                  <span>Catatan Kerusakan / Hasil Pemeriksaan</span>
-                  <button @click="showCommentBox = false" class="text-brand-brown hover:underline normal-case text-[10px]">Tutup</button>
-                </label>
-                <textarea
-                  v-model="activeComponent.description"
-                  placeholder="Ketik catatan mengenai temuan kerusakan, tindakan perbaikan, atau nomor serial komponen pengganti disini..."
-                  rows="3"
-                  class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-brown focus:border-brand-brown"
-                ></textarea>
-              </div>
-            </div>
+            <div
+              v-else-if="comboboxOpen && machineSearch.length > 0 && filteredMachines.length === 0"
+              class="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg px-4 py-3 text-sm text-slate-400"
+            >Tidak ada mesin ditemukan</div>
           </div>
-
-          <!-- Component Section Actions Footer -->
-          <div class="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <button
-              @click="completeComponentSection(activeComponent)"
-              class="px-5 py-2.5 bg-brand-brown hover:bg-brand-brown/90 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-              </svg>
-              Selesaikan Bagian Ini
-            </button>
-
-            <button
-              v-if="!showCommentBox"
-              @click="showCommentBox = true"
-              class="px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-              Tambah Catatan
-            </button>
+          <!-- Selected machine info chips -->
+          <div v-if="machine" class="flex flex-wrap gap-2 items-center">
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">{{ machine.kode }}</span>
+            <span v-if="machine.kota" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-brand-cream text-brand-brown">{{ machine.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}</span>
+            <span v-if="machine.location" class="text-xs text-slate-400">{{ machine.location }}</span>
+            <span class="text-xs text-slate-400">·</span>
+            <span class="text-xs font-semibold text-slate-500">{{ machine.components?.length || 0 }} komponen</span>
           </div>
-        </section>
-      </main>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="loadError" class="flex-1 flex flex-col items-center justify-center gap-4 text-slate-600 px-6">
-      <svg class="w-16 h-16 text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-      <div class="text-center max-w-md">
-        <h3 class="text-base font-black uppercase tracking-wider text-slate-800 mb-1">Gagal Memuat Data Mesin</h3>
-        <p class="text-sm text-slate-500 mb-4">{{ loadError }}</p>
-        <div class="flex items-center justify-center gap-3">
-          <button
-            @click="loadMachineData"
-            class="px-4 py-2 bg-brand-brown hover:bg-brand-brown/90 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
-          >
-            Coba Lagi
-          </button>
-          <button
-            @click="goBack"
-            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
-          >
-            Kembali
-          </button>
         </div>
       </div>
     </div>
 
-    <!-- SAVE REPORT CONFIRMATION MODAL -->
-    <div v-if="showSaveModal && machine" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showSaveModal = false"></div>
-      <div class="bg-white border border-slate-200 rounded-3xl w-full max-w-md relative z-10 overflow-hidden shadow-2xl flex flex-col">
-        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+    <!-- Loading mesin data -->
+    <div v-if="loading" class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-12 flex flex-col items-center gap-3 text-slate-400">
+      <svg class="animate-spin w-8 h-8 text-brand-brown" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+      <p class="text-sm font-semibold text-brand-brown/70">Memuat data mesin...</p>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="loadError" class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-red-100 shadow-sm px-5 py-8 flex flex-col items-center gap-3 text-slate-500">
+      <svg class="w-10 h-10 text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      <p class="text-sm font-bold text-slate-700">{{ loadError }}</p>
+      <button @click="loadMachineData" class="px-4 py-2 bg-brand-brown text-white text-xs font-bold rounded-xl cursor-pointer">Coba Lagi</button>
+    </div>
+
+    <template v-else-if="machine">
+
+      <!-- ══════════════════════════════════════════════════════════════
+           CARD 1: PILIH JADWAL
+      ═══════════════════════════════════════════════════════════════════ -->
+      <div class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+          <svg class="w-4 h-4 text-brand-brown shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <h2 class="text-sm font-bold text-slate-700">Pilih Jadwal Laporan</h2>
+        </div>
+        <div class="p-5 space-y-4">
+
+          <!-- Period buttons -->
           <div>
-            <h3 class="text-base font-black text-slate-800 uppercase tracking-wider">Simpan Laporan Maintenance</h3>
-            <p class="text-[10px] text-slate-500 font-semibold uppercase mt-0.5">Konfirmasi waktu & catatan umum</p>
+            <p class="text-xs font-semibold text-slate-500 mb-2.5">
+              {{ schedulePeriods.length > 0 ? 'Jadwal tersedia bulan ini:' : 'Tidak ada jadwal aktif untuk mesin ini.' }}
+            </p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="(period, idx) in schedulePeriods"
+                :key="idx"
+                @click="selectPeriod(period)"
+                :class="[
+                  selectedPeriod?.label === period.label
+                    ? 'border-brand-brown bg-brand-cream text-brand-brown ring-1 ring-brand-brown/30'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
+                  'flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-[140px]'
+                ]"
+              >
+                <span class="text-xs font-bold">{{ period.label }}</span>
+                <span class="text-[11px] mt-0.5" :class="selectedPeriod?.label === period.label ? 'text-brand-brown/70' : 'text-slate-400'">{{ period.dateStr }}</span>
+                <span class="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded-md" :class="period.statusClass">{{ period.statusLabel }}</span>
+              </button>
+
+              <button
+                @click="selectUnscheduled"
+                :class="[
+                  isUnscheduled
+                    ? 'border-indigo-400 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-300'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50',
+                  'flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-[140px]'
+                ]"
+              >
+                <span class="text-xs font-bold">Di Luar Jadwal</span>
+                <span class="text-[11px] mt-0.5" :class="isUnscheduled ? 'text-indigo-500' : 'text-slate-400'">Maintenance di luar jadwal</span>
+                <span class="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-600">Unscheduled</span>
+              </button>
+            </div>
           </div>
-          <button @click="showSaveModal = false" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-200 cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+
+          <!-- Time inputs -->
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           PROGRESS
+      ═══════════════════════════════════════════════════════════════════ -->
+      <div class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 space-y-3">
+        <!-- Filter tabs -->
+        <div class="flex items-center gap-2">
+          <button
+            v-for="tab in difficultyTabs" :key="tab.value"
+            @click="difficultyFilter = tab.value"
+            :class="difficultyFilter === tab.value
+              ? 'bg-brand-brown text-white border-brand-brown'
+              : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'"
+            class="px-3 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer"
+          >{{ tab.label }} <span class="ml-1 font-mono">{{ tab.count }}</span></button>
+        </div>
+        <!-- Bar -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-slate-700">Progress Inspeksi</span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full" :class="filteredCheckedCount === filteredComponentsList.length ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'">
+                {{ filteredCheckedCount }} / {{ filteredComponentsList.length }} komponen
+              </span>
+              <span v-if="filteredPendingComponents.length > 0" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">
+                {{ filteredPendingComponents.length }} belum
+              </span>
+            </div>
+            <span class="text-sm font-black" :class="complianceColorClass">{{ totalCompliance }}%</span>
+          </div>
+          <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+            <div :class="complianceBarClass" class="h-full rounded-full transition-all duration-500"
+              :style="{ width: `${Math.round((filteredCheckedCount / Math.max(filteredComponentsList.length,1)) * 100)}%` }"></div>
+          </div>
+        </div>
+        <!-- Pending chips -->
+        <!-- <div v-if="filteredPendingComponents.length > 0" class="flex flex-wrap gap-1.5">
+          <span class="text-[11px] text-slate-400 font-semibold self-center">Belum:</span>
+          <span
+            v-for="c in filteredPendingComponents" :key="c.id"
+            @click="scrollToComponent(c.id)"
+            class="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700 font-semibold cursor-pointer hover:bg-amber-100 transition-colors"
+          >{{ c.name }}</span>
+        </div> -->
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           CARD 2: TABEL KOMPONEN
+      ═══════════════════════════════════════════════════════════════════ -->
+      <div class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            <h2 class="text-sm font-bold text-slate-700">Daftar Komponen & Indikator</h2>
+          </div>
+          <span class="text-xs text-slate-400">{{ filteredComponentsList.length }} komponen ditampilkan</span>
         </div>
 
-        <div class="p-6 space-y-4 text-xs md:text-sm">
-          <!-- Warnings / Compliance Summary -->
-          <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3.5 items-start">
-            <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div class="text-slate-700 leading-relaxed text-xs">
-              <p class="font-bold text-slate-900 mb-0.5">Ringkasan Laporan:</p>
-              <p>Mencatat pemeriksaan <strong class="text-brand-brown">{{ checkedCount }}</strong> dari <strong class="text-brand-brown">{{ componentsList.length }}</strong> komponen dengan rata-rata estimasi kepatuhan akhir <strong class="text-emerald-600">{{ totalCompliance }}%</strong>.</p>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[700px] lg:w-auto lg:min-w-0 text-sm">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-100">
+                <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Komponen</th>
+                <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Deskripsi</th>
+                <th class="py-3 px-1 text-center text-xs font-bold text-slate-500 uppercase tracking-wide sm:hidden" style="width:100px">Status</th>
+                <th class="py-3 px-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell w-40">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="comp in filteredComponentsList" :key="comp.id">
+
+                <!-- Component header row -->
+                <tr :id="`comp-${comp.id}`"
+                  :class="comp.hasError ? 'border-l-2 border-l-red-400 bg-red-50/40' : 'bg-slate-50/60'"
+                  class="border-t border-slate-100"
+                >
+                  <td colspan="4" class="pl-2 pr-2 sm:px-4 py-2.5">
+                    <div class="flex items-start justify-between gap-2">
+                      <!-- Kiri: ikon status + nama -->
+                      <div class="flex items-start gap-2 min-w-0 flex-1">
+                      <span v-if="isCompDone(comp)" class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                      </span>
+                      <span v-else-if="comp.hasError" class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+                        <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
+                      </span>
+                      <span v-else-if="comp.inProgress" class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
+                        <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                      </span>
+                      <span v-else class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center">
+                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
+                      </span>
+                      <div class="min-w-0">
+                        <span class="font-bold text-sm text-slate-800">{{ comp.name }}</span>
+                        <div class="flex flex-wrap items-center gap-1 mt-0.5">
+                          <span v-if="comp.category" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 font-semibold">{{ comp.category }}</span>
+                          <span v-if="comp.difficulty" :class="comp.difficulty === 'berat' ? 'bg-red-100 text-red-600' : 'bg-sky-100 text-sky-600'" class="text-[10px] px-1.5 py-0.5 rounded font-semibold capitalize">{{ comp.difficulty }}</span>
+                          <span v-if="isCompDone(comp)" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 font-semibold">{{ comp.conditionPct }}% OK</span>
+                          <span v-else-if="comp.inProgress" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 font-semibold">{{ comp.conditionPct }}%</span>
+                          <span v-if="comp.hasError" class="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">Ada indikator belum diisi</span>
+                        </div>
+                      </div>
+                      </div>
+                      <!-- Kanan: tombol desktop (besar) + mobile (kecil) -->
+                      <div class="flex items-center gap-1.5 shrink-0 self-center">
+                      <button
+                        @click="comp.is_component_replacement = !comp.is_component_replacement"
+                        :class="comp.is_component_replacement ? 'bg-amber-500 border-amber-400 text-white' : 'bg-white border-amber-200 text-slate-500 hover:border-amber-500'"
+                        class="hidden sm:flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        {{ comp.is_component_replacement ? 'Diganti' : 'Ganti?' }}
+                      </button>
+                      <button
+                        @click="comp.is_component_replacement = !comp.is_component_replacement"
+                        :class="comp.is_component_replacement ? 'bg-amber-500 border-amber-400 text-white' : 'bg-white border-amber-200 text-slate-500'"
+                        class="sm:hidden flex items-center gap-1 px-2 py-2 rounded border text-[10px] font-semibold transition-all cursor-pointer"
+                      >
+                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        {{ comp.is_component_replacement ? 'Diganti' : 'Ganti?' }}
+                      </button>
+                      <button
+                        @click="comp.showNote = !comp.showNote"
+                        :class="comp.showNote || comp.description ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'"
+                        class="hidden sm:flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+                        Catatan
+                      </button>
+                      <button
+                        @click="comp.showNote = !comp.showNote"
+                        :class="comp.showNote || comp.description ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500'"
+                        class="sm:hidden flex items-center gap-1 px-2 py-2 rounded border text-[10px] font-semibold transition-all cursor-pointer"
+                      >
+                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+                        Catatan
+                      </button>
+                      </div>
+                    </div>
+                    <div v-if="comp.showNote || comp.description" class="mt-2.5">
+                      <textarea
+                        v-model="comp.description"
+                        placeholder="Catatan: temuan, tindakan perbaikan, nomor seri komponen pengganti..."
+                        rows="2"
+                        class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-400 text-slate-700 placeholder-slate-400 resize-none"
+                      ></textarea>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Indicator rows -->
+                <template v-if="comp.indicators.length > 0">
+                  <tr
+                    v-for="(ind, iIdx) in comp.indicators" :key="ind.id"
+                    :class="[
+                      iIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40',
+                      comp.indicatorValues[ind.id] === null && comp.hasError ? 'outline outline-1 outline-red-200' : ''
+                    ]"
+                    class="border-t border-slate-100/60"
+                  >
+                    <td class="pl-2 pr-1 sm:px-4 py-2.5">
+                      <span class="text-xs font-semibold text-slate-600 pl-3 sm:pl-8">{{ ind.name }}</span>
+                      <p v-if="ind.description" class="text-[11px] text-slate-400 pl-3 sm:pl-8 mt-0.5 leading-relaxed sm:hidden">{{ ind.description }}</p>
+                    </td>
+                    <td class="px-4 py-2.5 hidden sm:table-cell">
+                      <span class="text-xs text-slate-500 leading-relaxed">{{ ind.description || '-' }}</span>
+                    </td>
+                    <td class="py-2 pl-1 pr-2 text-center sm:hidden" style="width:100px">
+                      <div class="flex items-center justify-center gap-2">
+                        <button
+                          @click="setIndicator(comp, ind.id, true)"
+                          :class="comp.indicatorValues[ind.id] === true ? 'bg-emerald-500 text-white border-emerald-400 shadow-sm' : 'bg-white text-slate-500 border-slate-200'"
+                          class="w-14 py-4 rounded border text-[10px] font-bold transition-all cursor-pointer text-center"
+                        >OK</button>
+                        <button
+                          @click="setIndicator(comp, ind.id, false)"
+                          :class="comp.indicatorValues[ind.id] === false ? 'bg-red-500 text-white border-red-400 shadow-sm' : 'bg-white text-slate-500 border-slate-200'"
+                          class="w-14 py-4 rounded border text-[10px] font-bold transition-all cursor-pointer text-center"
+                        >Not OK</button>
+                        <span v-if="comp.indicatorValues[ind.id] === null && comp.hasError" class="text-[10px] text-red-500 font-semibold">!</span>
+                      </div>
+                    </td>
+                    <td class="py-2.5 px-2 text-center hidden sm:table-cell">
+                      <div class="flex flex-nowrap items-center justify-center gap-2">
+                        <button
+                          @click="setIndicator(comp, ind.id, true)"
+                          :class="comp.indicatorValues[ind.id] === true ? 'bg-emerald-500 text-white border-emerald-400 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-600'"
+                          class="px-4 py-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer"
+                        >OK</button>
+                        <button
+                          @click="setIndicator(comp, ind.id, false)"
+                          :class="comp.indicatorValues[ind.id] === false ? 'bg-red-500 text-white border-red-400 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-red-300 hover:text-red-500'"
+                          class="px-4 py-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer"
+                        >Not OK</button>
+                        <span v-if="comp.indicatorValues[ind.id] === null && comp.hasError" class="text-[10px] text-red-500 font-semibold">!</span>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+
+                <!-- Manual input row -->
+                <tr v-else class="border-t border-slate-100/60 bg-white">
+                  <td class="px-4 py-3">
+                    <span class="text-xs text-slate-400 pl-8 italic">Input manual</span>
+                  </td>
+                  <td class="px-4 py-3 hidden sm:table-cell">
+                    <div class="flex items-center gap-3">
+                      <input type="range" min="0" max="100" step="5" v-model.number="comp.conditionPct"
+                        @input="comp.inProgress = true"
+                        class="flex-1 h-1.5 accent-brand-brown cursor-pointer"/>
+                      <div class="flex items-center gap-1">
+                        <input type="number" min="0" max="100" step="1" v-model.number="comp.conditionPct"
+                          @input="comp.inProgress = true"
+                          class="w-14 text-right text-xs font-black font-mono border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-brown" :class="condClass(comp.conditionPct)"/>
+                        <span class="text-xs font-black font-mono text-slate-400">%</span>
+                      </div>
+                    </div>
+                    <div class="flex gap-1.5 mt-2">
+                      <button v-for="p in presets" :key="p.val" @click="applyPreset(comp, p.val)"
+                        :class="comp.conditionPct === p.val ? 'bg-brand-brown text-white border-brand-brown' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'"
+                        class="px-2 py-0.5 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors"
+                      >{{ p.label }}</button>
+                    </div>
+                  </td>
+                  <td class="py-2 pl-1 pr-2 text-center sm:hidden" style="width:100px">
+                    <div class="flex items-center justify-center gap-1">
+                      <input type="number" min="0" max="100" step="5" v-model.number="comp.conditionPct"
+                        @input="comp.inProgress = true"
+                        class="w-12 text-center text-xs font-bold border border-slate-200 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-brand-brown" :class="condClass(comp.conditionPct)"/>
+                      <span class="text-[10px] text-slate-400">%</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-center hidden sm:table-cell">
+                    <span class="text-xs font-bold" :class="condClass(comp.conditionPct)">{{ comp.conditionPct }}%</span>
+                  </td>
+                </tr>
+
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </template>
+
+    <button
+      v-if="machine"
+      @click="triggerSaveReport"
+      :disabled="submitting || !hasCheckedComponents"
+      class="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-4 py-3 sm:px-5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-sm font-bold rounded-2xl shadow-lg transition-all cursor-pointer"
+    >
+      <svg v-if="submitting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+      <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+      Simpan Laporan
+    </button>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         SAVE MODAL
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div v-if="showSaveModal && machine" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showSaveModal = false"></div>
+      <div class="bg-white rounded-2xl w-full max-w-md relative z-10 shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+          <div>
+            <h3 class="text-base font-bold text-slate-800">Konfirmasi Laporan</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Periksa ringkasan sebelum mengirim</p>
+          </div>
+          <button @click="showSaveModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
+            <div class="flex justify-between gap-4"><span class="text-slate-500">Mesin</span><span class="font-semibold text-slate-700 text-right">{{ machine.name }}</span></div>
+            <div class="flex justify-between gap-4"><span class="text-slate-500">Jadwal bulan ini</span><span class="font-semibold text-slate-700 text-right">{{ reportScheduleLabel }}</span></div>
+            <div class="flex justify-between gap-4"><span class="text-slate-500">Status jadwal</span><span class="font-bold text-right" :class="reportScheduleClass">{{ reportScheduleStatus }}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Komponen ringan</span><span class="font-bold text-emerald-600">{{ lightReportedCount }} / {{ lightComponentCount }}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Komponen berat</span><span class="font-bold text-emerald-600">{{ heavyReportedCount }} / {{ heavyComponentCount }}</span></div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Jam Mulai</label>
+              <input type="time" v-model="startTime" required class="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-brown text-slate-700"/>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Jam Selesai</label>
+              <input type="time" v-model="endTime" required class="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-brown text-slate-700"/>
+            </div>
+            <div class="space-y-1">
+              <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Durasi</label>
+              <div class="w-full text-sm border border-slate-100 rounded-xl px-3 py-2 bg-slate-50 text-slate-500 font-mono select-none">
+                {{ calculatedDuration > 0 ? calculatedDuration + ' menit' : '-' }}
+              </div>
             </div>
           </div>
-
-          <!-- Time Input -->
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Jam Mulai Kerja</label>
-              <input
-                type="time"
-                v-model="startTime"
-                class="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-brown"
-              />
-            </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Jam Selesai Kerja</label>
-              <input
-                type="time"
-                v-model="endTime"
-                class="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-brown"
-              />
-            </div>
-          </div>
-
-          <!-- Duration Input -->
           <div class="space-y-1.5">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex justify-between">
-              <span>Durasi Pengerjaan (Menit)</span>
-              <span class="text-brand-brown font-black font-mono">{{ calculatedDuration }} Menit</span>
-            </label>
-            <input
-              type="number"
-              v-model.number="durationMinutes"
-              min="0"
-              class="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-brown"
-            />
-          </div>
-
-          <!-- General notes input -->
-          <div class="space-y-1.5">
-            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">Catatan Umum / Ringkasan Pekerjaan</label>
-            <textarea
-              v-model="generalNotes"
-              placeholder="Masukkan ringkasan perbaikan umum atau kendala yang dihadapi selama proses pemeliharaan..."
-              rows="3"
-              class="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand-brown placeholder-slate-400"
-            ></textarea>
+            <label class="text-xs font-bold text-slate-600 uppercase tracking-wide">Catatan Umum</label>
+            <textarea v-model="generalNotes" placeholder="Ringkasan pekerjaan atau kendala..." rows="3"
+              class="w-full text-sm border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-brand-brown text-slate-700 placeholder-slate-400 resize-none"></textarea>
           </div>
         </div>
-
-        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3.5">
-          <button
-            @click="showSaveModal = false"
-            class="px-4 py-2 bg-transparent text-slate-500 hover:text-slate-800 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
-          >
-            Batal
-          </button>
-          <button
-            @click="submitReport"
-            :disabled="submitting"
-            class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
-          >
-            <svg v-if="submitting" class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
+        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+          <button @click="showSaveModal = false" class="px-4 py-2 text-slate-500 hover:text-slate-800 text-sm font-semibold cursor-pointer">Batal</button>
+          <button @click="submitReport" :disabled="submitting"
+            class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow cursor-pointer disabled:opacity-60 flex items-center gap-2">
+            <svg v-if="submitting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
             Kirim Laporan
           </button>
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import axios from 'axios';
 import { showAlert } from '../composables/useAlert.js';
 import { useAuth } from '../composables/useAuth.js';
+import PageHeader from '../components/PageHeader.vue';
 
-const props = defineProps({
-  machine: {
-    type: Object,
-    default: null
+const { user } = useAuth();
+
+// ── v-click-outside directive ──────────────────────────────────────────────
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutside = (e) => { if (!el.contains(e.target)) binding.value(); };
+    document.addEventListener('mousedown', el._clickOutside);
   },
-  id: {
-    type: String,
-    default: null
-  }
+  unmounted(el) { document.removeEventListener('mousedown', el._clickOutside); }
+};
+
+// ── Machines list / combobox ───────────────────────────────────────────────
+const machinesList = ref([]);
+const machinesLoading = ref(true);
+const selectedMachineId = ref('');
+const machineSearch = ref('');
+const comboboxOpen = ref(false);
+const comboboxInput = ref(null);
+
+const filteredMachines = computed(() => {
+  const q = machineSearch.value.trim().toLowerCase();
+  if (!q) return machinesList.value;
+  return machinesList.value.filter(m => m.name.toLowerCase().includes(q));
 });
 
-const route = useRoute();
-const vueRouter = useRouter();
+const filteredGroupedMachines = computed(() => {
+  const groups = {};
+  for (const m of filteredMachines.value) {
+    const city = m.kota || 'lainnya';
+    if (!groups[city]) groups[city] = [];
+    groups[city].push(m);
+  }
+  return groups;
+});
 
-const { user, isAdmin } = useAuth();
+const cityLabel = (city) => {
+  const map = { sby: 'Surabaya', pasuruan: 'Pasuruan', lainnya: 'Lainnya' };
+  return map[city] ?? city;
+};
 
-// Loading state
-const machine = ref(props.machine);
-const loading = ref(!machine.value);
+// ── Machine schedule status for dropdown badge ────────────────────────────
+const machineScheduleStatus = (m) => {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+  // Check if already has approved/completed record this month
+  const records = m.records ?? [];
+  const doneThisMonth = records.some(r => {
+    if (!r.maintenance_date) return false;
+    const d = new Date(r.maintenance_date);
+    return d >= monthStart && d <= monthEnd && r.status === 'completed';
+  });
+  if (doneThisMonth) return { label: 'Sudah dicek', badgeClass: 'bg-emerald-100 text-emerald-700', rowClass: '' };
+
+  const schedules = (m.schedules ?? []).filter(s => s.is_active !== false && s.next_due_date);
+  if (!schedules.length) return { label: null, badgeClass: '', rowClass: '' };
+
+  const nextDue = new Date(schedules[0].next_due_date); nextDue.setHours(0,0,0,0);
+  const diffDays = Math.ceil((nextDue - today) / 86400000);
+
+  if (diffDays < 0) return { label: `Terlambat ${Math.abs(diffDays)}h`, badgeClass: 'bg-red-100 text-red-700', rowClass: 'bg-red-50/30' };
+  if (diffDays === 0) return { label: 'Hari ini', badgeClass: 'bg-emerald-100 text-emerald-700', rowClass: 'bg-emerald-50/20' };
+  if (diffDays === 1) return { label: 'Besok', badgeClass: 'bg-amber-100 text-amber-700', rowClass: '' };
+  if (diffDays <= 7) return { label: `${diffDays} hari lagi`, badgeClass: 'bg-blue-100 text-blue-600', rowClass: '' };
+  return { label: `${diffDays}h lagi`, badgeClass: 'bg-slate-100 text-slate-500', rowClass: '' };
+};
+
+const closeCombobox = () => { comboboxOpen.value = false; };
+
+const pickMachine = (m) => {
+  selectedMachineId.value = m.id;
+  machineSearch.value = m.name;
+  comboboxOpen.value = false;
+  loadMachineData(m.id);
+};
+
+const clearMachine = () => {
+  machineSearch.value = '';
+  comboboxOpen.value = true;
+  nextTick(() => comboboxInput.value?.focus());
+};
+
+const selectFirstFiltered = () => {
+  if (filteredMachines.value.length > 0) pickMachine(filteredMachines.value[0]);
+};
+
+const loadMachinesList = async () => {
+  machinesLoading.value = true;
+  try {
+    const res = await axios.get('/api/machines');
+    machinesList.value = res.data?.data ?? res.data ?? [];
+  } catch (err) {
+    console.error('Failed to load machines list:', err);
+  } finally {
+    machinesLoading.value = false;
+  }
+};
+
+// ── Selected machine data ──────────────────────────────────────────────────
+const machine = ref(null);
+const loading = ref(false);
 const submitting = ref(false);
 const loadError = ref(null);
-
 const componentsList = ref([]);
-const activeComponent = ref(null);
-const showCommentBox = ref(false);
 
-// Save report inputs
-const showSaveModal = ref(false);
+const machineId = computed(() => machine.value?.id ?? null);
+
+// ── Schedule selection ─────────────────────────────────────────────────────
+const selectedPeriod = ref(null);
+const isUnscheduled = ref(false);
+
+// ── Time inputs (no date — auto today) ────────────────────────────────────
+const maintenanceDate = ref(new Date().toISOString().split('T')[0]);
 const startTime = ref('');
 const endTime = ref('');
-const durationMinutes = ref(60);
 const generalNotes = ref('');
+const showSaveModal = ref(false);
 
-// Presets for components without indicators
 const presets = [
   { val: 100, label: 'OK' },
   { val: 80, label: 'Minor' },
@@ -500,301 +604,328 @@ const presets = [
   { val: 0, label: 'Broken' }
 ];
 
-const machineId = computed(() => {
-  if (machine.value) return machine.value.id;
-  if (props.id) return props.id;
-  if (route?.params?.id) return route.params.id;
-  if (typeof window !== 'undefined') {
-    const parts = window.location.pathname.split('/');
-    return parts[parts.length - 1] || null;
-  }
-  return null;
+// ── Duration (computed, read-only) ─────────────────────────────────────────
+const calculatedDuration = computed(() => {
+  if (!startTime.value || !endTime.value) return 0;
+  const [sh, sm] = startTime.value.split(':').map(Number);
+  const [eh, em] = endTime.value.split(':').map(Number);
+  let diff = (eh * 60 + em) - (sh * 60 + sm);
+  if (diff < 0) diff += 1440;
+  return diff;
 });
 
-// Fetch machine data if not available via props
-const loadMachineData = async () => {
-  if (machine.value) {
-    initializeComponents();
-    return;
+// ── Helpers ────────────────────────────────────────────────────────────────
+const formatTime = (date) =>
+  `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+
+const formatDateStr = (date) =>
+  date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+const condClass = (pct) => {
+  if (pct < 50) return 'text-red-500';
+  if (pct < 80) return 'text-amber-500';
+  return 'text-emerald-500';
+};
+
+// ── Schedule Periods ───────────────────────────────────────────────────────
+const schedulePeriods = computed(() => {
+  const schedules = (machine.value?.schedules ?? []).filter(s => s.is_active !== false && s.interval_days && s.next_due_date);
+  if (!schedules.length) return [];
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const sched = schedules[0];
+  const intervalDays = Number(sched.interval_days);
+  const intervalMs = intervalDays * 86400000;
+
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  monthStart.setHours(0,0,0,0); monthEnd.setHours(0,0,0,0);
+
+  let cursor = new Date(sched.next_due_date); cursor.setHours(0,0,0,0);
+  while (cursor > monthStart) cursor = new Date(cursor.getTime() - intervalMs);
+  if (cursor < monthStart) cursor = new Date(cursor.getTime() + intervalMs);
+
+  const periods = [];
+  let idx = 1;
+  while (cursor <= monthEnd) {
+    const due = new Date(cursor);
+    const diffDays = Math.ceil((due - today) / 86400000);
+    let statusLabel, statusClass;
+    if (diffDays > 1) { statusLabel = `${diffDays} hari lagi`; statusClass = 'bg-blue-50 text-blue-600'; }
+    else if (diffDays === 1) { statusLabel = 'Besok'; statusClass = 'bg-amber-50 text-amber-600'; }
+    else if (diffDays === 0) { statusLabel = 'Hari ini'; statusClass = 'bg-emerald-50 text-emerald-600'; }
+    else { statusLabel = `Terlambat ${Math.abs(diffDays)} hari`; statusClass = 'bg-red-50 text-red-600'; }
+    const label = intervalDays <= 14 ? `Week ${idx}` : intervalDays <= 21 ? `Periode ${idx}` : 'Bulan Ini';
+    periods.push({ label, dateStr: formatDateStr(due), dueDate: due, scheduleId: sched.id, statusLabel, statusClass, diffDays });
+    cursor = new Date(cursor.getTime() + intervalMs);
+    idx++;
   }
-  const id = machineId.value;
-  if (!id) {
-    loadError.value = 'ID mesin tidak ditemukan pada URL.';
-    loading.value = false;
-    return;
+  return periods;
+});
+
+const selectPeriod = (period) => {
+  selectedPeriod.value = period;
+  isUnscheduled.value = false;
+  maintenanceDate.value = period.dueDate.toISOString().split('T')[0];
+};
+
+const selectUnscheduled = () => {
+  isUnscheduled.value = true;
+  selectedPeriod.value = null;
+  maintenanceDate.value = new Date().toISOString().split('T')[0];
+};
+
+// ── Components Init ────────────────────────────────────────────────────────
+const initializeComponents = () => {
+  if (!machine.value) return;
+  componentsList.value = (machine.value.components ?? []).map(comp => {
+    const indicators = comp.indicators ?? [];
+    const indicatorValues = {};
+    indicators.forEach(ind => { indicatorValues[ind.id] = null; });
+    return {
+      id: comp.id,
+      name: comp.name,
+      category: comp.category,
+      difficulty: comp.difficulty ?? null,
+      specification: comp.specification,
+      last_condition_pct: comp.last_condition_pct ?? 100,
+      indicators,
+      indicatorValues,
+      inProgress: false,
+      conditionPct: comp.last_condition_pct ?? 100,
+      description: '',
+      showNote: false,
+      hasError: false,
+      is_component_replacement: false
+    };
+  });
+
+  startTime.value = '';
+  endTime.value = '';
+
+  if (schedulePeriods.value.length > 0) {
+    const urgent = schedulePeriods.value.find(p => p.diffDays <= 0) ?? schedulePeriods.value[0];
+    selectPeriod(urgent);
+  } else {
+    selectUnscheduled();
   }
+};
+
+// ── Machine load ───────────────────────────────────────────────────────────
+const loadMachineData = async (id) => {
+  if (!id) return;
   loading.value = true;
   loadError.value = null;
+  machine.value = null;
+  componentsList.value = [];
   try {
     const res = await axios.get(`/api/machines/${id}`);
     machine.value = res.data;
     initializeComponents();
   } catch (err) {
-    console.error('Failed to load machine data:', err);
-    loadError.value = err.response?.data?.error || err.response?.data?.message || err.message || 'Gagal memuat data mesin.';
-    showAlert('error', 'Gagal!', 'Gagal memuat data mesin. Silakan coba lagi.');
+    loadError.value = err.response?.data?.message || err.message || 'Gagal memuat data mesin.';
+    showAlert('error', 'Gagal!', loadError.value);
   } finally {
     loading.value = false;
   }
 };
 
-const initializeComponents = () => {
-  if (!machine.value) return;
-
-  componentsList.value = (machine.value.components ?? []).map(comp => {
-    const indicators = comp.indicators ?? [];
-    const hasInd = indicators.length > 0;
-    
-    // Initialize indicators as true (PASS) by default
-    const indicatorValues = {};
-    indicators.forEach(ind => {
-      indicatorValues[ind.id] = true;
-    });
-
-    return {
-      id: comp.id,
-      name: comp.name,
-      category: comp.category,
-      specification: comp.specification,
-      last_condition_pct: comp.last_condition_pct ?? 100,
-      indicators,
-      indicatorValues,
-      checked: false,
-      inProgress: false,
-      conditionPct: comp.last_condition_pct ?? 100,
-      description: '',
-      is_component_replacement: false
-    };
-  });
-
-  if (componentsList.value.length > 0) {
-    activeComponent.value = componentsList.value[0];
-  }
-
-  // Pre-fill time inputs
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-  startTime.value = formatTime(oneHourAgo);
-  endTime.value = formatTime(now);
-};
-
-const formatTime = (date) => {
-  const h = String(date.getHours()).padStart(2, '0');
-  const m = String(date.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
-};
-
-// Check if active component has indicators
-const hasIndicators = computed(() => {
-  return activeComponent.value && activeComponent.value.indicators && activeComponent.value.indicators.length > 0;
-});
-
-// Select a component to inspect
-const selectComponent = (comp) => {
-  activeComponent.value = comp;
-  showCommentBox.value = !!comp.description;
-};
-
-// Toggle checklist indicators and recalculate percentage
-const toggleIndicator = (comp, indId) => {
-  comp.indicatorValues[indId] = !comp.indicatorValues[indId];
+// ── Indicator / manual actions ─────────────────────────────────────────────
+const setIndicator = (comp, indId, value) => {
+  comp.indicatorValues[indId] = value;
   comp.inProgress = true;
-  
-  // Dynamic recalculation
-  if (comp.indicators && comp.indicators.length > 0) {
-    const total = comp.indicators.length;
-    const passes = comp.indicators.filter(i => comp.indicatorValues[i.id]).length;
-    comp.conditionPct = Math.round((passes / total) * 100);
-  }
+  comp.hasError = false;
+  const passes = comp.indicators.filter(i => comp.indicatorValues[i.id] === true).length;
+  comp.conditionPct = Math.round((passes / comp.indicators.length) * 100);
 };
 
-// Apply preset value
 const applyPreset = (comp, value) => {
   comp.conditionPct = value;
   comp.inProgress = true;
 };
 
-// Complete current component section and move to next unchecked component
-const completeComponentSection = (comp) => {
-  comp.checked = true;
-  comp.inProgress = false;
-  
-  showAlert('success', 'Bagian Selesai', `Pemeriksaan ${comp.name} telah selesai disimpan.`);
-
-  // Find next unchecked component
-  const nextUnchecked = componentsList.value.find(c => !c.checked && c.id !== comp.id);
-  if (nextUnchecked) {
-    selectComponent(nextUnchecked);
-  }
+// ── isCompDone: komponen dianggap selesai jika semua indikator terisi (atau manual diisi) ──
+const isCompDone = (comp) => {
+  if (comp.indicators.length === 0) return comp.inProgress;
+  return comp.indicators.every(ind => comp.indicatorValues[ind.id] !== null);
 };
 
-// Computed Stats
-const checkedCount = computed(() => {
-  return componentsList.value.filter(c => c.checked).length;
+// ── Difficulty filter ──────────────────────────────────────────────────────
+const difficultyFilter = ref('semua');
+
+const difficultyTabs = computed(() => {
+  const all = componentsList.value;
+  const ringan = all.filter(c => c.difficulty === 'ringan');
+  const berat = all.filter(c => c.difficulty !== 'ringan');
+  return [
+    { value: 'semua', label: 'Semua', count: all.length },
+    { value: 'ringan', label: 'Ringan', count: ringan.length },
+    { value: 'berat', label: 'Berat', count: berat.length },
+  ];
 });
 
-const hasCheckedComponents = computed(() => {
-  return checkedCount.value > 0;
+const filteredComponentsList = computed(() => {
+  if (difficultyFilter.value === 'semua') return componentsList.value;
+  if (difficultyFilter.value === 'ringan') return componentsList.value.filter(c => c.difficulty === 'ringan');
+  return componentsList.value.filter(c => c.difficulty !== 'ringan');
+});
+
+const filteredCheckedCount = computed(() => filteredComponentsList.value.filter(c => isCompDone(c)).length);
+const filteredPendingComponents = computed(() => filteredComponentsList.value.filter(c => !isCompDone(c)));
+
+// ── Global stats ───────────────────────────────────────────────────────────
+const doneCount = computed(() => componentsList.value.filter(c => isCompDone(c)).length);
+const hasCheckedComponents = computed(() => doneCount.value > 0);
+const lightComponentCount = computed(() => componentsList.value.filter(c => c.difficulty === 'ringan').length);
+const heavyComponentCount = computed(() => componentsList.value.filter(c => c.difficulty !== 'ringan').length);
+const lightReportedCount = computed(() => componentsList.value.filter(c => c.difficulty === 'ringan' && isCompDone(c)).length);
+const heavyReportedCount = computed(() => componentsList.value.filter(c => c.difficulty !== 'ringan' && isCompDone(c)).length);
+const reportScheduleLabel = computed(() => {
+  if (isUnscheduled.value) return 'Di Luar Jadwal';
+  if (!selectedPeriod.value) return '-';
+  return `${selectedPeriod.value.label} · ${selectedPeriod.value.dateStr}`;
+});
+const reportScheduleStatus = computed(() => {
+  if (isUnscheduled.value) return 'Di luar jadwal';
+  if (!selectedPeriod.value) return '-';
+  return selectedPeriod.value.diffDays < 0
+    ? `Terlambat ${Math.abs(selectedPeriod.value.diffDays)} hari`
+    : 'Tepat waktu';
+});
+const reportScheduleClass = computed(() => {
+  if (isUnscheduled.value) return 'text-indigo-600';
+  if (selectedPeriod.value?.diffDays < 0) return 'text-red-600';
+  return 'text-emerald-600';
 });
 
 const totalCompliance = computed(() => {
-  if (componentsList.value.length === 0) return 100;
-  
-  // Calculate average condition of the machine
+  if (!componentsList.value.length) return 100;
   const total = componentsList.value.reduce((sum, comp) => {
-    // If checked/modified, use current conditionPct, otherwise use last_condition_pct database value
-    const pct = comp.checked ? comp.conditionPct : comp.last_condition_pct;
-    return sum + pct;
+    return sum + (isCompDone(comp) ? comp.conditionPct : comp.last_condition_pct);
   }, 0);
-
   return Math.round(total / componentsList.value.length);
 });
 
-// Styling Helpers
 const complianceColorClass = computed(() => {
-  const compliance = totalCompliance.value;
-  if (compliance < 50) return 'text-red-500';
-  if (compliance < 80) return 'text-amber-500';
-  return 'text-emerald-400';
+  const v = totalCompliance.value;
+  if (v < 50) return 'text-red-500';
+  if (v < 80) return 'text-amber-500';
+  return 'text-emerald-500';
 });
 
 const complianceBarClass = computed(() => {
-  const compliance = totalCompliance.value;
-  if (compliance < 50) return 'bg-red-500';
-  if (compliance < 80) return 'bg-amber-500';
+  const v = totalCompliance.value;
+  if (v < 50) return 'bg-red-500';
+  if (v < 80) return 'bg-amber-500';
   return 'bg-emerald-500';
 });
 
-const condClass = (pct) => {
-  if (pct < 50) return 'text-red-500';
-  if (pct < 80) return 'text-amber-500';
-  return 'text-emerald-400';
+const scrollToComponent = (compId) => {
+  nextTick(() => {
+    const el = document.getElementById(`comp-${compId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 };
 
-// Calculate duration from start and end time
-const calculatedDuration = computed(() => {
-  if (!startTime.value || !endTime.value) return 0;
-  const [sh, sm] = startTime.value.split(':').map(Number);
-  const [eh, em] = endTime.value.split(':').map(Number);
-  
-  let diffMin = (eh * 60 + em) - (sh * 60 + sm);
-  if (diffMin < 0) diffMin += 24 * 60; // Over midnight
-  
-  return diffMin;
-});
-
-watch(calculatedDuration, (newVal) => {
-  durationMinutes.value = newVal;
-});
-
-// Trigger save confirmation modal
+// ── Save / Submit ──────────────────────────────────────────────────────────
 const triggerSaveReport = () => {
   if (!hasCheckedComponents.value) {
-    showAlert('warning', 'Perhatian', 'Selesaikan pemeriksaan minimal satu komponen sebelum menyimpan.');
+    showAlert('warning', 'Perhatian', 'Isi minimal satu komponen sebelum menyimpan.');
     return;
   }
+
+  // Validate: only components that have been partially touched must be fully complete
+  let hasValidationError = false;
+  let firstErrorId = null;
+  for (const comp of componentsList.value) {
+    if (comp.indicators.length === 0) continue;
+    const anyFilled = comp.indicators.some(ind => comp.indicatorValues[ind.id] !== null);
+    if (!anyFilled) {
+      comp.hasError = false;
+      continue;
+    }
+    const allFilled = comp.indicators.every(ind => comp.indicatorValues[ind.id] !== null);
+    comp.hasError = !allFilled;
+    if (!allFilled) {
+      hasValidationError = true;
+      if (!firstErrorId) firstErrorId = comp.id;
+    }
+  }
+
+  if (hasValidationError) {
+    if (firstErrorId) scrollToComponent(firstErrorId);
+    showAlert('warning', 'Ada Indikator Belum Diisi', 'Komponen yang sudah mulai diisi harus dilengkapi semua indikatornya.');
+    return;
+  }
+
   showSaveModal.value = true;
 };
 
-// Submit report to backend
 const submitReport = async () => {
-  const checkedRows = componentsList.value.filter(c => c.checked);
-  if (checkedRows.length === 0) {
-    showAlert('warning', 'Perhatian', 'Konfirmasi minimal satu komponen terlebih dahulu.');
+  const doneRows = componentsList.value.filter(c => isCompDone(c));
+  if (!doneRows.length) return;
+  if (!startTime.value || !endTime.value) {
+    showAlert('warning', 'Jam Belum Lengkap', 'Isi jam mulai dan jam selesai sebelum mengirim laporan.');
     return;
   }
-
   submitting.value = true;
   try {
-    const actions = checkedRows.map(row => {
-      const type = row.is_component_replacement ? 'replace' : 'inspect';
-      
+    const actions = doneRows.map(row => {
       const action = {
         machine_component_id: row.id,
-        action_type: type,
+        action_type: row.is_component_replacement ? 'replace' : 'inspect',
         condition_before_pct: row.last_condition_pct,
         condition_after_pct: row.conditionPct,
         description: row.description || null,
       };
-
-      if (row.indicators && row.indicators.length > 0) {
+      if (row.indicators.length > 0) {
         action.indicator_values = row.indicators.map(ind => ({
           component_indicator_id: ind.id,
-          value: !!row.indicatorValues[ind.id]
+          value: row.indicatorValues[ind.id] === true
         }));
       }
-
       return action;
     });
 
-    // Schedule detection
-    const scheduleId = machine.value.schedules && machine.value.schedules.length > 0
-      ? machine.value.schedules[0].id
-      : null;
-
+    const scheduleId = selectedPeriod.value?.scheduleId ?? null;
     const payload = {
       machine_id: machineId.value,
       schedule_id: scheduleId,
-      is_unscheduled: !scheduleId,
-      maintenance_date: new Date().toISOString().split('T')[0],
+      is_unscheduled: isUnscheduled.value || !scheduleId,
+      maintenance_date: maintenanceDate.value,
       start_time: startTime.value || null,
       end_time: endTime.value || null,
-      duration_minutes: durationMinutes.value,
+      duration_minutes: calculatedDuration.value,
       status: 'completed',
-      notes: generalNotes.value || `Pemeriksaan rutin - ${checkedRows.length} komponen selesai diperiksa`,
+      notes: generalNotes.value || `Pemeriksaan rutin - ${doneRows.length} komponen diperiksa`,
       actions
     };
 
     await axios.post('/api/records', payload);
-
-    const successMsg = user.value?.role === 'technician'
-      ? `Laporan berhasil dibuat untuk ${checkedRows.length} komponen. Menunggu approval dari manager/admin.`
-      : `Laporan berhasil disimpan untuk ${checkedRows.length} komponen.`;
-
-    await showAlert('success', 'Laporan Terkirim!', successMsg);
-    
-    // Redirect to Machine Detail
+    const msg = user.value?.role === 'technician'
+      ? 'Laporan berhasil dibuat. Menunggu approval manager/admin.'
+      : `Laporan berhasil disimpan untuk ${doneRows.length} komponen.`;
+    await showAlert('success', 'Laporan Terkirim!', msg);
     showSaveModal.value = false;
-    const detailPath = `/machine/${machineId.value}`;
-    if (vueRouter) {
-      vueRouter.push(detailPath);
-    } else {
-      window.location.href = detailPath;
-    }
+    window.location.href = `/machine/${machineId.value}`;
   } catch (err) {
-    console.error('Failed to submit report:', err);
-    showAlert('error', 'Gagal!', 'Gagal mengirim laporan: ' + (err.response?.data?.error || err.response?.data?.message || err.message));
+    showAlert('error', 'Gagal!', err.response?.data?.message || err.message);
   } finally {
     submitting.value = false;
   }
 };
 
-const goBack = () => {
-  const detailPath = `/machine/${machineId.value}`;
-  if (vueRouter) {
-    vueRouter.push(detailPath);
-  } else {
-    window.location.href = detailPath;
+// ── Mount ──────────────────────────────────────────────────────────────────
+onMounted(async () => {
+  await loadMachinesList();
+  const queryId = new URLSearchParams(window.location.search).get('machine');
+  if (queryId) {
+    // Pre-fill combobox text from machines list or just ID
+    selectedMachineId.value = String(queryId);
+    await loadMachineData(queryId);
+    // Set combobox display name after list loaded
+    const found = machinesList.value.find(m => String(m.id) === String(queryId));
+    if (found) machineSearch.value = found.name;
   }
-};
-
-onMounted(() => {
-  loadMachineData();
 });
 </script>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-</style>

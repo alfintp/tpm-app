@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="w-full max-w-5xl mx-auto space-y-6">
     <!-- Header -->
     <PageHeader
     title="Approval Laporan"
@@ -338,10 +338,11 @@
       loading-subtext="Mengambil laporan dari server"
       empty-title="Tidak ada laporan ditemukan"
       empty-subtext="Coba sesuaikan filter atau pencarian."
-      min-width="min-w-[800px]"
+      min-width="min-w-[900px] lg:min-w-[700px]"
+      table-class="table-auto lg:table-fixed"
       :paginate="false"
       actions-align="right"
-      actions-width="w-[12%]"
+      actions-width="w-[16%]"
     >
       <!-- Kolom: Mesin & Waktu -->
       <template #cell-machine_name="{ row }">
@@ -361,6 +362,7 @@
           Durasi: {{ formatDuration(row.duration_minutes) }}
           <span v-if="row.start_time || row.end_time" class="text-slate-400 font-normal">({{ formatTime(row.start_time) }} - {{ formatTime(row.end_time) }})</span>
         </p>
+        <p class="text-xs text-slate-500 mt-0.5 truncate">Teknisi: {{ row.technician_name ?? '-' }}</p>
       </template>
 
       <!-- Kolom: Teknisi -->
@@ -422,7 +424,7 @@
 
       <!-- Slot Aksi -->
       <template #actions="{ row }">
-        <div v-if="canDecide(row)" class="flex items-center justify-end gap-1.5">
+        <div v-if="canDecide(row)" class="flex flex-nowrap items-center justify-end gap-1.5">
           <Button
             size="sm"
             @click="openDecide(row, 'approved')"
@@ -523,10 +525,9 @@ const difficultyOptions = [
 ];
 
 const approvalColumns = [
-  { key: 'machine_name',     label: 'Mesin & Waktu',    width: 'w-[22%]', cellClass: 'align-top' },
-  { key: 'technician_name',  label: 'Teknisi',           width: 'w-[18%]', cellClass: 'align-top' },
-  { key: 'actions_summary',  label: 'Detail Tindakan',   width: 'w-[30%]', cellClass: 'align-top' },
-  { key: 'approval_status',  label: 'Status',            width: 'w-[20%]', cellClass: 'align-top' },
+  { key: 'machine_name',     label: 'Mesin & Waktu',    width: 'w-[30%]', cellClass: 'align-top break-words' },
+  { key: 'actions_summary',  label: 'Tindakan',          width: 'w-[28%]', cellClass: 'align-top break-words' },
+  { key: 'approval_status',  label: 'Status',            width: 'w-[26%]', cellClass: 'align-top break-words' },
 ];
 
 const { isAdmin, user: currentUser, authReady } = useAuth();

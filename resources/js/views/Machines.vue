@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="w-full max-w-5xl mx-auto space-y-6">
     <!-- Header -->
     <PageHeader title="Daftar Mesin" subtitle="Kelola semua mesin dalam sistem">
       <template #actions>

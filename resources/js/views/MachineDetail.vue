@@ -4,7 +4,7 @@
     <p class="font-semibold text-slate-500">Memuat data mesin...</p>
   </div>
 
-  <div v-else-if="machine" class="space-y-6">
+  <div v-else-if="machine" class="w-full max-w-5xl mx-auto space-y-6">
     <!-- Header -->
     <PageHeader :title="machine.name" :subtitle="'Maintenance Report' + (machine.location ? ' · ' + machine.location : '')">
       <template #title-extra>
@@ -64,25 +64,18 @@
           </div>
         </div>
 
-        <!-- Center: Per-Category Breakdown -->
-        <div v-if="categoryConditionStats.length > 0" class="flex-1 p-6 min-w-[220px]">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Kondisi per Kategori</p>
-          <div class="space-y-2.5">
-            <div v-for="cat in categoryConditionStats" :key="cat.name" class="group">
-              <div class="flex items-center justify-between mb-1">
-                <div class="flex items-center gap-1.5">
-                  <span class="text-xs font-semibold text-slate-700 capitalize">{{ cat.name }}</span>
-                  <span class="text-[10px] text-slate-400">({{ cat.count }})</span>
-                </div>
-                <span :class="getColorTheme(cat.avg).textClass" class="text-xs font-bold">{{ cat.avg }}%</span>
-              </div>
-              <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  :class="getCategoryBarClass(cat.avg)"
-                  class="h-full rounded-full transition-all duration-700 ease-out"
-                  :style="{ width: cat.avg + '%' }"
-                ></div>
-              </div>
+        <!-- Center: Per-Category Breakdown (compact chips) -->
+        <div v-if="categoryConditionStats.length > 0" class="flex items-center gap-3 px-5 py-4 flex-wrap">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Kategori</p>
+          <div class="flex flex-wrap gap-2">
+            <div
+              v-for="cat in categoryConditionStats" :key="cat.name"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold"
+              :class="getColorTheme(cat.avg).chipClass"
+            >
+              <span class="capitalize">{{ cat.name }}</span>
+              <span class="opacity-60 text-[10px]">·</span>
+              <span :class="getColorTheme(cat.avg).textClass">{{ cat.avg }}%</span>
             </div>
           </div>
         </div>
@@ -1422,9 +1415,7 @@ const handleNavigateBack = async () => {
 };
 
 const goToReportPage = async () => {
-  // const ok = await handleUnsavedAction();
-  // if (!ok) return;
-  router.visit(`/report/${machineId.value}`);
+  router.visit(`/report?machine=${machineId.value}`);
 };
 
 const handleForceReport = async () => {
@@ -1562,10 +1553,10 @@ const frequencyLabel = (days) => {
 };
 
 const getColorTheme = (pct) => {
-  if (!pct && pct !== 0) return { textClass: 'text-slate-400' };
-  if (pct < 50) return { textClass: 'text-red-500' };
-  if (pct < 80) return { textClass: 'text-amber-500' };
-  return { textClass: 'text-green-500' };
+  if (!pct && pct !== 0) return { textClass: 'text-slate-400', chipClass: 'bg-slate-50 border-slate-200 text-slate-500' };
+  if (pct < 50) return { textClass: 'text-red-500', chipClass: 'bg-red-50 border-red-200 text-red-700' };
+  if (pct < 80) return { textClass: 'text-amber-500', chipClass: 'bg-amber-50 border-amber-200 text-amber-700' };
+  return { textClass: 'text-green-500', chipClass: 'bg-green-50 border-green-200 text-green-700' };
 };
 
 const getCategoryBarClass = (pct) => {

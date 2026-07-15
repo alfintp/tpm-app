@@ -22,19 +22,19 @@
     <!-- Table -->
     <template v-else>
       <div class="overflow-x-auto">
-        <Table :class="['w-full border-none', minWidth]">
+        <Table :class="['w-full border-none', minWidth, tableClass]">
           <TableHeader class="bg-slate-50/70 border-b border-slate-100">
             <TableRow class="border-none hover:bg-transparent">
               <TableHead
                 v-for="col in visibleColumns"
                 :key="col.key"
-                :class="['text-left text-xs font-black text-slate-500 uppercase tracking-wider px-6 py-4 h-auto', col.width ?? '', col.headerClass ?? '']"
+                :class="['text-left text-xs font-black text-slate-500 uppercase tracking-wider px-4 py-4 h-auto', col.width ?? '', col.headerClass ?? '']"
               >
                 {{ col.label }}
               </TableHead>
               <TableHead
                 v-if="hasActions"
-                :class="['text-xs font-black text-slate-500 uppercase tracking-wider px-6 py-4 h-auto', actionsAlign === 'right' ? 'text-right' : 'text-left', actionsWidth]"
+                :class="['text-xs font-black text-slate-500 uppercase tracking-wider px-4 py-4 h-auto', actionsAlign === 'right' ? 'text-right' : 'text-left', actionsWidth]"
               >
                 {{ actionsLabel }}
               </TableHead>
@@ -51,14 +51,14 @@
               <TableCell
                 v-for="col in visibleColumns"
                 :key="col.key"
-                :class="['px-6 py-4 h-auto', col.cellClass ?? '']"
+                :class="['px-4 py-4 h-auto', col.cellClass ?? '']"
               >
                 <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
                   <span class="text-sm text-slate-700">{{ row[col.key] ?? '-' }}</span>
                 </slot>
               </TableCell>
 
-              <TableCell v-if="hasActions" :class="['px-6 py-4 h-auto', actionsAlign === 'right' ? 'text-right' : '']">
+              <TableCell v-if="hasActions" :class="['px-4 py-4 h-auto', actionsAlign === 'right' ? 'text-right' : '']">
                 <slot name="actions" :row="row" :rowIndex="rowIndex" />
               </TableCell>
             </TableRow>
@@ -103,6 +103,7 @@ const props = defineProps({
   emptyTitle: { type: String, default: 'Tidak ada data' },
   emptySubtext: { type: String, default: 'Coba sesuaikan filter atau pencarian.' },
   minWidth: { type: String, default: 'min-w-[700px]' },
+  tableClass: { type: String, default: '' },
   paginate: { type: Boolean, default: true },
   currentPage: { type: Number, default: 1 },
   totalRows: { type: Number, default: 0 },
