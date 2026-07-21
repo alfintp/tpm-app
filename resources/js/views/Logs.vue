@@ -66,7 +66,9 @@
       v-if="!loading"
       v-model="currentPage"
       :total="filteredLogs.length"
-      :per-page="perPage"
+      v-model:per-page="perPage"
+      :show-per-page-selector="true"
+      :per-page-options="[10, 20, 30, 50, 100]"
     />
   </div>
 </template>
@@ -94,7 +96,7 @@ const logs = ref(props.initialLogs || []);
 const search = ref('');
 const activeTypeFilter = ref('all');
 const currentPage = ref(1);
-const perPage = 10;
+const perPage = ref(10);
 
 const columns = [
   { key: 'created_at',   label: 'Waktu',           width: 'w-[15%]', cellClass: 'whitespace-nowrap' },
@@ -178,7 +180,7 @@ const getActivityTheme = (activity) => {
   return 'bg-slate-50 text-slate-600 border border-slate-100';
 };
 
-watch([search, activeTypeFilter], () => { currentPage.value = 1; });
+watch([search, activeTypeFilter, perPage], () => { currentPage.value = 1; });
 
 const filteredLogs = computed(() => {
   let list = logs.value;
@@ -220,7 +222,7 @@ const filteredLogs = computed(() => {
 });
 
 const paginatedLogs = computed(() => {
-  const start = (currentPage.value - 1) * perPage;
-  return filteredLogs.value.slice(start, start + perPage);
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredLogs.value.slice(start, start + perPage.value);
 });
 </script>

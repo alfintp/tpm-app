@@ -86,7 +86,7 @@
     <!-- Component Cards -->
     <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div
-        v-for="comp in filteredComponents"
+        v-for="comp in paginatedComponents"
         :key="comp.id"
         class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md hover:border-brand-cream transition-all group"
       >
@@ -149,12 +149,22 @@
         </div>
       </div>
     </div>
+
+    <TablePagination
+      v-if="filteredComponents.length > 0"
+      v-model="currentPage"
+      :total="filteredComponents.length"
+      v-model:per-page="perPage"
+      :show-per-page-selector="true"
+      :per-page-options="[4, 6, 8, 10, 12, 16]"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import SearchInput from './SearchInput.vue';
+import TablePagination from './TablePagination.vue';
 
 const props = defineProps({
   components: { type: Array, default: () => [] },
@@ -172,6 +182,8 @@ const search = ref('');
 const categoryFilter = ref('all');
 const difficultyFilter = ref('all');
 const conditionSort = ref('default');
+const currentPage = ref(1);
+const perPage = ref(6);
 
 const difficultyClass = (diff) => {
   const map = {
@@ -228,5 +240,14 @@ const filteredComponents = computed(() => {
     });
   }
   return list;
+});
+
+const paginatedComponents = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  return filteredComponents.value.slice(start, start + perPage.value);
+});
+
+watch([search, categoryFilter, difficultyFilter, conditionSort, perPage], () => {
+  currentPage.value = 1;
 });
 </script>

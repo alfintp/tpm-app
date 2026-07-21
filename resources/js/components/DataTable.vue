@@ -73,6 +73,9 @@
         @update:model-value="$emit('update:currentPage', $event)"
         :total="totalRows"
         :per-page="perPage"
+        :show-per-page-selector="showPerPageSelector"
+        :per-page-options="perPageOptions"
+        @update:per-page="$emit('update:perPage', $event)"
       />
     </template>
 
@@ -108,13 +111,15 @@ const props = defineProps({
   currentPage: { type: Number, default: 1 },
   totalRows: { type: Number, default: 0 },
   perPage: { type: Number, default: 10 },
+  showPerPageSelector: { type: Boolean, default: false },
+  perPageOptions: { type: Array, default: () => [5, 10, 20, 50] },
   actionsLabel: { type: String, default: 'Aksi' },
   actionsAlign: { type: String, default: 'right' },
   actionsWidth: { type: String, default: 'w-[10%]' },
   rowClickable: { type: Boolean, default: false },
 });
 
-defineEmits(['update:currentPage', 'row-click']);
+defineEmits(['update:currentPage', 'update:perPage', 'row-click']);
 
 const slots = useSlots();
 const hasActions = computed(() => !!slots.actions);

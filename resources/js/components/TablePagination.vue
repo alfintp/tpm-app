@@ -1,9 +1,28 @@
 <template>
-  <div v-if="totalPages > 1" class="flex items-center justify-between px-6 py-4 border-t border-slate-100">
-    <p class="text-xs text-slate-400">
-      Menampilkan {{ (modelValue - 1) * perPage + 1 }}–{{ Math.min(modelValue * perPage, total) }} dari {{ total }} data
-    </p>
-    <div class="flex items-center gap-1">
+  <div v-if="total > 0" class="flex flex-col gap-3 px-6 py-4 border-t border-slate-100 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex items-center gap-3">
+      <p class="text-xs text-slate-400">
+        Menampilkan {{ (modelValue - 1) * perPage + 1 }}–{{ Math.min(modelValue * perPage, total) }} dari {{ total }} data
+      </p>
+      <label v-if="showPerPageSelector" class="flex items-center gap-2 text-xs font-semibold text-slate-500">
+        Baris
+        <input
+          :value="perPage"
+          :list="perPageListId"
+          @change="updatePerPage($event.target.value)"
+          @keyup.enter="updatePerPage($event.target.value)"
+          type="number"
+          min="1"
+          inputmode="numeric"
+          class="w-16 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-brown/50"
+          aria-label="Jumlah baris per halaman"
+        >
+        <datalist :id="perPageListId">
+          <option v-for="option in perPageOptions" :key="option" :value="option" />
+        </datalist>
+      </label>
+    </div>
+    <div v-if="totalPages > 1" class="flex items-center gap-1">
       <Button
         variant="outline" size="sm"
         :disabled="modelValue === 1"
@@ -26,7 +45,7 @@
           :class="[
             'h-8 w-8 p-0 rounded-lg text-sm font-semibold transition-all',
             modelValue === page
-              ? 'bg-gradient-to-tr from-brand-brown to-brand-gradation text-brand-cream border-transparent shadow-sm'
+              ? 'bg-linear-to-tr from-brand-brown to-brand-gradation text-brand-cream border-transparent shadow-sm'
               : 'border-slate-200 text-slate-600 hover:border-brand-brown'
           ]"
         >{{ page }}</Button>
@@ -56,8 +75,19 @@ const props = defineProps({
   modelValue: { type: Number, required: true },
   total: { type: Number, required: true },
   perPage: { type: Number, default: 10 },
+  showPerPageSelector: { type: Boolean, default: false },
+  perPageOptions: { type: Array, default: () => [5, 10, 20, 50] },
 });
-defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'update:perPage']);
+
+const perPageListId = 'table-pagination-per-page-options';
+
+const updatePerPage = (value) => {
+  const pageSize = Number.parseInt(value, 10);
+  if (Number.isFinite(pageSize) && pageSize > 0) {
+    emit('update:perPage', pageSize);
+  }
+};
 
 const totalPages = computed(() => Math.ceil(props.total / props.perPage));
 

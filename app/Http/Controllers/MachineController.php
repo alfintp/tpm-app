@@ -50,7 +50,9 @@ class MachineController extends Controller
             'records.actions.component.indicators',
             'records.actions.indicatorValues',
             'records.technician',
+            'records.approvals.approver',
             'records.latestApproval',
+            'records.machine',
             'picMesin'
         ])->findOrFail($id);
 

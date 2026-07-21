@@ -1,15 +1,25 @@
 <template>
   <div v-if="alerts.length > 0">
-    <h3 class="text-base font-bold text-slate-700 mb-3 flex items-center gap-2">
-      <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-      </svg>
-      {{ title }}
-      <span class="ml-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
-        {{ alerts.length }}
-      </span>
-    </h3>
-    <div class="space-y-2.5">
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
+        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+        {{ title }}
+        <span class="ml-1 text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full">
+          {{ alerts.length }}
+        </span>
+      </h3>
+      <button
+        v-if="collapsible"
+        @click="isExpanded = !isExpanded"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-brand-brown hover:text-brand-brown cursor-pointer"
+      >
+        <svg class="h-3.5 w-3.5 transition-transform" :class="isExpanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        {{ isExpanded ? 'Sembunyikan' : 'Tampilkan' }}
+      </button>
+    </div>
+    <div v-show="!collapsible || isExpanded" class="space-y-2.5">
       <div
         v-for="alert in alerts"
         :key="alert.id"
@@ -17,7 +27,7 @@
         class="flex items-center p-4 rounded-xl border transition-all hover:shadow-md cursor-pointer gap-4"
         @click="$emit('click-alert', alert)"
       >
-        <div :class="getAlertIconClasses(alert)" class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center">
+        <div :class="getAlertIconClasses(alert)" class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center">
           <svg v-if="alert.isFullyChecked" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
           </svg>
@@ -29,7 +39,7 @@
         <div class="flex-1 min-w-0">
           <div class="flex justify-between items-center gap-2">
             <h4 class="text-sm font-bold text-slate-800 truncate">{{ alert.machine?.name }}</h4>
-            <span :class="getAlertBadgeClasses(alert)" class="text-xs font-semibold bg-white px-2 py-0.5 rounded-full border border-current flex-shrink-0">
+            <span :class="getAlertBadgeClasses(alert)" class="text-xs font-semibold bg-white px-2 py-0.5 rounded-full border border-current shrink-0">
               {{ alert.isFullyChecked ? 'Sudah Dicek' : getAlertTimeText(alert.next_due_date) }}
             </span>
           </div>
@@ -53,9 +63,14 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
+
+const isExpanded = ref(true);
+
 defineProps({
   alerts: { type: Array, default: () => [] },
   title:  { type: String, default: 'Maintenance Alerts' },
+  collapsible: { type: Boolean, default: false },
 });
 
 defineEmits(['click-alert']);

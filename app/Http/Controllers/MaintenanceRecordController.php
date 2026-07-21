@@ -10,6 +10,7 @@ use App\Models\Machine;
 use App\Models\MachineComponent;
 use App\Models\ComponentIndicator;
 use App\Models\MaintenanceSchedule;
+use App\Models\ApprovalFlowStep;
 use App\Models\ActivityLog;
 use App\Models\Role;
 use Illuminate\Http\Request;
@@ -38,6 +39,7 @@ class MaintenanceRecordController extends Controller
             'machine_id' => 'required|exists:machines,id',
             'technician_id' => 'nullable|exists:users,id',
             'schedule_id' => 'nullable|exists:maintenance_schedules,id',
+            'scheduled_period_date' => 'nullable|date',
             'is_unscheduled' => 'nullable|boolean',
             'maintenance_date' => 'required|date',
             'start_time' => 'nullable|date_format:H:i',
@@ -83,19 +85,42 @@ class MaintenanceRecordController extends Controller
             $recordData['condition_before_pct'] = $beforeVals->count() ? round($beforeVals->avg(), 1) : null;
             $recordData['condition_after_pct'] = $afterVals->count() ? round($afterVals->avg(), 1) : null;
 
-            // Calculate if this submission is late
+            $recordData['is_unscheduled'] = (bool) ($recordData['is_unscheduled'] ?? false);
+            if ($recordData['is_unscheduled']) {
+                $recordData['schedule_id'] = null;
+                $recordData['scheduled_period_date'] = null;
+            } elseif (empty($recordData['schedule_id']) || empty($recordData['scheduled_period_date'])) {
+                return response()->json(['error' => 'Pilih periode jadwal untuk laporan terjadwal.'], 422);
+            }
+
+            // Calculate lateness against the selected immutable schedule period.
             $isLate = false;
-            if (!empty($recordData['schedule_id']) && empty($recordData['is_unscheduled'])) {
-                $schedule = MaintenanceSchedule::find($recordData['schedule_id']);
-                if ($schedule) {
-                    $dueDate = Carbon::parse($schedule->next_due_date)->startOfDay();
-                    $maintenanceDate = Carbon::parse($recordData['maintenance_date'])->startOfDay();
-                    if ($maintenanceDate->greaterThan($dueDate)) {
-                        $isLate = true;
-                    }
-                }
+            if (!$recordData['is_unscheduled']) {
+                $dueDate = Carbon::parse($recordData['scheduled_period_date'])->startOfDay();
+                $maintenanceDate = Carbon::parse($recordData['maintenance_date'])->startOfDay();
+                $isLate = $maintenanceDate->greaterThan($dueDate);
             }
             $recordData['is_late'] = $isLate;
+
+            // Snapshot approval flow for this report so future flow changes only affect new reports
+            $reporterRole = $authUser?->role ?? 'technician';
+            $flowSteps = ApprovalFlowStep::active()
+                ->where('reporter_role', $reporterRole)
+                ->ordered()
+                ->get();
+            if ($flowSteps->isEmpty() && $reporterRole !== 'technician') {
+                $flowSteps = ApprovalFlowStep::active()
+                    ->where('reporter_role', 'technician')
+                    ->ordered()
+                    ->get();
+            }
+            $recordData['approval_flow_snapshot'] = $flowSteps->map(fn ($s) => [
+                'id' => $s->id,
+                'reporter_role' => $s->reporter_role,
+                'role' => $s->role,
+                'step_order' => $s->step_order,
+                'is_active' => $s->is_active,
+            ])->values()->toArray();
 
             $record = MaintenanceRecord::create($recordData);
 

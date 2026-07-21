@@ -1,94 +1,33 @@
-<template>
+﻿<template>
   <div class="space-y-4 pb-24">
 
     <!-- ══════════════════════════════════════════════════════════════
          PAGE TITLE
     ═══════════════════════════════════════════════════════════════════ -->
     <div class="w-full max-w-5xl mx-auto">
-      <PageHeader title="Laporan Maintenance" subtitle="Pilih mesin dan jadwal untuk memulai laporan pemeriksaan" />
+      <PageHeader title="Laporan TPM" subtitle="Pilih mesin dan jadwal untuk memulai laporan pemeriksaan">
+        <template #actions>
+          <button
+            v-if="machine"
+            @click="goToMachineDetail"
+            class="flex items-center gap-1.5 bg-white border border-slate-200 hover:border-brand-brown hover:text-brand-brown text-slate-600 text-xs font-bold px-3 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Detail Mesin
+          </button>
+        </template>
+      </PageHeader>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════════════
-         CARD 0: PILIH MESIN
-    ═══════════════════════════════════════════════════════════════════ -->
-    <div class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
-      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
-        <svg class="w-4 h-4 text-brand-brown shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-        <h2 class="text-sm font-bold text-slate-700">Pilih Mesin</h2>
-      </div>
-      <div class="p-5">
-        <!-- Machine loading -->
-        <div v-if="machinesLoading" class="flex items-center gap-2 text-slate-400 text-sm">
-          <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-          Memuat daftar mesin...
-        </div>
-        <!-- Machine combobox -->
-        <div v-else class="space-y-3">
-          <div class="relative" v-click-outside="closeCombobox">
-            <div class="relative">
-              <input
-                ref="comboboxInput"
-                v-model="machineSearch"
-                @focus="comboboxOpen = true"
-                @input="comboboxOpen = true"
-                @keydown.escape="closeCombobox"
-                @keydown.enter.prevent="selectFirstFiltered"
-                placeholder="Ketik nama mesin..."
-                class="w-full text-sm border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-brand-brown text-slate-700 bg-white pr-10"
-                autocomplete="off"
-              />
-              <button
-                v-if="machineSearch || machine"
-                @click="clearMachine"
-                type="button"
-                aria-label="Hapus pilihan mesin"
-                class="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-              <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-            </div>
-            <!-- Dropdown -->
-            <div
-              v-if="comboboxOpen && filteredMachines.length > 0"
-              class="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
-            >
-              <template v-for="(group, city) in filteredGroupedMachines" :key="city">
-                <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide bg-slate-50 border-b border-slate-100">{{ cityLabel(city) }}</div>
-                <button
-                  v-for="m in group" :key="m.id"
-                  @mousedown.prevent="pickMachine(m)"
-                  :class="[
-                    selectedMachineId === m.id ? 'bg-brand-cream' : 'hover:bg-slate-50',
-                    machineScheduleStatus(m).rowClass
-                  ]"
-                  class="w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer flex items-center justify-between gap-3"
-                >
-                  <span :class="selectedMachineId === m.id ? 'font-bold text-brand-brown' : 'text-slate-700'">{{ m.name }}</span>
-                  <span
-                    v-if="machineScheduleStatus(m).label"
-                    :class="machineScheduleStatus(m).badgeClass"
-                    class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
-                  >{{ machineScheduleStatus(m).label }}</span>
-                </button>
-              </template>
-            </div>
-            <div
-              v-else-if="comboboxOpen && machineSearch.length > 0 && filteredMachines.length === 0"
-              class="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg px-4 py-3 text-sm text-slate-400"
-            >Tidak ada mesin ditemukan</div>
-          </div>
-          <!-- Selected machine info chips -->
-          <div v-if="machine" class="flex flex-wrap gap-2 items-center">
-            <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">{{ machine.kode }}</span>
-            <span v-if="machine.kota" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-brand-cream text-brand-brown">{{ machine.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}</span>
-            <span v-if="machine.location" class="text-xs text-slate-400">{{ machine.location }}</span>
-            <span class="text-xs text-slate-400">·</span>
-            <span class="text-xs font-semibold text-slate-500">{{ machine.components?.length || 0 }} komponen</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ReportMachineSelector
+      v-model:search="machineSearch"
+      :machines="machinesList"
+      :loading="machinesLoading"
+      :selected="selectedMachineId"
+      :machine="machine"
+      @select="pickMachine"
+      @clear="clearMachine"
+    />
 
     <!-- Loading mesin data -->
     <div v-if="loading" class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-12 flex flex-col items-center gap-3 text-slate-400">
@@ -105,299 +44,34 @@
 
     <template v-else-if="machine">
 
-      <!-- ══════════════════════════════════════════════════════════════
-           CARD 1: PILIH JADWAL
-      ═══════════════════════════════════════════════════════════════════ -->
-      <div class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
-          <svg class="w-4 h-4 text-brand-brown shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          <h2 class="text-sm font-bold text-slate-700">Pilih Jadwal Laporan</h2>
-        </div>
-        <div class="p-5 space-y-4">
+      <ReportSchedulePanel
+        :schedule-periods="schedulePeriods"
+        :selected-period="selectedPeriod"
+        :is-unscheduled="isUnscheduled"
+        @select-period="selectPeriod"
+        @select-unscheduled="selectUnscheduled"
+      />
 
-          <!-- Period buttons -->
-          <div>
-            <p class="text-xs font-semibold text-slate-500 mb-2.5">
-              {{ schedulePeriods.length > 0 ? 'Jadwal tersedia bulan ini:' : 'Tidak ada jadwal aktif untuk mesin ini.' }}
-            </p>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="(period, idx) in schedulePeriods"
-                :key="idx"
-                @click="selectPeriod(period)"
-                :class="[
-                  selectedPeriod?.label === period.label
-                    ? 'border-brand-brown bg-brand-cream text-brand-brown ring-1 ring-brand-brown/30'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
-                  'flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-[140px]'
-                ]"
-              >
-                <span class="text-xs font-bold">{{ period.label }}</span>
-                <span class="text-[11px] mt-0.5" :class="selectedPeriod?.label === period.label ? 'text-brand-brown/70' : 'text-slate-400'">{{ period.dateStr }}</span>
-                <span class="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded-md" :class="period.statusClass">{{ period.statusLabel }}</span>
-              </button>
+      <ReportProgressPanel
+        :progress-summaries="progressSummaries"
+        :difficulty-filter="difficultyFilter"
+        :show-only-pending="showOnlyPending"
+        :pending-summary="pendingSummary"
+        :is-unscheduled="isUnscheduled"
+        @update:difficulty-filter="v => difficultyFilter = v"
+        @toggle:show-only-pending="showOnlyPending = !showOnlyPending"
+      />
 
-              <button
-                @click="selectUnscheduled"
-                :class="[
-                  isUnscheduled
-                    ? 'border-indigo-400 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-300'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50',
-                  'flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-[140px]'
-                ]"
-              >
-                <span class="text-xs font-bold">Di Luar Jadwal</span>
-                <span class="text-[11px] mt-0.5" :class="isUnscheduled ? 'text-indigo-500' : 'text-slate-400'">Maintenance di luar jadwal</span>
-                <span class="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-600">Unscheduled</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Time inputs -->
-        </div>
-      </div>
-
-      <!-- ══════════════════════════════════════════════════════════════
-           PROGRESS
-      ═══════════════════════════════════════════════════════════════════ -->
-      <div class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4 space-y-3">
-        <!-- Filter tabs -->
-        <div class="flex items-center gap-2">
-          <button
-            v-for="tab in difficultyTabs" :key="tab.value"
-            @click="difficultyFilter = tab.value"
-            :class="difficultyFilter === tab.value
-              ? 'bg-brand-brown text-white border-brand-brown'
-              : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'"
-            class="px-3 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer"
-          >{{ tab.label }} <span class="ml-1 font-mono">{{ tab.count }}</span></button>
-        </div>
-        <!-- Bar -->
-        <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-bold text-slate-700">Progress Inspeksi</span>
-              <span class="text-xs font-semibold px-2 py-0.5 rounded-full" :class="filteredCheckedCount === filteredComponentsList.length ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'">
-                {{ filteredCheckedCount }} / {{ filteredComponentsList.length }} komponen
-              </span>
-              <span v-if="filteredPendingComponents.length > 0" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">
-                {{ filteredPendingComponents.length }} belum
-              </span>
-            </div>
-            <span class="text-sm font-black" :class="complianceColorClass">{{ totalCompliance }}%</span>
-          </div>
-          <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-            <div :class="complianceBarClass" class="h-full rounded-full transition-all duration-500"
-              :style="{ width: `${Math.round((filteredCheckedCount / Math.max(filteredComponentsList.length,1)) * 100)}%` }"></div>
-          </div>
-        </div>
-        <!-- Pending chips -->
-        <!-- <div v-if="filteredPendingComponents.length > 0" class="flex flex-wrap gap-1.5">
-          <span class="text-[11px] text-slate-400 font-semibold self-center">Belum:</span>
-          <span
-            v-for="c in filteredPendingComponents" :key="c.id"
-            @click="scrollToComponent(c.id)"
-            class="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700 font-semibold cursor-pointer hover:bg-amber-100 transition-colors"
-          >{{ c.name }}</span>
-        </div> -->
-      </div>
-
-      <!-- ══════════════════════════════════════════════════════════════
-           CARD 2: TABEL KOMPONEN
-      ═══════════════════════════════════════════════════════════════════ -->
-      <div class="w-full max-w-5xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-            <h2 class="text-sm font-bold text-slate-700">Daftar Komponen & Indikator</h2>
-          </div>
-          <span class="text-xs text-slate-400">{{ filteredComponentsList.length }} komponen ditampilkan</span>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[700px] lg:w-auto lg:min-w-0 text-sm">
-            <thead>
-              <tr class="bg-slate-50 border-b border-slate-100">
-                <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Komponen</th>
-                <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Deskripsi</th>
-                <th class="py-3 px-1 text-center text-xs font-bold text-slate-500 uppercase tracking-wide sm:hidden" style="width:100px">Status</th>
-                <th class="py-3 px-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell w-40">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="comp in filteredComponentsList" :key="comp.id">
-
-                <!-- Component header row -->
-                <tr :id="`comp-${comp.id}`"
-                  :class="comp.hasError ? 'border-l-2 border-l-red-400 bg-red-50/40' : 'bg-slate-50/60'"
-                  class="border-t border-slate-100"
-                >
-                  <td colspan="4" class="pl-2 pr-2 sm:px-4 py-2.5">
-                    <div class="flex items-start justify-between gap-2">
-                      <!-- Kiri: ikon status + nama -->
-                      <div class="flex items-start gap-2 min-w-0 flex-1">
-                      <span v-if="isCompDone(comp)" class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
-                      </span>
-                      <span v-else-if="comp.hasError" class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
-                      </span>
-                      <span v-else-if="comp.inProgress" class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                      </span>
-                      <span v-else class="shrink-0 mt-0.5 w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
-                      </span>
-                      <div class="min-w-0">
-                        <span class="font-bold text-sm text-slate-800">{{ comp.name }}</span>
-                        <div class="flex flex-wrap items-center gap-1 mt-0.5">
-                          <span v-if="comp.category" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 font-semibold">{{ comp.category }}</span>
-                          <span v-if="comp.difficulty" :class="comp.difficulty === 'berat' ? 'bg-red-100 text-red-600' : 'bg-sky-100 text-sky-600'" class="text-[10px] px-1.5 py-0.5 rounded font-semibold capitalize">{{ comp.difficulty }}</span>
-                          <span v-if="isCompDone(comp)" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-600 font-semibold">{{ comp.conditionPct }}% OK</span>
-                          <span v-else-if="comp.inProgress" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 font-semibold">{{ comp.conditionPct }}%</span>
-                          <span v-if="comp.hasError" class="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">Ada indikator belum diisi</span>
-                        </div>
-                      </div>
-                      </div>
-                      <!-- Kanan: tombol desktop (besar) + mobile (kecil) -->
-                      <div class="flex items-center gap-1.5 shrink-0 self-center">
-                      <button
-                        @click="comp.is_component_replacement = !comp.is_component_replacement"
-                        :class="comp.is_component_replacement ? 'bg-amber-500 border-amber-400 text-white' : 'bg-white border-amber-200 text-slate-500 hover:border-amber-500'"
-                        class="hidden sm:flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer"
-                      >
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        {{ comp.is_component_replacement ? 'Diganti' : 'Ganti?' }}
-                      </button>
-                      <button
-                        @click="comp.is_component_replacement = !comp.is_component_replacement"
-                        :class="comp.is_component_replacement ? 'bg-amber-500 border-amber-400 text-white' : 'bg-white border-amber-200 text-slate-500'"
-                        class="sm:hidden flex items-center gap-1 px-2 py-2 rounded border text-[10px] font-semibold transition-all cursor-pointer"
-                      >
-                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        {{ comp.is_component_replacement ? 'Diganti' : 'Ganti?' }}
-                      </button>
-                      <button
-                        @click="comp.showNote = !comp.showNote"
-                        :class="comp.showNote || comp.description ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'"
-                        class="hidden sm:flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer"
-                      >
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
-                        Catatan
-                      </button>
-                      <button
-                        @click="comp.showNote = !comp.showNote"
-                        :class="comp.showNote || comp.description ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500'"
-                        class="sm:hidden flex items-center gap-1 px-2 py-2 rounded border text-[10px] font-semibold transition-all cursor-pointer"
-                      >
-                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
-                        Catatan
-                      </button>
-                      </div>
-                    </div>
-                    <div v-if="comp.showNote || comp.description" class="mt-2.5">
-                      <textarea
-                        v-model="comp.description"
-                        placeholder="Catatan: temuan, tindakan perbaikan, nomor seri komponen pengganti..."
-                        rows="2"
-                        class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-400 text-slate-700 placeholder-slate-400 resize-none"
-                      ></textarea>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Indicator rows -->
-                <template v-if="comp.indicators.length > 0">
-                  <tr
-                    v-for="(ind, iIdx) in comp.indicators" :key="ind.id"
-                    :class="[
-                      iIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40',
-                      comp.indicatorValues[ind.id] === null && comp.hasError ? 'outline outline-1 outline-red-200' : ''
-                    ]"
-                    class="border-t border-slate-100/60"
-                  >
-                    <td class="pl-2 pr-1 sm:px-4 py-2.5">
-                      <span class="text-xs font-semibold text-slate-600 pl-3 sm:pl-8">{{ ind.name }}</span>
-                      <p v-if="ind.description" class="text-[11px] text-slate-400 pl-3 sm:pl-8 mt-0.5 leading-relaxed sm:hidden">{{ ind.description }}</p>
-                    </td>
-                    <td class="px-4 py-2.5 hidden sm:table-cell">
-                      <span class="text-xs text-slate-500 leading-relaxed">{{ ind.description || '-' }}</span>
-                    </td>
-                    <td class="py-2 pl-1 pr-2 text-center sm:hidden" style="width:100px">
-                      <div class="flex items-center justify-center gap-2">
-                        <button
-                          @click="setIndicator(comp, ind.id, true)"
-                          :class="comp.indicatorValues[ind.id] === true ? 'bg-emerald-500 text-white border-emerald-400 shadow-sm' : 'bg-white text-slate-500 border-slate-200'"
-                          class="w-14 py-4 rounded border text-[10px] font-bold transition-all cursor-pointer text-center"
-                        >OK</button>
-                        <button
-                          @click="setIndicator(comp, ind.id, false)"
-                          :class="comp.indicatorValues[ind.id] === false ? 'bg-red-500 text-white border-red-400 shadow-sm' : 'bg-white text-slate-500 border-slate-200'"
-                          class="w-14 py-4 rounded border text-[10px] font-bold transition-all cursor-pointer text-center"
-                        >Not OK</button>
-                        <span v-if="comp.indicatorValues[ind.id] === null && comp.hasError" class="text-[10px] text-red-500 font-semibold">!</span>
-                      </div>
-                    </td>
-                    <td class="py-2.5 px-2 text-center hidden sm:table-cell">
-                      <div class="flex flex-nowrap items-center justify-center gap-2">
-                        <button
-                          @click="setIndicator(comp, ind.id, true)"
-                          :class="comp.indicatorValues[ind.id] === true ? 'bg-emerald-500 text-white border-emerald-400 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-emerald-600'"
-                          class="px-4 py-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer"
-                        >OK</button>
-                        <button
-                          @click="setIndicator(comp, ind.id, false)"
-                          :class="comp.indicatorValues[ind.id] === false ? 'bg-red-500 text-white border-red-400 shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:border-red-300 hover:text-red-500'"
-                          class="px-4 py-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer"
-                        >Not OK</button>
-                        <span v-if="comp.indicatorValues[ind.id] === null && comp.hasError" class="text-[10px] text-red-500 font-semibold">!</span>
-                      </div>
-                    </td>
-                  </tr>
-                </template>
-
-                <!-- Manual input row -->
-                <tr v-else class="border-t border-slate-100/60 bg-white">
-                  <td class="px-4 py-3">
-                    <span class="text-xs text-slate-400 pl-8 italic">Input manual</span>
-                  </td>
-                  <td class="px-4 py-3 hidden sm:table-cell">
-                    <div class="flex items-center gap-3">
-                      <input type="range" min="0" max="100" step="5" v-model.number="comp.conditionPct"
-                        @input="comp.inProgress = true"
-                        class="flex-1 h-1.5 accent-brand-brown cursor-pointer"/>
-                      <div class="flex items-center gap-1">
-                        <input type="number" min="0" max="100" step="1" v-model.number="comp.conditionPct"
-                          @input="comp.inProgress = true"
-                          class="w-14 text-right text-xs font-black font-mono border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-brown" :class="condClass(comp.conditionPct)"/>
-                        <span class="text-xs font-black font-mono text-slate-400">%</span>
-                      </div>
-                    </div>
-                    <div class="flex gap-1.5 mt-2">
-                      <button v-for="p in presets" :key="p.val" @click="applyPreset(comp, p.val)"
-                        :class="comp.conditionPct === p.val ? 'bg-brand-brown text-white border-brand-brown' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'"
-                        class="px-2 py-0.5 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors"
-                      >{{ p.label }}</button>
-                    </div>
-                  </td>
-                  <td class="py-2 pl-1 pr-2 text-center sm:hidden" style="width:100px">
-                    <div class="flex items-center justify-center gap-1">
-                      <input type="number" min="0" max="100" step="5" v-model.number="comp.conditionPct"
-                        @input="comp.inProgress = true"
-                        class="w-12 text-center text-xs font-bold border border-slate-200 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-brand-brown" :class="condClass(comp.conditionPct)"/>
-                      <span class="text-[10px] text-slate-400">%</span>
-                    </div>
-                  </td>
-                  <td class="px-4 py-3 text-center hidden sm:table-cell">
-                    <span class="text-xs font-bold" :class="condClass(comp.conditionPct)">{{ comp.conditionPct }}%</span>
-                  </td>
-                </tr>
-
-              </template>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <ReportComponentTable
+        v-model:search="componentSearch"
+        :components="filteredComponentsList"
+        :presets="presets"
+        :set-indicator="setIndicator"
+        :apply-preset="applyPreset"
+        :is-comp-done="isCompDone"
+        :cond-class="condClass"
+        :get-difficulty-badge-class="getDifficultyBadgeClass"
+      />
 
     </template>
 
@@ -412,157 +86,68 @@
       Simpan Laporan
     </button>
 
-    <!-- ══════════════════════════════════════════════════════════════
-         SAVE MODAL
-    ═══════════════════════════════════════════════════════════════════ -->
-    <div v-if="showSaveModal && machine" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showSaveModal = false"></div>
-      <div class="bg-white rounded-2xl w-full max-w-md relative z-10 shadow-2xl overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-          <div>
-            <h3 class="text-base font-bold text-slate-800">Konfirmasi Laporan</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Periksa ringkasan sebelum mengirim</p>
-          </div>
-          <button @click="showSaveModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div class="p-6 space-y-4">
-          <div class="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
-            <div class="flex justify-between gap-4"><span class="text-slate-500">Mesin</span><span class="font-semibold text-slate-700 text-right">{{ machine.name }}</span></div>
-            <div class="flex justify-between gap-4"><span class="text-slate-500">Jadwal bulan ini</span><span class="font-semibold text-slate-700 text-right">{{ reportScheduleLabel }}</span></div>
-            <div class="flex justify-between gap-4"><span class="text-slate-500">Status jadwal</span><span class="font-bold text-right" :class="reportScheduleClass">{{ reportScheduleStatus }}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Komponen ringan</span><span class="font-bold text-emerald-600">{{ lightReportedCount }} / {{ lightComponentCount }}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Komponen berat</span><span class="font-bold text-emerald-600">{{ heavyReportedCount }} / {{ heavyComponentCount }}</span></div>
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <div class="space-y-1">
-              <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Jam Mulai</label>
-              <input type="time" v-model="startTime" required class="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-brown text-slate-700"/>
-            </div>
-            <div class="space-y-1">
-              <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Jam Selesai</label>
-              <input type="time" v-model="endTime" required class="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-brown text-slate-700"/>
-            </div>
-            <div class="space-y-1">
-              <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Durasi</label>
-              <div class="w-full text-sm border border-slate-100 rounded-xl px-3 py-2 bg-slate-50 text-slate-500 font-mono select-none">
-                {{ calculatedDuration > 0 ? calculatedDuration + ' menit' : '-' }}
-              </div>
-            </div>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-xs font-bold text-slate-600 uppercase tracking-wide">Catatan Umum</label>
-            <textarea v-model="generalNotes" placeholder="Ringkasan pekerjaan atau kendala..." rows="3"
-              class="w-full text-sm border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-brand-brown text-slate-700 placeholder-slate-400 resize-none"></textarea>
-          </div>
-        </div>
-        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-          <button @click="showSaveModal = false" class="px-4 py-2 text-slate-500 hover:text-slate-800 text-sm font-semibold cursor-pointer">Batal</button>
-          <button @click="submitReport" :disabled="submitting"
-            class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow cursor-pointer disabled:opacity-60 flex items-center gap-2">
-            <svg v-if="submitting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-            Kirim Laporan
-          </button>
-        </div>
-      </div>
-    </div>
+    <ReportSaveModal
+      :show="showSaveModal"
+      :machine="machine"
+      :schedule-label="reportScheduleLabel"
+      :schedule-status="reportScheduleStatus"
+      :schedule-class="reportScheduleClass"
+      :light-reported-count="lightReportedCount"
+      :light-component-count="lightComponentCount"
+      :heavy-reported-count="heavyReportedCount"
+      :heavy-component-count="heavyComponentCount"
+      v-model:start-time="startTime"
+      v-model:end-time="endTime"
+      :duration="calculatedDuration"
+      v-model:notes="generalNotes"
+      :submitting="submitting"
+      @submit="submitReport"
+      @close="showSaveModal = false"
+    />
 
+    <ReportAccessDeniedModal
+      :show="showAccessDeniedModal"
+      @close="showAccessDeniedModal = false"
+      @back="router.visit('/')"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import axios from 'axios';
-import { showAlert } from '../composables/useAlert.js';
+import { router } from '@inertiajs/vue3';
+import { showAlert, showConfirm } from '../composables/useAlert.js';
 import { useAuth } from '../composables/useAuth.js';
 import PageHeader from '../components/PageHeader.vue';
+import ReportMachineSelector from '../components/ReportMachineSelector.vue';
+import ReportSchedulePanel from '../components/ReportSchedulePanel.vue';
+import ReportProgressPanel from '../components/ReportProgressPanel.vue';
+import ReportComponentTable from '../components/ReportComponentTable.vue';
+import ReportSaveModal from '../components/ReportSaveModal.vue';
+import ReportAccessDeniedModal from '../components/ReportAccessDeniedModal.vue';
 
-const { user } = useAuth();
-
-// ── v-click-outside directive ──────────────────────────────────────────────
-const vClickOutside = {
-  mounted(el, binding) {
-    el._clickOutside = (e) => { if (!el.contains(e.target)) binding.value(); };
-    document.addEventListener('mousedown', el._clickOutside);
-  },
-  unmounted(el) { document.removeEventListener('mousedown', el._clickOutside); }
-};
+const { user, isAdmin, isTechnician } = useAuth();
 
 // ── Machines list / combobox ───────────────────────────────────────────────
 const machinesList = ref([]);
 const machinesLoading = ref(true);
 const selectedMachineId = ref('');
 const machineSearch = ref('');
-const comboboxOpen = ref(false);
-const comboboxInput = ref(null);
 
-const filteredMachines = computed(() => {
-  const q = machineSearch.value.trim().toLowerCase();
-  if (!q) return machinesList.value;
-  return machinesList.value.filter(m => m.name.toLowerCase().includes(q));
-});
-
-const filteredGroupedMachines = computed(() => {
-  const groups = {};
-  for (const m of filteredMachines.value) {
-    const city = m.kota || 'lainnya';
-    if (!groups[city]) groups[city] = [];
-    groups[city].push(m);
-  }
-  return groups;
-});
-
-const cityLabel = (city) => {
-  const map = { sby: 'Surabaya', pasuruan: 'Pasuruan', lainnya: 'Lainnya' };
-  return map[city] ?? city;
-};
-
-// ── Machine schedule status for dropdown badge ────────────────────────────
-const machineScheduleStatus = (m) => {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-  // Check if already has approved/completed record this month
-  const records = m.records ?? [];
-  const doneThisMonth = records.some(r => {
-    if (!r.maintenance_date) return false;
-    const d = new Date(r.maintenance_date);
-    return d >= monthStart && d <= monthEnd && r.status === 'completed';
-  });
-  if (doneThisMonth) return { label: 'Sudah dicek', badgeClass: 'bg-emerald-100 text-emerald-700', rowClass: '' };
-
-  const schedules = (m.schedules ?? []).filter(s => s.is_active !== false && s.next_due_date);
-  if (!schedules.length) return { label: null, badgeClass: '', rowClass: '' };
-
-  const nextDue = new Date(schedules[0].next_due_date); nextDue.setHours(0,0,0,0);
-  const diffDays = Math.ceil((nextDue - today) / 86400000);
-
-  if (diffDays < 0) return { label: `Terlambat ${Math.abs(diffDays)}h`, badgeClass: 'bg-red-100 text-red-700', rowClass: 'bg-red-50/30' };
-  if (diffDays === 0) return { label: 'Hari ini', badgeClass: 'bg-emerald-100 text-emerald-700', rowClass: 'bg-emerald-50/20' };
-  if (diffDays === 1) return { label: 'Besok', badgeClass: 'bg-amber-100 text-amber-700', rowClass: '' };
-  if (diffDays <= 7) return { label: `${diffDays} hari lagi`, badgeClass: 'bg-blue-100 text-blue-600', rowClass: '' };
-  return { label: `${diffDays}h lagi`, badgeClass: 'bg-slate-100 text-slate-500', rowClass: '' };
-};
-
-const closeCombobox = () => { comboboxOpen.value = false; };
-
-const pickMachine = (m) => {
+const pickMachine = async (m) => {
+  if (m.id !== selectedMachineId.value && !(await confirmAbandonReport())) return;
   selectedMachineId.value = m.id;
   machineSearch.value = m.name;
-  comboboxOpen.value = false;
   loadMachineData(m.id);
+};
+
+const goToMachineDetail = () => {
+  if (machine.value) router.visit(`/machine/${machine.value.id}`);
 };
 
 const clearMachine = () => {
   machineSearch.value = '';
-  comboboxOpen.value = true;
-  nextTick(() => comboboxInput.value?.focus());
-};
-
-const selectFirstFiltered = () => {
-  if (filteredMachines.value.length > 0) pickMachine(filteredMachines.value[0]);
 };
 
 const loadMachinesList = async () => {
@@ -586,6 +171,28 @@ const componentsList = ref([]);
 
 const machineId = computed(() => machine.value?.id ?? null);
 
+// ── Role access check ──────────────────────────────────────────────────────
+const roles = ref([]);
+const rolesLoaded = ref(false);
+const showAccessDeniedModal = ref(false);
+
+const fetchRoles = async () => {
+  try {
+    const res = await axios.get('/api/roles');
+    roles.value = res.data || [];
+  } catch (e) {
+    console.error('Failed to fetch roles:', e);
+  } finally {
+    rolesLoaded.value = true;
+  }
+};
+
+const canCreateReport = computed(() => {
+  if (isAdmin.value) return true;
+  const role = roles.value.find(r => r.name === user.value?.role);
+  return !!role?.can_report;
+});
+
 // ── Schedule selection ─────────────────────────────────────────────────────
 const selectedPeriod = ref(null);
 const isUnscheduled = ref(false);
@@ -596,6 +203,8 @@ const startTime = ref('');
 const endTime = ref('');
 const generalNotes = ref('');
 const showSaveModal = ref(false);
+const skipLeaveGuard = ref(false);
+let unregisterBeforeListener = null;
 
 const presets = [
   { val: 100, label: 'OK' },
@@ -605,6 +214,26 @@ const presets = [
 ];
 
 // ── Duration (computed, read-only) ─────────────────────────────────────────
+const hasUnsubmittedProgress = computed(() =>
+  componentsList.value.some(comp => !comp.isLocked && comp.inProgress) ||
+  Boolean(startTime.value || endTime.value || generalNotes.value || showSaveModal.value)
+);
+
+const confirmAbandonReport = async () => {
+  if (!hasUnsubmittedProgress.value) return true;
+  return showConfirm(
+    'Laporan Belum Dikirim',
+    'Progress laporan belum dikirim. Jika ditinggalkan, laporan harus diisi ulang dari awal.',
+    { confirmText: 'Tinggalkan', cancelText: 'Lanjutkan Mengisi' }
+  );
+};
+
+const handleBeforeUnload = (event) => {
+  if (!hasUnsubmittedProgress.value || submitting.value) return;
+  event.preventDefault();
+  event.returnValue = '';
+};
+
 const calculatedDuration = computed(() => {
   if (!startTime.value || !endTime.value) return 0;
   const [sh, sm] = startTime.value.split(':').map(Number);
@@ -621,10 +250,26 @@ const formatTime = (date) =>
 const formatDateStr = (date) =>
   date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
+const dateKey = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const condClass = (pct) => {
   if (pct < 50) return 'text-red-500';
   if (pct < 80) return 'text-amber-500';
   return 'text-emerald-500';
+};
+
+const getDifficultyBadgeClass = (difficulty) => {
+  switch (difficulty) {
+    case 'ringan': return 'bg-emerald-100 text-emerald-700';
+    case 'sedang': return 'bg-amber-100 text-amber-700';
+    case 'berat': return 'bg-red-100 text-red-700';
+    default: return 'bg-slate-100 text-slate-600';
+  }
 };
 
 // ── Schedule Periods ───────────────────────────────────────────────────────
@@ -646,8 +291,9 @@ const schedulePeriods = computed(() => {
   if (cursor < monthStart) cursor = new Date(cursor.getTime() + intervalMs);
 
   const periods = [];
+  const periodLimit = intervalDays <= 14 ? 2 : 1;
   let idx = 1;
-  while (cursor <= monthEnd) {
+  while (cursor <= monthEnd && periods.length < periodLimit) {
     const due = new Date(cursor);
     const diffDays = Math.ceil((due - today) / 86400000);
     let statusLabel, statusClass;
@@ -655,24 +301,59 @@ const schedulePeriods = computed(() => {
     else if (diffDays === 1) { statusLabel = 'Besok'; statusClass = 'bg-amber-50 text-amber-600'; }
     else if (diffDays === 0) { statusLabel = 'Hari ini'; statusClass = 'bg-emerald-50 text-emerald-600'; }
     else { statusLabel = `Terlambat ${Math.abs(diffDays)} hari`; statusClass = 'bg-red-50 text-red-600'; }
+    const periodDate = dateKey(due);
+    const completedComponentIds = new Set(
+      (machine.value?.records ?? [])
+        .filter(record =>
+          record.status === 'completed' &&
+          !record.is_unscheduled &&
+          record.latest_approval?.decision !== 'rejected' &&
+          String(record.schedule_id) === String(sched.id) &&
+          String(record.scheduled_period_date).slice(0, 10) === periodDate
+        )
+        .flatMap(record => (record.actions ?? []).map(action => String(action.machine_component_id)))
+    );
+    const componentCount = machine.value?.components?.length ?? 0;
+    const progressCount = completedComponentIds.size;
+    const progressPct = componentCount > 0 ? Math.round((progressCount / componentCount) * 100) : 0;
     const label = intervalDays <= 14 ? `Week ${idx}` : intervalDays <= 21 ? `Periode ${idx}` : 'Bulan Ini';
-    periods.push({ label, dateStr: formatDateStr(due), dueDate: due, scheduleId: sched.id, statusLabel, statusClass, diffDays });
+    periods.push({ label, dateStr: formatDateStr(due), dueDate: due, scheduleId: sched.id, statusLabel, statusClass, diffDays, componentCount, progressCount, progressPct });
     cursor = new Date(cursor.getTime() + intervalMs);
     idx++;
   }
   return periods;
 });
 
-const selectPeriod = (period) => {
-  selectedPeriod.value = period;
-  isUnscheduled.value = false;
-  maintenanceDate.value = period.dueDate.toISOString().split('T')[0];
+const discardReportDraft = () => {
+  startTime.value = '';
+  endTime.value = '';
+  generalNotes.value = '';
+  showSaveModal.value = false;
 };
 
-const selectUnscheduled = () => {
+const selectPeriod = async (period) => {
+  const isCurrentPeriod = !isUnscheduled.value && selectedPeriod.value?.scheduleId === period.scheduleId && dateKey(selectedPeriod.value.dueDate) === dateKey(period.dueDate);
+  if (isCurrentPeriod) return;
+  if (!(await confirmAbandonReport())) return;
+  discardReportDraft();
+  selectedPeriod.value = period;
+  isUnscheduled.value = false;
+  componentSearch.value = '';
+  showOnlyPending.value = false;
+  maintenanceDate.value = dateKey(period.dueDate);
+  applyPeriodProgress(period);
+};
+
+const selectUnscheduled = async () => {
+  if (isUnscheduled.value) return;
+  if (!(await confirmAbandonReport())) return;
+  discardReportDraft();
   isUnscheduled.value = true;
   selectedPeriod.value = null;
-  maintenanceDate.value = new Date().toISOString().split('T')[0];
+  componentSearch.value = '';
+  showOnlyPending.value = false;
+  maintenanceDate.value = dateKey(new Date());
+  resetComponentProgress();
 };
 
 // ── Components Init ────────────────────────────────────────────────────────
@@ -696,6 +377,8 @@ const initializeComponents = () => {
       description: '',
       showNote: false,
       hasError: false,
+      isLocked: false,
+      lockStatus: '',
       is_component_replacement: false
     };
   });
@@ -703,12 +386,59 @@ const initializeComponents = () => {
   startTime.value = '';
   endTime.value = '';
 
+  componentSearch.value = '';
+  showOnlyPending.value = false;
   if (schedulePeriods.value.length > 0) {
     const urgent = schedulePeriods.value.find(p => p.diffDays <= 0) ?? schedulePeriods.value[0];
     selectPeriod(urgent);
   } else {
     selectUnscheduled();
   }
+};
+
+const resetComponentProgress = () => {
+  componentsList.value.forEach(comp => {
+    comp.indicatorValues = Object.fromEntries(comp.indicators.map(ind => [ind.id, null]));
+    comp.inProgress = false;
+    comp.conditionPct = comp.last_condition_pct;
+    comp.description = '';
+    comp.showNote = false;
+    comp.hasError = false;
+    comp.isLocked = false;
+    comp.lockStatus = '';
+    comp.is_component_replacement = false;
+  });
+};
+
+const applyPeriodProgress = (period) => {
+  resetComponentProgress();
+  if (!machine.value || !period) return;
+
+  const periodDate = dateKey(period.dueDate);
+  const records = (machine.value.records ?? []).filter(record =>
+    record.status === 'completed' &&
+    !record.is_unscheduled &&
+    record.latest_approval?.decision !== 'rejected' &&
+    String(record.schedule_id) === String(period.scheduleId) &&
+    String(record.scheduled_period_date).slice(0, 10) === periodDate
+  );
+
+  records.forEach(record => {
+    (record.actions ?? []).forEach(action => {
+      const component = componentsList.value.find(comp => String(comp.id) === String(action.machine_component_id));
+      if (!component) return;
+
+      component.inProgress = true;
+      component.isLocked = true;
+      component.lockStatus = record.latest_approval?.decision === 'approved' ? 'Disetujui' : 'Menunggu approval';
+      component.conditionPct = action.condition_after_pct ?? component.conditionPct;
+      component.description = action.description ?? component.description;
+      component.is_component_replacement = action.action_type === 'replace';
+      (action.indicator_values ?? []).forEach(value => {
+        component.indicatorValues[value.component_indicator_id] = Boolean(value.value);
+      });
+    });
+  });
 };
 
 // ── Machine load ───────────────────────────────────────────────────────────
@@ -751,23 +481,47 @@ const isCompDone = (comp) => {
 };
 
 // ── Difficulty filter ──────────────────────────────────────────────────────
-const difficultyFilter = ref('semua');
-
-const difficultyTabs = computed(() => {
-  const all = componentsList.value;
-  const ringan = all.filter(c => c.difficulty === 'ringan');
-  const berat = all.filter(c => c.difficulty !== 'ringan');
-  return [
-    { value: 'semua', label: 'Semua', count: all.length },
-    { value: 'ringan', label: 'Ringan', count: ringan.length },
-    { value: 'berat', label: 'Berat', count: berat.length },
-  ];
-});
+const difficultyFilter = ref(isTechnician.value ? 'berat' : 'ringan');
+const showOnlyPending = ref(false);
+const componentSearch = ref('');
 
 const filteredComponentsList = computed(() => {
-  if (difficultyFilter.value === 'semua') return componentsList.value;
-  if (difficultyFilter.value === 'ringan') return componentsList.value.filter(c => c.difficulty === 'ringan');
-  return componentsList.value.filter(c => c.difficulty !== 'ringan');
+  let components = componentsList.value;
+  if (difficultyFilter.value === 'ringan') components = components.filter(c => c.difficulty === 'ringan');
+  if (difficultyFilter.value === 'berat') components = components.filter(c => c.difficulty !== 'ringan');
+  const q = componentSearch.value.trim().toLowerCase();
+  if (q) {
+    components = components.filter(c =>
+      (c.name ?? '').toLowerCase().includes(q) ||
+      (c.category ?? '').toLowerCase().includes(q) ||
+      (c.difficulty ?? '').toLowerCase().includes(q) ||
+      (c.specification ?? '').toLowerCase().includes(q)
+    );
+  }
+  return showOnlyPending.value && !isUnscheduled.value ? components.filter(c => !c.isLocked) : components;
+});
+
+const progressSummaries = computed(() => [
+  { key: 'semua', label: 'Semua', items: componentsList.value },
+  { key: 'ringan', label: 'Ringan', items: componentsList.value.filter(c => c.difficulty === 'ringan') },
+  { key: 'berat', label: 'Berat', items: componentsList.value.filter(c => c.difficulty !== 'ringan') },
+].map(summary => ({
+  key: summary.key,
+  label: summary.label,
+  total: summary.items.length,
+  done: summary.items.filter(isCompDone).length,
+  pending: summary.items.filter(c => !isCompDone(c) && !c.isLocked).length,
+  waiting: summary.items.filter(c => c.isLocked && c.lockStatus === 'Menunggu approval').length,
+  approved: summary.items.filter(c => c.isLocked && c.lockStatus === 'Disetujui').length,
+})));
+
+const pendingSummary = computed(() => {
+  const items = componentsList.value.filter(c => !c.isLocked);
+  return {
+    total: items.length,
+    pending: items.length,
+    locked: 0,
+  };
 });
 
 const filteredCheckedCount = computed(() => filteredComponentsList.value.filter(c => isCompDone(c)).length);
@@ -775,7 +529,7 @@ const filteredPendingComponents = computed(() => filteredComponentsList.value.fi
 
 // ── Global stats ───────────────────────────────────────────────────────────
 const doneCount = computed(() => componentsList.value.filter(c => isCompDone(c)).length);
-const hasCheckedComponents = computed(() => doneCount.value > 0);
+const hasCheckedComponents = computed(() => componentsList.value.some(c => isCompDone(c) && !c.isLocked));
 const lightComponentCount = computed(() => componentsList.value.filter(c => c.difficulty === 'ringan').length);
 const heavyComponentCount = computed(() => componentsList.value.filter(c => c.difficulty !== 'ringan').length);
 const lightReportedCount = computed(() => componentsList.value.filter(c => c.difficulty === 'ringan' && isCompDone(c)).length);
@@ -838,7 +592,7 @@ const triggerSaveReport = () => {
   let hasValidationError = false;
   let firstErrorId = null;
   for (const comp of componentsList.value) {
-    if (comp.indicators.length === 0) continue;
+    if (comp.isLocked || comp.indicators.length === 0) continue;
     const anyFilled = comp.indicators.some(ind => comp.indicatorValues[ind.id] !== null);
     if (!anyFilled) {
       comp.hasError = false;
@@ -862,10 +616,15 @@ const triggerSaveReport = () => {
 };
 
 const submitReport = async () => {
-  const doneRows = componentsList.value.filter(c => isCompDone(c));
+  const doneRows = componentsList.value.filter(c => isCompDone(c) && !c.isLocked);
   if (!doneRows.length) return;
   if (!startTime.value || !endTime.value) {
     showAlert('warning', 'Jam Belum Lengkap', 'Isi jam mulai dan jam selesai sebelum mengirim laporan.');
+    return;
+  }
+  const isValidTime = (time) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+  if (!isValidTime(startTime.value) || !isValidTime(endTime.value)) {
+    showAlert('warning', 'Format Jam Tidak Valid', 'Gunakan format 24 jam HH:MM, misalnya 08:30 atau 17:45.');
     return;
   }
   submitting.value = true;
@@ -891,6 +650,7 @@ const submitReport = async () => {
     const payload = {
       machine_id: machineId.value,
       schedule_id: scheduleId,
+      scheduled_period_date: selectedPeriod.value ? dateKey(selectedPeriod.value.dueDate) : null,
       is_unscheduled: isUnscheduled.value || !scheduleId,
       maintenance_date: maintenanceDate.value,
       start_time: startTime.value || null,
@@ -907,7 +667,8 @@ const submitReport = async () => {
       : `Laporan berhasil disimpan untuk ${doneRows.length} komponen.`;
     await showAlert('success', 'Laporan Terkirim!', msg);
     showSaveModal.value = false;
-    window.location.href = `/machine/${machineId.value}`;
+    skipLeaveGuard.value = true;
+    window.location.href = '/approvals';
   } catch (err) {
     showAlert('error', 'Gagal!', err.response?.data?.message || err.message);
   } finally {
@@ -917,7 +678,25 @@ const submitReport = async () => {
 
 // ── Mount ──────────────────────────────────────────────────────────────────
 onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  unregisterBeforeListener = router.on('before', (event) => {
+    if (skipLeaveGuard.value || !hasUnsubmittedProgress.value) return;
+    event.preventDefault();
+    confirmAbandonReport().then((confirmed) => {
+      if (!confirmed) return;
+      skipLeaveGuard.value = true;
+      router.visit(event.detail.visit.url);
+    });
+  });
+
   await loadMachinesList();
+  await fetchRoles();
+
+  if (!canCreateReport.value) {
+    showAccessDeniedModal.value = true;
+    return;
+  }
+
   const queryId = new URLSearchParams(window.location.search).get('machine');
   if (queryId) {
     // Pre-fill combobox text from machines list or just ID
@@ -927,5 +706,10 @@ onMounted(async () => {
     const found = machinesList.value.find(m => String(m.id) === String(queryId));
     if (found) machineSearch.value = found.name;
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+  unregisterBeforeListener?.();
 });
 </script>

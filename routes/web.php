@@ -24,7 +24,15 @@ Route::get('/login', function () {
 Route::get('/', function () {
     $tomorrow = \Carbon\Carbon::tomorrow();
 
-    $machines = \App\Models\Machine::with(['schedules', 'components', 'picMesin', 'records.actions'])->get();
+    $machines = \App\Models\Machine::with([
+        'schedules',
+        'components',
+        'picMesin',
+        'records.actions',
+        'records.technician',
+        'records.approvals.approver',
+        'records.latestApproval',
+    ])->get();
     $schedules = \App\Models\MaintenanceSchedule::with('machine')->get();
     $notifications = \App\Models\MaintenanceSchedule::with('machine')
         ->where('is_active', true)
@@ -79,12 +87,14 @@ Route::get('/machines', function () {
 // Halaman Machine Detail menggunakan Inertia dengan data mesin dikirim sebagai props
 Route::get('/machine/{id}', function ($id) {
     $machine = \App\Models\Machine::with([
-        'schedules', 
-        'components.indicators', 
-        'records.actions.component.indicators', 
-        'records.actions.indicatorValues.indicator', 
-        'records.technician', 
-        'records.latestApproval', 
+        'schedules',
+        'components.indicators',
+        'records.actions.component.indicators',
+        'records.actions.indicatorValues.indicator',
+        'records.technician',
+        'records.approvals.approver',
+        'records.latestApproval',
+        'records.machine',
         'picMesin'
     ])->findOrFail($id);
 

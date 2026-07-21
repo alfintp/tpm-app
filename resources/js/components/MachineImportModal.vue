@@ -28,6 +28,30 @@
       </div>
 
       <div class="space-y-4">
+        <!-- Format note for component import -->
+        <div v-if="type === 'component'" class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 space-y-2">
+          <div>
+            <p class="font-semibold mb-1">Format Excel untuk Import Komponen</p>
+            <p class="text-xs">Sesuaikan dengan template yang Anda unduh. Dua format didukung:</p>
+          </div>
+          <div class="text-xs space-y-1">
+            <p><strong>Format A — detail mesin (tanpa Kode Mesin):</strong></p>
+            <p class="text-slate-600">Kategori · Nama Komponen · Spesifikasi · Jumlah (Qty) · Satuan · Kondisi Awal (%) · Kesulitan (ringan/sedang/berat) · Indikator</p>
+          </div>
+          <div class="text-xs space-y-1">
+            <p><strong>Format B — massal (dengan Kode Mesin):</strong></p>
+            <p class="text-slate-600">Kode Mesin · Kategori · Nama Komponen · Spesifikasi · Jumlah (Qty) · Satuan · Kesulitan (ringan/sedang/berat) · Kondisi Awal (%) · Indikator</p>
+          </div>
+          <div class="text-xs">
+            <p class="mb-1"><strong>Kolom Indikator</strong> diisi teks multi-baris dengan format <code class="bg-amber-100 px-1 rounded">Nama: Keterangan</code> (satu indikator per baris).</p>
+            <p class="text-slate-600">Contoh isian kolom Indikator:</p>
+            <ul class="list-disc list-inside text-slate-600 mt-0.5 space-y-0.5">
+              <li><code class="bg-amber-100 px-1 rounded">Visual: Casing utuh, tidak ada keretakan.</code></li>
+              <li><code class="bg-amber-100 px-1 rounded">Kelistrikan: Tegangan stabil sesuai spesifikasi.</code></li>
+            </ul>
+          </div>
+        </div>
+
         <!-- Step 1: Download Template -->
         <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center justify-between gap-4">
           <div>

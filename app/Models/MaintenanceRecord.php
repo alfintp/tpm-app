@@ -14,6 +14,7 @@ class MaintenanceRecord extends Model
         'machine_id',
         'technician_id',
         'schedule_id',
+        'scheduled_period_date',
         'is_unscheduled',
         'is_late',
         'maintenance_date',
@@ -24,12 +25,15 @@ class MaintenanceRecord extends Model
         'condition_after_pct',
         'notes',
         'status',
+        'approval_flow_snapshot',
     ];
 
     protected $casts = [
         'maintenance_date' => 'datetime',
+        'scheduled_period_date' => 'date',
         'is_unscheduled' => 'boolean',
         'is_late' => 'boolean',
+        'approval_flow_snapshot' => 'array',
     ];
 
     public function machine()

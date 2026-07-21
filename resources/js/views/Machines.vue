@@ -54,6 +54,7 @@
     <MaintenanceAlerts
       v-if="!loading"
       :alerts="maintenanceAlerts"
+      collapsible
       @click-alert="navigateToMachine($event.machine_id)"
     />
 
@@ -117,11 +118,15 @@
       empty-title="Tidak ada mesin ditemukan"
       empty-subtext="Coba ubah kata kunci pencarian atau filter"
       min-width="min-w-[700px]"
+      table-class="table-fixed"
       :paginate="true"
       :current-page="currentPage"
       :total-rows="filtered.length"
       :per-page="perPage"
+      :show-per-page-selector="true"
+      :per-page-options="[5, 10, 15, 20, 30, 50]"
       @update:current-page="currentPage = $event"
+      @update:per-page="perPage = $event"
       actions-label=""
       actions-width="w-16"
       row-clickable
@@ -129,13 +134,13 @@
     >
       <!-- Kolom: Nama Mesin -->
       <template #cell-name="{ row }">
-        <p class="font-bold text-slate-800">{{ row.name }}</p>
+        <p class="font-bold text-slate-800 wrap-break-word line-clamp-2" :title="row.name">{{ row.name }}</p>
         <p class="text-xs text-slate-400 mt-0.5 line-clamp-1">{{ row.description }}</p>
       </template>
 
       <!-- Kolom: Lokasi -->
       <template #cell-location="{ row }">
-        <div class="font-medium text-slate-700 text-sm">{{ row.location ?? '-' }}</div>
+        <div class="font-medium text-slate-700 text-sm wrap-break-word line-clamp-2" :title="row.location">{{ row.location ?? '-' }}</div>
         <span v-if="row.kota" class="text-[11px] font-bold text-indigo-500 uppercase tracking-wide">
           {{ row.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}
         </span>
@@ -284,8 +289,8 @@ const allowedMachines = computed(() => {
 });
 
 const machineColumns = [
-  { key: 'name',             label: 'Nama Mesin', width: 'w-[25%]' },
-  { key: 'location',         label: 'Lokasi',     width: 'w-[15%]' },
+  { key: 'name',             label: 'Nama Mesin', width: 'w-[25%]', cellClass: 'whitespace-normal overflow-hidden' },
+  { key: 'location',         label: 'Lokasi',     width: 'w-[15%]', cellClass: 'whitespace-normal overflow-hidden' },
   { key: 'schedule',         label: 'Jadwal',     width: 'w-[20%]' },
   { key: 'pic_mesin_id',     label: 'PIC',        width: 'w-[15%]' },
   { key: 'condition_pct',    label: 'Kondisi',    width: 'w-[10%]', headerClass: 'text-center' },
@@ -535,7 +540,7 @@ const paginatedMachines = computed(() => {
   return filtered.value.slice(start, start + perPage.value);
 });
 
-watch([search, filterSchedule, sortBy, filterKota, selectedLocation], () => { currentPage.value = 1; });
+watch([search, filterSchedule, sortBy, filterKota, selectedLocation, perPage], () => { currentPage.value = 1; });
 
 const openCreate = () => { showCreate.value = true; };
 const onMachineSaved = async () => {
@@ -643,15 +648,28 @@ const downloadMachineTemplate = async () => {
   }
 };
 
+const parseIndicatorCell = (cellText) => {
+  const lines = String(cellText ?? '').split(/\n|\r\n/).map(l => l.trim()).filter(l => l);
+  const result = [];
+  for (const line of lines) {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx === -1) continue;
+    const name = line.substring(0, colonIdx).trim();
+    const description = line.substring(colonIdx + 1).trim();
+    if (name && description) result.push({ name, description });
+  }
+  return result;
+};
+
 const downloadComponentTemplateGlobal = async () => {
   try {
     const XLSX = await loadSheetJS();
     const headers = [
-      ['Kode Mesin', 'Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kesulitan (ringan/sedang/berat)', 'Kondisi Awal (%)']
+      ['Kode Mesin', 'Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kesulitan (ringan/sedang/berat)', 'Kondisi Awal (%)', 'Indikator']
     ];
     const rows = [
-      ['LL-BLR-01', 'Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 'sedang', 100],
-      ['LL-PKG-01', 'Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 'ringan', 90]
+      ['LL-BLR-01', 'Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 'sedang', 100, 'Visual: Casing utuh, tidak ada keretakan.\nKelistrikan: Tegangan stabil sesuai spesifikasi.'],
+      ['LL-PKG-01', 'Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 'ringan', 90, 'Akurasi: Suhu terbaca sesuai alat ukur standar.\nKebersihan: Sensor bebas debu dan kotoran.']
     ];
 
     const wb = XLSX.utils.book_new();
@@ -665,7 +683,8 @@ const downloadComponentTemplateGlobal = async () => {
       { wch: 15 }, // Jumlah (Qty)
       { wch: 15 }, // Satuan
       { wch: 25 }, // Kesulitan
-      { wch: 20 }  // Kondisi Awal (%)
+      { wch: 20 }, // Kondisi Awal (%)
+      { wch: 60 }  // Indikator
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Template Import Komponen');
@@ -746,6 +765,16 @@ const importMachines = async (file) => {
   }
 };
 
+const formatErrors = (err) => {
+  const errors = err.response?.data?.errors;
+  if (errors && Object.keys(errors).length) {
+    return Object.entries(errors)
+      .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+      .join(' | ');
+  }
+  return err.response?.data?.message || err.message;
+};
+
 const importComponentsGlobal = async (file) => {
   if (!file) return;
   importing.value = true;
@@ -767,41 +796,77 @@ const importComponentsGlobal = async (file) => {
           importing.value = false;
           return;
         }
-        
+
+        const headers = (rows[0] ?? []).map(h => String(h ?? '').toLowerCase().trim());
+        const findIdx = (keys) => {
+          for (const k of keys) {
+            const idx = headers.findIndex(h => h.includes(k));
+            if (idx !== -1) return idx;
+          }
+          return -1;
+        };
+        const machineCodeIdx = findIdx(['kode mesin', 'machine']);
+        const categoryIdx    = findIdx(['kategori']);
+        const nameIdx        = findIdx(['nama komponen', 'komponen']);
+        const specIdx        = findIdx(['spesifikasi', 'spec']);
+        const qtyIdx         = findIdx(['jumlah', 'qty']);
+        const unitIdx        = findIdx(['satuan', 'unit']);
+        const conditionIdx   = findIdx(['kondisi awal', 'kondisi']);
+        const difficultyIdx  = findIdx(['kesulitan', 'difficulty']);
+        const indicatorIdx   = findIdx(['indikator', 'parameter']);
+
+        const fallback = (idx, fb) => idx !== -1 ? idx : fb;
+        const cMachineCode = fallback(machineCodeIdx, 0);
+        const cCategory    = fallback(categoryIdx, 1);
+        const cName        = fallback(nameIdx, 2);
+        const cSpec        = fallback(specIdx, 3);
+        const cQty         = fallback(qtyIdx, 4);
+        const cUnit        = fallback(unitIdx, 5);
+        const cCondition   = fallback(conditionIdx, 7);
+        const cDifficulty  = fallback(difficultyIdx, 6);
+        const cIndicator   = fallback(indicatorIdx, 8);
+
         const mappedComponents = [];
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
-          if (row.length === 0 || !row[0]) continue;
+          if (!row || row.every(c => String(c ?? '').trim() === '')) continue;
 
-          const maybeDifficulty = row[6]?.toString()?.trim().toLowerCase() || '';
+          const machineCode = row[cMachineCode]?.toString()?.trim();
+          const name = row[cName]?.toString()?.trim();
+          if (!machineCode || !name) continue;
+
+          const maybeDifficulty = row[cDifficulty]?.toString()?.trim().toLowerCase() || '';
           const hasDifficulty = ['ringan', 'sedang', 'berat'].includes(maybeDifficulty);
-          const lastConditionIndex = hasDifficulty ? 7 : 6;
+          const conditionIndex = hasDifficulty ? cCondition : cDifficulty;
+          const indicatorText = row[cIndicator]?.toString() ?? '';
+          const indicators = parseIndicatorCell(indicatorText);
 
           mappedComponents.push({
-            machine_code: row[0]?.toString()?.trim() || '',
-            category: row[1]?.toString()?.trim() || '',
-            name: row[2]?.toString()?.trim() || '',
-            specification: row[3]?.toString()?.trim() || null,
-            qty: parseInt(row[4]) || 1,
-            unit: row[5]?.toString()?.trim() || 'Pcs',
+            machine_code: machineCode,
+            category: row[cCategory]?.toString()?.trim() || '',
+            name,
+            specification: row[cSpec]?.toString()?.trim() || null,
+            qty: parseInt(row[cQty]) || 1,
+            unit: row[cUnit]?.toString()?.trim() || 'Pcs',
             difficulty: hasDifficulty ? maybeDifficulty : null,
-            last_condition_pct: parseFloat(row[lastConditionIndex]) || 100,
+            last_condition_pct: parseFloat(row[conditionIndex]) || 100,
+            indicators,
           });
         }
-        
+
         if (mappedComponents.length === 0) {
-          showAlert('error', 'Gagal!', 'Tidak menemukan baris data komponen yang valid.');
+          showAlert('error', 'Gagal!', 'Tidak menemukan baris data komponen yang valid. Pastikan kolom "Kode Mesin" dan "Nama Komponen" sudah terisi.');
           importing.value = false;
           return;
         }
-        
+
         const res = await axios.post('/api/components/import-global', { components: mappedComponents });
         showAlert('success', 'Berhasil!', res.data.message || `Berhasil mengimpor ${mappedComponents.length} komponen.`);
         showImportModal.value = false;
         await loadData();
       } catch (err) {
         console.error('File parsing/import failed:', err);
-        showAlert('error', 'Gagal!', 'Gagal memproses file: ' + (err.response?.data?.message || err.message));
+        showAlert('error', 'Gagal!', 'Gagal memproses file: ' + formatErrors(err));
       } finally {
         importing.value = false;
       }

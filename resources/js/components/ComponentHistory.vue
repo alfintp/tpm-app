@@ -43,7 +43,8 @@
             <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:shadow-md transition-shadow">
               <div class="flex justify-between items-start mb-2 gap-2">
                 <div>
-                  <span class="text-sm font-bold text-slate-800">{{ formatDateTime(item.record?.maintenance_date) }}</span>
+                  <span class="text-sm font-bold text-slate-800">{{ formatDateTime(item.record?.created_at) }}</span>
+                  <p v-if="item.record?.maintenance_date" class="text-[10px] text-slate-400 mt-0.5">Jadwal: {{ formatDate(item.record.maintenance_date) }}</p>
                   <p class="text-xs text-slate-500 mt-0.5">Teknisi: {{ item.record?.technician?.full_name ?? '-' }}</p>
                   <p v-if="item.record?.duration_minutes" class="text-xs text-brand-gradation font-semibold mt-0.5">
                     <span class="inline-block bg-brand-cream px-2 py-0.5 rounded-lg">Durasi: {{ formatDuration(item.record.duration_minutes) }}</span>
@@ -55,15 +56,19 @@
                     <span v-if="item.record?.is_unscheduled" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wide">Luar Jadwal</span>
                     <span v-if="item.record?.is_late" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 uppercase tracking-wide">Terlambat</span>
                   </div>
-                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded border" :class="approvalStateClass(item.record?.approval_state)">
-                    {{ approvalStateLabel(item.record?.approval_state) }}
+                  <span class="text-[10px] font-semibold px-2 py-0.5 rounded border" :class="approvalStateClass(item.record)">
+                    {{ approvalStateLabel(item.record) }}
                   </span>
-                  <span v-if="item.record?.approval_state?.status === 'pending' && item.record.approval_state.pending_role" class="text-[9px] text-amber-600 font-medium">
-                    Menunggu: {{ item.record.approval_state.pending_role }}
+                  <span v-if="item.record?.approval_status === 'pending' && item.record.pending_role" class="text-[9px] text-amber-600 font-medium">
+                    Menunggu: {{ item.record.pending_role }}
                   </span>
-                  <span v-if="item.record?.approval_state?.status === 'rejected' && item.record.approval_state.notes" class="text-[9px] text-rose-600 italic max-w-[150px] text-right line-clamp-2">
-                    {{ item.record.approval_state.notes }}
-                  </span>
+                  <div v-if="item.record?.approval_notes && item.record.approval_status === 'rejected'" class="mt-1 bg-rose-50 border border-rose-100 rounded-lg px-2 py-1.5 max-w-[180px]">
+                    <p class="text-[9px] font-semibold text-rose-600">Alasan:</p>
+                    <p class="text-[9px] text-rose-700 italic line-clamp-3 text-right">{{ item.record.approval_notes }}</p>
+                  </div>
+                  <p v-else-if="item.record?.approval_notes" class="text-[9px] text-amber-600 italic max-w-[180px] text-right line-clamp-2">
+                    {{ item.record.approval_notes }}
+                  </p>
                 </div>
               </div>
 
@@ -78,6 +83,29 @@
                   <p class="text-xs text-slate-400 mb-1">Sesudah</p>
                   <span :class="getCondPctClass(item.condition_after_pct)" class="text-lg font-bold">{{ item.condition_after_pct ?? '-' }}%</span>
                 </div>
+              </div>
+
+              <!-- Approval trail -->
+              <div v-if="item.record?.approval_state?.approvals?.length" class="mt-3">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Approval:</p>
+                <div class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="(ap, apIdx) in item.record.approval_state.approvals"
+                    :key="apIdx"
+                    class="text-[10px] px-2 py-0.5 rounded border font-medium capitalize"
+                    :class="approvalDecisionClass(ap.decision)"
+                  >
+                    {{ ap.step_order }}. {{ roleLabel(ap.role) }} — {{ ap.decision === 'approved' ? 'Setuju' : ap.decision === 'rejected' ? 'Tolak' : 'Menunggu' }} <span class="opacity-75">({{ ap.approver }})</span>
+                  </span>
+                </div>
+                <button
+                  v-if="hasApprovalNotes(item.record.approval_state.approvals)"
+                  @click="openApprovalNotes(item.record.approval_state.approvals)"
+                  class="mt-1.5 text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                  Lihat catatan approval
+                </button>
               </div>
 
               <!-- Indicator values (if any) -->
@@ -129,6 +157,44 @@
       </div>
     </div>
   </div>
+
+  <!-- Approval notes modal -->
+  <Teleport to="body">
+    <div v-if="approvalNotesModal.show" class="fixed inset-0 z-60 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="approvalNotesModal.show = false"></div>
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative z-10 max-h-[80vh] flex flex-col overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-slate-800">Catatan Approval</h3>
+            <p class="text-xs text-slate-500 mt-0.5">{{ approvalNotesModal.items.length }} approval</p>
+          </div>
+          <button @click="approvalNotesModal.show = false" class="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="p-6 overflow-y-auto space-y-4">
+          <div
+            v-for="(ap, apIdx) in approvalNotesModal.items"
+            :key="apIdx"
+            class="rounded-xl border p-3"
+            :class="approvalDecisionClass(ap.decision)"
+          >
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-bold">Tahap {{ ap.step_order }} — {{ roleLabel(ap.role) }}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded border bg-white/60 uppercase">{{ ap.decision === 'approved' ? 'Disetujui' : ap.decision === 'rejected' ? 'Ditolak' : 'Menunggu' }}</span>
+            </div>
+            <p class="text-xs text-slate-600"><span class="font-semibold">Approver:</span> {{ ap.approver }}</p>
+            <p v-if="ap.decided_at" class="text-[10px] text-slate-500 mt-0.5">{{ formatDate(ap.decided_at) }}</p>
+            <p v-if="ap.notes" class="text-xs text-slate-700 mt-2 italic bg-white/60 rounded-lg px-3 py-2">"{{ ap.notes }}"</p>
+            <p v-else class="text-[11px] text-slate-400 mt-2 italic">Tidak ada catatan.</p>
+          </div>
+        </div>
+        <div class="px-6 py-3 border-t border-slate-100 bg-slate-50 flex justify-end">
+          <button @click="approvalNotesModal.show = false" class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -146,6 +212,7 @@ const currentYear = new Date().getFullYear();
 const filterMonth = ref('');
 const filterYear = ref(currentYear);
 const activeTooltip = ref(null);
+const approvalNotesModal = ref({ show: false, items: [] });
 
 const toggleTooltip = (itemId, ivIdx) => {
   const key = `${itemId}-${ivIdx}`;
@@ -187,6 +254,35 @@ const resetFilter = () => {
 
 onMounted(loadHistory);
 
+const hasApprovalNotes = (approvals) => (approvals ?? []).some(a => a.notes);
+
+const approvalDecisionClass = (decision) => {
+  if (decision === 'approved') return 'bg-emerald-50 border-emerald-200 text-emerald-700';
+  if (decision === 'rejected') return 'bg-rose-50 border-rose-200 text-rose-700';
+  return 'bg-amber-50 border-amber-200 text-amber-700';
+};
+
+const roleLabel = (role) => {
+  const labels = {
+    karo: 'Karo',
+    qc: 'QC',
+    wpv: 'WPV',
+    manager: 'Manager',
+    admin: 'Admin',
+    technician: 'Teknisi',
+  };
+  return labels[role] || role;
+};
+
+const openApprovalNotes = (approvals) => {
+  approvalNotesModal.value = { show: true, items: approvals };
+};
+
+const formatDate = (d) => {
+  if (!d) return '-';
+  return new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
 const formatDuration = (minutes) => {
   if (minutes === null || minutes === undefined) return '-';
   if (minutes < 60) return `${minutes} menit`;
@@ -218,15 +314,15 @@ const getCondPctClass = (pct) => {
   return 'text-green-500';
 };
 
-const approvalStateClass = (state) => {
-  const s = state?.status;
+const approvalStateClass = (record) => {
+  const s = record?.approval_status;
   if (s === 'approved') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
   if (s === 'rejected') return 'bg-rose-100 text-rose-800 border-rose-200';
   return 'bg-amber-100 text-amber-800 border-amber-200';
 };
 
-const approvalStateLabel = (state) => {
-  const s = state?.status;
+const approvalStateLabel = (record) => {
+  const s = record?.approval_status;
   if (s === 'approved') return 'DISETUJUI';
   if (s === 'rejected') return 'DITOLAK';
   return 'MENUNGGU';

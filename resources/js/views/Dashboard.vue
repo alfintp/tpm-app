@@ -1,32 +1,7 @@
 <template>
   <div class="w-full max-w-5xl mx-auto space-y-6">
-    <!-- Welcome banner -->
+    <DashboardStats :machines="cityFilteredMachines" />
 
-    <!-- Quick stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-      <StatCard :value="cityFilteredMachines.length"  label="Mesin Terdaftar" color="blue">
-        <template #icon>
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-        </template>
-      </StatCard>
-      <StatCard :value="activeMachines"   label="Mesin Aktif"     color="amber">
-        <template #icon>
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </template>
-      </StatCard>
-      <StatCard :value="healthyMachines"  label="Kondisi >80%"    color="green">
-        <template #icon>
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </template>
-      </StatCard>
-      <StatCard :value="criticalMachines" label="Kondisi <50%"    color="red">
-        <template #icon>
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-        </template>
-      </StatCard>
-    </div>
-
-    <!-- Maintenance alert panel -->
     <DashboardAlertPanel
       :alerts="maintenanceAlerts"
       :loading="loading"
@@ -34,83 +9,44 @@
       @click-alert="(a) => router.visit(`/machine/${a.machine_id}`)"
     />
 
-    <!-- Machines grid -->
-    <div>
-      <div class="flex flex-wrap items-center justify-between gap-4 mb-5">
-        <h3 class="text-lg font-semibold text-slate-800 flex items-center">
-          <svg class="w-5 h-5 mr-2 text-brand-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-          Status Mesin
-        </h3>
-        <div class="flex flex-wrap gap-2 items-center">
-          <SearchInput v-model="machineSearch" placeholder="Cari mesin..." wrapper-class="w-44" />
-          <select v-if="hasBothCities" v-model="machineKota" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-            <option value="">Semua Kota</option>
-            <option value="pasuruan">Pasuruan</option>
-            <option value="sby">Surabaya</option>
-          </select>
-          <div class="relative">
-            <input
-              v-model="locationSearch"
-              @focus="showLocationDropdown = true"
-              @blur="handleLocationBlur"
-              @input="handleLocationInput"
-              type="text"
-              placeholder="Lokasi / Area"
-              class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40"
-            />
-            <div
-              v-if="showLocationDropdown && filteredLocations.length > 0"
-              class="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"
-            >
-              <div
-                v-for="loc in filteredLocations"
-                :key="loc"
-                @mousedown="selectLocation(loc)"
-                class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                {{ loc }}
-              </div>
-            </div>
-          </div>
-          <select v-model="machineSort" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-            <option value="name">Nama A-Z</option>
-            <option value="condition_asc">Kondisi Terendah</option>
-            <option value="condition_desc">Kondisi Tertinggi</option>
-          </select>
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div class="p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+          <button
+            @click="dashboardTab = 'reports'"
+            :class="dashboardTab === 'reports' ? 'bg-white text-brand-gradation shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+            class="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Laporan
+          </button>
+          <button
+            @click="dashboardTab = 'machines'"
+            :class="dashboardTab === 'machines' ? 'bg-white text-brand-gradation shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+            class="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            Status Mesin
+          </button>
         </div>
-      </div>
-
-      <!-- Skeleton -->
-      <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <div v-for="i in 4" :key="i" class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm animate-pulse">
-          <div class="h-4 bg-slate-200 rounded w-1/2 mb-6"></div>
-          <div class="flex justify-center mb-6"><div class="w-32 h-32 rounded-full border-8 border-slate-100"></div></div>
-        </div>
-      </div>
-
-      <!-- Empty -->
-      <div v-else-if="filteredMachines.length === 0" class="text-center py-12 text-slate-400 bg-white rounded-2xl border border-slate-100">
-        <svg class="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <p class="font-medium text-slate-500">Tidak ada mesin ditemukan</p>
-      </div>
-
-      <!-- Cards -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <DashboardMachineCard
-          v-for="machine in paginatedMachines"
-          :key="machine.id"
-          :machine="machine"
-          @click="(m) => router.visit(`/machine/${m.id}`)"
+        <DashboardFilters
+          v-model:search="machineSearch"
+          v-model:city="machineKota"
+          v-model:location="locationSearch"
+          :selected-location="selectedLocation"
+          :locations="uniqueLocations"
+          v-model:sort="machineSort"
+          :show-sort="dashboardTab === 'machines'"
+          :has-both-cities="hasBothCities"
+          @select-location="selectLocation"
+          @clear-location="clearLocation"
         />
       </div>
 
-      <!-- Pagination -->
-      <TablePagination
-        v-if="filteredMachines.length > perPage"
-        v-model="currentPage"
-        :total="filteredMachines.length"
-        :per-page="perPage"
-      />
+      <div class="p-5">
+        <DashboardReportPanel v-if="dashboardTab === 'reports'" :machines="filteredMachines" />
+        <DashboardMachineSection v-else :machines="filteredMachines" :loading="loading" v-model:page="currentPage" v-model:per-page="perPage" />
+      </div>
     </div>
   </div>
 </template>
@@ -120,28 +56,29 @@ import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useAuth } from '../composables/useAuth.js';
 import DashboardAlertPanel from '../components/DashboardAlertPanel.vue';
-import DashboardMachineCard from '../components/DashboardMachineCard.vue';
-import StatCard from '../components/StatCard.vue';
-import SearchInput from '../components/SearchInput.vue';
-import TablePagination from '../components/TablePagination.vue';
+import DashboardReportPanel from '../components/DashboardReportPanel.vue';
+import DashboardStats from '../components/DashboardStats.vue';
+import DashboardFilters from '../components/DashboardFilters.vue';
+import DashboardMachineSection from '../components/DashboardMachineSection.vue';
 
 const props = defineProps({
   machines:      { type: Array, default: () => [] },
   notifications: { type: Array, default: () => [] },
 });
 
-const { user, isManagerOrAdmin, hasBothCities } = useAuth();
+const { user, hasBothCities } = useAuth();
 
 const machines      = ref(props.machines);
 const notifications = ref(props.notifications);
 const loading       = ref(false);
+const dashboardTab  = ref('reports');
 const machineSearch = ref('');
 const machineSort   = ref('name');
 const machineKota   = ref('');
 const locationSearch = ref('');
-const showLocationDropdown = ref(false);
+const selectedLocation = ref('');
 const currentPage   = ref(1);
-const perPage       = 12;
+const perPage       = ref(12);
 
 const cityFilteredMachines = computed(() => {
   const city = user.value?.city;
@@ -151,39 +88,35 @@ const cityFilteredMachines = computed(() => {
   return machines.value;
 });
 
+const locationBaseMachines = computed(() => {
+  let list = cityFilteredMachines.value;
+  if (machineKota.value) {
+    list = list.filter(m => m.kota === machineKota.value);
+  }
+  return list;
+});
+
 const uniqueLocations = computed(() => {
   const locations = new Set();
-  cityFilteredMachines.value.forEach(m => {
+  locationBaseMachines.value.forEach(m => {
     if (m.location) locations.add(m.location);
   });
   return Array.from(locations).sort();
 });
 
-const filteredLocations = computed(() => {
-  if (!locationSearch.value) return uniqueLocations.value;
-  const q = locationSearch.value.toLowerCase();
-  return uniqueLocations.value.filter(loc => loc.toLowerCase().includes(q));
-});
-
-const selectedLocation = ref('');
-
-const handleLocationBlur = () => {
-  setTimeout(() => { showLocationDropdown.value = false; }, 200);
-};
-
-const handleLocationInput = () => {
-  showLocationDropdown.value = true;
-};
-
 const selectLocation = (loc) => {
   locationSearch.value = loc;
   selectedLocation.value = loc;
-  showLocationDropdown.value = false;
 };
 
-const activeMachines   = computed(() => cityFilteredMachines.value.filter(m => m.status === 'active').length);
-const healthyMachines  = computed(() => cityFilteredMachines.value.filter(m => m.condition_pct > 80).length);
-const criticalMachines = computed(() => cityFilteredMachines.value.filter(m => m.condition_pct < 50).length);
+const clearLocation = () => {
+  locationSearch.value = '';
+  selectedLocation.value = '';
+};
+
+watch(machineKota, () => {
+  clearLocation();
+});
 
 const filteredMachines = computed(() => {
   let list = cityFilteredMachines.value;
@@ -206,12 +139,7 @@ const filteredMachines = computed(() => {
   return list;
 });
 
-const paginatedMachines = computed(() => {
-  const start = (currentPage.value - 1) * perPage;
-  return filteredMachines.value.slice(start, start + perPage);
-});
-
-watch([machineSearch, machineSort, machineKota, selectedLocation], () => { currentPage.value = 1; });
+watch([machineSearch, machineSort, machineKota, selectedLocation, perPage], () => { currentPage.value = 1; });
 
 const maintenanceAlerts = computed(() => {
   const today = new Date(); today.setHours(0,0,0,0);

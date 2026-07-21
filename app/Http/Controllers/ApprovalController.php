@@ -64,6 +64,34 @@ class ApprovalController extends Controller
 
         DB::beginTransaction();
         try {
+            // Before changing the flow, freeze the current active flow into all existing
+            // reports that do not already have a snapshot. New reports will snapshot the
+            // new flow when they are created.
+            $currentSteps = ApprovalFlowStep::active()->ordered()->get();
+            if ($currentSteps->isNotEmpty()) {
+                $snapshotsByReporter = $currentSteps->groupBy('reporter_role')->map(fn ($steps) =>
+                    $steps->map(fn ($s) => [
+                        'id' => $s->id,
+                        'reporter_role' => $s->reporter_role,
+                        'role' => $s->role,
+                        'step_order' => $s->step_order,
+                        'is_active' => $s->is_active,
+                    ])->values()->toArray()
+                );
+
+                MaintenanceRecord::whereNull('approval_flow_snapshot')
+                    ->chunkById(100, function ($records) use ($snapshotsByReporter) {
+                        foreach ($records as $record) {
+                            $role = $record->technician?->role ?? 'technician';
+                            $snapshot = $snapshotsByReporter[$role]
+                                ?? ($snapshotsByReporter['technician'] ?? []);
+                            if (!empty($snapshot)) {
+                                $record->update(['approval_flow_snapshot' => $snapshot]);
+                            }
+                        }
+                    });
+            }
+
             // Remove old flow steps so step_order can be reused without unique conflicts
             ApprovalFlowStep::query()->delete();
 
@@ -127,6 +155,7 @@ class ApprovalController extends Controller
                 'technician_id'   => $record->technician_id,
                 'technician_name' => $record->technician?->full_name,
                 'maintenance_date'=> $record->maintenance_date,
+                'created_at'      => $record->created_at,
                 'start_time'      => $record->start_time,
                 'end_time'        => $record->end_time,
                 'duration_minutes'=> $record->duration_minutes,
@@ -185,13 +214,13 @@ class ApprovalController extends Controller
         ]);
 
         $record = MaintenanceRecord::with(['actions', 'machine', 'approvals'])->findOrFail($recordId);
-        
+
         $reporterRole = $record->technician?->role ?? 'technician';
         $flowSteps = ApprovalFlowStep::active()
             ->where('reporter_role', $reporterRole)
             ->ordered()
             ->get();
-            
+
         if ($flowSteps->isEmpty() && $reporterRole !== 'technician') {
             $flowSteps = ApprovalFlowStep::active()
                 ->where('reporter_role', 'technician')
@@ -199,11 +228,12 @@ class ApprovalController extends Controller
                 ->get();
         }
 
-        if ($flowSteps->isEmpty()) {
+        $state = $this->recordApprovalState($record, $flowSteps);
+        $steps = $state['flow_steps'] ?? collect();
+
+        if ($steps->isEmpty()) {
             return response()->json(['message' => 'Alur approval belum dikonfigurasi untuk role pembuat laporan.'], 400);
         }
-
-        $state = $this->recordApprovalState($record, $flowSteps);
 
         if ($state['approval_status'] === 'rejected') {
             return response()->json(['message' => 'Laporan ini sudah ditolak.'], 409);
@@ -213,7 +243,8 @@ class ApprovalController extends Controller
         }
 
         $currentStep = $state['current_step'];
-        $currentRole = $flowSteps->firstWhere('step_order', $currentStep)?->role;
+        $stepItem = $steps->firstWhere('step_order', $currentStep);
+        $currentRole = is_array($stepItem) ? ($stepItem['role'] ?? null) : ($stepItem?->role);
 
         if (!$currentRole) {
             return response()->json(['message' => 'Tahap approval tidak valid.'], 400);
@@ -240,7 +271,7 @@ class ApprovalController extends Controller
                 'decided_at'  => Carbon::now(),
             ]);
 
-            $isLastStep = $currentStep >= $flowSteps->count();
+            $isLastStep = $currentStep >= $steps->count();
 
             if ($validated['decision'] === 'rejected') {
                 // No data changes on rejection
@@ -264,16 +295,32 @@ class ApprovalController extends Controller
                     $record->machine->update(['status' => 'active']);
                 }
 
-                if ($record->schedule_id) {
+                if ($record->schedule_id && $record->scheduled_period_date) {
                     $schedule = MaintenanceSchedule::find($record->schedule_id);
-                    if ($schedule) {
-                        $newDue = Carbon::parse($schedule->next_due_date)->addDays($schedule->interval_days);
-                        // Clamp to end of that month so maintenance never spills into the following month
-                        $endOfMonth = $newDue->copy()->endOfMonth()->startOfDay();
-                        if ($newDue->gt($endOfMonth)) {
-                            $newDue = $endOfMonth;
+                    $completedComponentIds = MaintenanceRecord::query()
+                        ->where('machine_id', $record->machine_id)
+                        ->where('schedule_id', $record->schedule_id)
+                        ->whereDate('scheduled_period_date', $record->scheduled_period_date)
+                        ->where('is_unscheduled', false)
+                        ->where('status', 'completed')
+                        ->with('actions:id,record_id,machine_component_id')
+                        ->get()
+                        ->flatMap(fn ($periodRecord) => $periodRecord->actions->pluck('machine_component_id'))
+                        ->unique();
+                    $componentCount = MachineComponent::where('machine_id', $record->machine_id)->count();
+
+                    if ($schedule && $componentCount > 0 && $completedComponentIds->count() >= $componentCount) {
+                        $currentDue = Carbon::parse($schedule->next_due_date)->startOfDay();
+                        $periodDue = Carbon::parse($record->scheduled_period_date)->startOfDay();
+                        if ($currentDue->lessThanOrEqualTo($periodDue)) {
+                            $newDue = $currentDue->addDays($schedule->interval_days);
+                            // Clamp to end of that month so maintenance never spills into the following month
+                            $endOfMonth = $newDue->copy()->endOfMonth()->startOfDay();
+                            if ($newDue->gt($endOfMonth)) {
+                                $newDue = $endOfMonth;
+                            }
+                            $schedule->update(['next_due_date' => $newDue]);
                         }
-                        $schedule->update(['next_due_date' => $newDue]);
                     }
                 }
             }
@@ -296,20 +343,37 @@ class ApprovalController extends Controller
     private function recordApprovalState(MaintenanceRecord $record, $flowSteps)
     {
         $reporterRole = $record->technician?->role ?? 'technician';
-        
-        // Filter flow steps by reporter role of the record, fallback to technician if none configured
-        $steps = $flowSteps->filter(fn ($s) => $s->reporter_role === $reporterRole)
-            ->sortBy('step_order')
-            ->values();
-            
-        if ($steps->isEmpty() && $reporterRole !== 'technician') {
-            $steps = $flowSteps->filter(fn ($s) => $s->reporter_role === 'technician')
+
+        // Prefer the snapshot taken at report creation; fallback to current active flow
+        $snapshot = $record->approval_flow_snapshot;
+        if (!empty($snapshot)) {
+            $steps = collect($snapshot)
+                ->filter(fn ($s) => ($s['reporter_role'] ?? null) === $reporterRole)
                 ->sortBy('step_order')
                 ->values();
+            if ($steps->isEmpty() && $reporterRole !== 'technician') {
+                $steps = collect($snapshot)
+                    ->filter(fn ($s) => ($s['reporter_role'] ?? null) === 'technician')
+                    ->sortBy('step_order')
+                    ->values();
+            }
+        }
+
+        if (empty($steps) || $steps->isEmpty()) {
+            $steps = $flowSteps->filter(fn ($s) => $s->reporter_role === $reporterRole)
+                ->sortBy('step_order')
+                ->values();
+            if ($steps->isEmpty() && $reporterRole !== 'technician') {
+                $steps = $flowSteps->filter(fn ($s) => $s->reporter_role === 'technician')
+                    ->sortBy('step_order')
+                    ->values();
+            }
         }
 
         $totalSteps = $steps->count();
         $decisions = $record->approvals->sortBy('step_order');
+
+        $stepRole = fn ($step) => $step ? (is_array($step) ? ($step['role'] ?? null) : $step->role) : null;
 
         $rejected = $decisions->firstWhere('decision', 'rejected');
         if ($rejected) {
@@ -350,7 +414,7 @@ class ApprovalController extends Controller
             ];
         }
 
-        $pendingRole = $steps->firstWhere('step_order', $currentStep)?->role;
+        $pendingRole = $stepRole($steps->firstWhere('step_order', $currentStep));
 
         return [
             'approval_status' => 'pending',

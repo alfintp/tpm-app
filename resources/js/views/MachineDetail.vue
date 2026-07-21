@@ -35,265 +35,84 @@
       </template>
     </PageHeader>
 
-    <!-- Machine Condition Card -->
-    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div class="flex flex-wrap gap-0 divide-x divide-slate-100">
-
-        <!-- Left: Overall Donut -->
-        <div class="flex items-center gap-4 p-6 min-w-[240px]">
-          <div class="relative shrink-0">
-            <svg class="w-24 h-24" viewBox="0 0 100 100" style="transform: rotate(-90deg)">
-              <circle class="text-slate-100 stroke-current" stroke-width="10" cx="50" cy="50" r="42" fill="transparent"/>
-              <circle :class="getColorTheme(machine.condition_pct).textClass" class="stroke-current transition-all duration-1000 ease-out" stroke-width="10" stroke-linecap="round" cx="50" cy="50" r="42" fill="transparent"
-                :stroke-dasharray="264" :stroke-dashoffset="264 - (machine.condition_pct / 100) * 264"/>
-            </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span :class="getColorTheme(machine.condition_pct).textClass" class="text-xl font-bold leading-none">{{ machine.condition_pct }}%</span>
-              <span class="text-[9px] text-slate-400 font-medium mt-0.5">overall</span>
-            </div>
-          </div>
-          <div>
-            <p class="text-xs text-slate-400 font-medium">Kondisi Mesin</p>
-            <h3 :class="getColorTheme(machine.condition_pct).textClass" class="text-xl font-bold mt-0.5">{{ getConditionLabel(machine.condition_pct) }}</h3>
-            <p class="text-xs text-slate-400 mt-1">{{ machine.components?.length ?? 0 }} komponen</p>
-            <p class="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
-              <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-              <span v-if="machine.pic_mesin" class="font-semibold text-slate-700">{{ machine.pic_mesin.full_name }}</span>
-              <span v-else class="text-slate-400 italic">Belum ada PIC</span>
-            </p>
-          </div>
-        </div>
-
-        <!-- Center: Per-Category Breakdown (compact chips) -->
-        <div v-if="categoryConditionStats.length > 0" class="flex items-center gap-3 px-5 py-4 flex-wrap">
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Kategori</p>
-          <div class="flex flex-wrap gap-2">
-            <div
-              v-for="cat in categoryConditionStats" :key="cat.name"
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold"
-              :class="getColorTheme(cat.avg).chipClass"
-            >
-              <span class="capitalize">{{ cat.name }}</span>
-              <span class="opacity-60 text-[10px]">·</span>
-              <span :class="getColorTheme(cat.avg).textClass">{{ cat.avg }}%</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: Coverage Stats -->
-        <div v-if="componentCoverageStats && componentCoverageStats.length" class="p-6 min-w-[200px]">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Progres Laporan Bulan Ini</p>
-          <div class="flex flex-wrap gap-2">
-            <template v-for="(periodStats, periodIdx) in coverageStatsByPeriod" :key="periodIdx">
-              <div
-                v-if="periodStats.length > 0"
-                class="rounded-xl border shadow-sm overflow-hidden min-w-[140px]"
-                :class="getPeriodCardClass(periodIdx)"
-              >
-                <div class="px-3 py-1.5 border-b border-slate-100/50 flex items-center justify-between gap-2">
-                  <span class="text-[10px] font-bold uppercase tracking-wide" :class="getPeriodCardTextClass(periodIdx)">
-                    {{ getPeriodCardLabel(periodIdx) }}
-                  </span>
-                  <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded" :class="getPeriodScheduleBadgeClass(periodIdx)">
-                    {{ getPeriodScheduleLabel(periodIdx) }}
-                  </span>
-                </div>
-                <div class="px-3 py-1.5 border-b border-slate-100/50 bg-white/50">
-                  <div class="flex items-center gap-1.5">
-                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                      :class="getPeriodScheduleIconClass(periodIdx)"
-                    ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    <span class="text-[10px] font-semibold" :class="getPeriodScheduleTextClass(periodIdx)">
-                      {{ getPeriodScheduleDate(periodIdx) }}
-                    </span>
-                    <span class="text-[9px] font-bold ml-auto" :class="getPeriodScheduleDaysClass(periodIdx)">
-                      {{ getPeriodScheduleDaysLabel(periodIdx) }}
-                    </span>
-                  </div>
-                </div>
-                <div class="p-2 space-y-1.5">
-                  <div
-                    v-for="stat in periodStats"
-                    :key="stat.role"
-                    class="flex items-center gap-2 text-xs font-semibold"
-                  >
-                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                      :class="coverageStatIconClass(stat)"
-                    ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="coverageStatIcon(stat)"/></svg>
-                    <span class="font-medium opacity-80">{{ stat.bucket === 'teknisi' ? 'Teknisi' : 'Operator' }}:</span>
-                    <span class="font-bold tracking-wide">{{ stat.checked }}/{{ stat.total }}</span>
-                    <span class="text-[9px] font-bold px-1 py-0.5 rounded leading-none ml-auto" :class="coverageStatBadgeClass(stat)">
-                      {{ coverageStatLabel(stat) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div class="flex overflow-x-auto border-b border-slate-100">
-        <button
-          v-if="canReport"
-          @click="switchTab('report')"
-          :class="activeTab === 'report' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-          class="shrink-0 sm:flex-1 px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
-        >
-          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          Laporan
-          <span v-if="uncheckedTodayCount > 0" class="hidden sm:inline-block text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">{{ uncheckedTodayCount }} belum lapor</span>
-        </button>
-        <button
-          @click="switchTab('history')"
-          :class="activeTab === 'history' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-          class="shrink-0 sm:flex-1 px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
-        >
-          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          Riwayat Maintenance
-        </button>
-        <button
-          @click="switchTab('component')"
-          :class="activeTab === 'component' ? 'border-brand-gradation text-brand-gradation bg-brand-cream/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'"
-          class="shrink-0 sm:flex-1 px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
-        >
-          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          Daftar Komponen
-        </button>
-      </div>
-
-      <!-- Tab 1: Report -->
-      <MachineReportTab
-        v-if="canReport"
-        v-show="activeTab === 'report'"
-        :rows="filteredComponentRows"
-        :has-components="!!machine.components?.length"
-        :is-report-blocked="isReportBlocked"
-        :force-report="forceReport"
-        :force-report-loading="forceReportLoading"
-        :is-manager-or-admin="isManagerOrAdmin"
-        :active-filter="componentFilter"
-        :filter-options="filterOptions"
-        :next-schedule-date-formatted="formatDate(effectiveDueDate ?? nextSchedule?.next_due_date)"
-        :maintenance-days-label="maintenanceDaysLabel"
-        :get-last-replacement="getLastReplacementDate"
-        :get-prev-check="getPreviousCheck"
-        :format-date="formatDate"
-        :format-date-time="formatDateTime"
-        :color-theme="getColorTheme"
-        :condition-label="getConditionLabel"
-        :row-class="rowRowClass"
-        :is-input-disabled="isInputDisabled"
-        :can-check="canCheck"
-        :is-condition-valid="isConditionValid"
-        :start-time="reportStartTime"
-        :end-time="reportEndTime"
-        :duration-label="reportDurationLabel"
-        :all-done="allComponentsDoneInPeriod"
-        @force-report="handleForceReport"
-        @update:filter="componentFilter = $event"
-        @condition-change="onConditionChange"
-        @toggle-check="toggleCheck"
-        @wizard-check="toggleWizardCheck"
-        @wizard-preset="setWizardPreset($event.row, $event.val)"
-        @start-edit="startEdit"
-        @cancel-edit="cancelEdit"
-        @update:start-time="reportStartTime = $event"
-        @update:end-time="reportEndTime = $event"
-      />
-
-      <!-- Tab 2: Maintenance History -->
-      <MachineHistoryTab
-        v-show="activeTab === 'history'"
-        :records="sortedRecords"
-        :format-date-time="formatDateTime"
-      />
-      <!-- Tab 3: Component -->
-      <MachineComponentTab
-        v-show="activeTab === 'component'"
-        :components="machine.components ?? []"
-        :is-admin="isAdmin"
-        :is-manager-or-admin="isManagerOrAdmin"
-        :color-theme="getColorTheme"
-        :format-date="formatDate"
-        :get-last-replacement="getLastReplacementDate"
-        :get-last-maintenance="getLastMaintenanceDate"
-        @add="openAddComponent"
-        @import="triggerComponentImport"
-        @import-indicators="showIndicatorImportModal = true"
-        @edit="openEditComponent"
-        @delete="deleteComponent"
-        @view-history="openComponentHistory"
-      />
-
-      <!-- Modals -->
-      <ComponentForm
-        v-if="showComponentForm"
-        :machineId="machineId"
-        :component="editingComponent"
-        @close="showComponentForm = false"
-        @saved="onComponentSaved"
-      />
-      <ComponentHistory
-        v-if="showComponentHistory"
-        :component="historyComponent"
-        @close="showComponentHistory = false"
-      />
-      <MachineEditModal
-        v-if="showMachineEdit"
-        :machine="machine"
-        @close="showMachineEdit = false"
-        @saved="onMachineSaved"
-      />
-
-      <!-- Import Components Excel Modal -->
-      <MachineImportModal
-        :show="showComponentImportModal"
-        type="component"
-        :loading="importingComponents"
-        @close="showComponentImportModal = false"
-        @download-template="downloadComponentTemplate"
-        @import="importComponents"
-      />
-      <IndicatorImportModal
-        v-if="showIndicatorImportModal"
-        @close="showIndicatorImportModal = false"
-        @imported="onIndicatorImported"
-      />
-    </div>
-    </div>
-
-    <!-- Floating Save Button (FAB) -->
-    <button
-      v-if="canReport && activeTab === 'report' && pendingCount > 0 && !(isReportBlocked && !forceReport)"
-      @click="openWorkTimeConfirm"
-      :disabled="submitting"
-      class="fixed bottom-6 right-6 z-50 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg transition-all cursor-pointer flex items-center gap-2 px-5 py-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
-    >
-      <svg v-if="submitting" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-      <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-      <span class="font-semibold">Simpan ({{ pendingCount }})</span>
-    </button>
-
-    <!-- Work Time Confirmation Modal -->
-    <WorkTimeConfirmModal
-      :show="showWorkTimeConfirm"
-      :start-time="reportStartTime"
-      :end-time="reportEndTime"
-      :duration-label="reportDurationLabel"
-      @close="showWorkTimeConfirm = false"
-      @confirm="onWorkTimeConfirmed"
-      @update:start-time="reportStartTime = $event"
-      @update:end-time="reportEndTime = $event"
+    <MachineDetailConditionCard
+      :machine="machine"
+      :category-condition-stats="categoryConditionStats"
+      :coverage-stats-by-period="coverageStatsByPeriod"
+      :get-color-theme="getColorTheme"
+      :get-condition-label="getConditionLabel"
+      :get-period-card-class="getPeriodCardClass"
+      :get-period-card-text-class="getPeriodCardTextClass"
+      :get-period-card-label="getPeriodCardLabel"
+      :get-period-schedule-badge-class="getPeriodScheduleBadgeClass"
+      :get-period-schedule-label="getPeriodScheduleLabel"
+      :get-period-schedule-icon-class="getPeriodScheduleIconClass"
+      :get-period-schedule-text-class="getPeriodScheduleTextClass"
+      :get-period-schedule-days-class="getPeriodScheduleDaysClass"
+      :get-period-schedule-days-label="getPeriodScheduleDaysLabel"
+      :get-period-schedule-date="getPeriodScheduleDate"
+      :coverage-stat-icon-class="coverageStatIconClass"
+      :coverage-stat-icon="coverageStatIcon"
+      :coverage-stat-badge-class="coverageStatBadgeClass"
+      :coverage-stat-label="coverageStatLabel"
     />
 
-    <!-- Keyboard Shortcut Hint -->
-    <div v-if="canReport && activeTab === 'report' && pendingCount > 0" class="fixed bottom-6 right-24 z-40 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-60">
-      Ctrl+S
+    <!-- Monthly Report Card -->
+    <MachineMonthlyReportCard
+      :records="machine.records ?? []"
+      :format-date-time="formatDateTime"
+    />
+
+    <MachineDetailTabs
+      :components="machine.components ?? []"
+      :is-admin="isAdmin"
+      :is-manager-or-admin="isManagerOrAdmin"
+      :get-color-theme="getColorTheme"
+      :format-date="formatDate"
+      :get-last-replacement="getLastReplacementDate"
+      :get-last-maintenance="getLastMaintenanceDate"
+      @add="openAddComponent"
+      @import="triggerComponentImport"
+      @import-indicators="showIndicatorImportModal = true"
+      @edit="openEditComponent"
+      @delete="deleteComponent"
+      @view-history="openComponentHistory"
+    />
+
+    <!-- Modals -->
+    <ComponentForm
+      v-if="showComponentForm"
+      :machineId="machineId"
+      :component="editingComponent"
+      @close="showComponentForm = false"
+      @saved="onComponentSaved"
+    />
+    <ComponentHistory
+      v-if="showComponentHistory"
+      :component="historyComponent"
+      @close="showComponentHistory = false"
+    />
+    <MachineEditModal
+      v-if="showMachineEdit"
+      :machine="machine"
+      @close="showMachineEdit = false"
+      @saved="onMachineSaved"
+    />
+
+    <!-- Import Components Excel Modal -->
+    <MachineImportModal
+      :show="showComponentImportModal"
+      type="component"
+      :loading="importingComponents"
+      @close="showComponentImportModal = false"
+      @download-template="downloadComponentTemplate"
+      @import="importComponents"
+    />
+    <IndicatorImportModal
+      v-if="showIndicatorImportModal"
+      @close="showIndicatorImportModal = false"
+      @imported="onIndicatorImported"
+    />
     </div>
 
 </template>
@@ -305,14 +124,13 @@ import { showAlert, showUnsavedConfirm, showConfirm } from '../composables/useAl
 import ComponentForm from '../components/ComponentForm.vue';
 import ComponentHistory from '../components/ComponentHistory.vue';
 import MachineEditModal from '../components/MachineEditModal.vue';
-import WorkTimeConfirmModal from '../components/WorkTimeConfirmModal.vue';
 import { useAuth } from '../composables/useAuth.js';
 import { router } from '@inertiajs/vue3';
 import PageHeader from '../components/PageHeader.vue';
+import MachineDetailConditionCard from '../components/MachineDetailConditionCard.vue';
+import MachineDetailTabs from '../components/MachineDetailTabs.vue';
 import MachineImportModal from '../components/MachineImportModal.vue';
-import MachineReportTab from '../components/MachineReportTab.vue';
-import MachineHistoryTab from '../components/MachineHistoryTab.vue';
-import MachineComponentTab from '../components/MachineComponentTab.vue';
+import MachineMonthlyReportCard from '../components/MachineMonthlyReportCard.vue';
 import IndicatorImportModal from '../components/IndicatorImportModal.vue';
 import Spinner from '../../views/components/ui/spinner/Spinner.vue';
 import Button from '../../views/components/ui/button/Button.vue';
@@ -598,14 +416,7 @@ const machineId = computed(() => {
   return null;
 });
 
-const activeTab = ref('component');
-
-watch([rolesLoaded, canReport], ([loaded, report]) => {
-  if (!loaded) return;
-  if (report && machine.value?.components?.length) {
-    activeTab.value = 'report';
-  }
-}, { immediate: true });
+const activeTab = ref('history');
 const componentFilter = ref('belum_teknisi');
 const submitting = ref(false);
 const componentRows = ref([]);
@@ -709,14 +520,14 @@ const monthlyPeriods = computed(() => {
   if (cursor < monthStart) {
     cursor = new Date(cursor.getTime() + intervalMs);
   }
-  // Collect all due dates within the month
-  const maxIter = 60; let iter = 0;
-  while (cursor <= monthEnd && iter < maxIter) {
+  // Limit number of periods per month based on frequency (not strictly by month bounds).
+  // Match Report.vue: twice-a-month (<=14 days) shows up to 2 periods, otherwise 1.
+  const periodLimit = intervalDays <= 14 ? 2 : 1;
+  while (cursor <= monthEnd && dueDates.length < periodLimit) {
     if (cursor >= monthStart) {
       dueDates.push(new Date(cursor));
     }
     cursor = new Date(cursor.getTime() + intervalMs);
-    iter++;
   }
 
   // Build period windows
@@ -1570,7 +1381,7 @@ const categoryConditionStats = computed(() => {
   if (!components.length) return [];
   const groups = {};
   for (const comp of components) {
-    const cat = (comp.category ?? 'Lainnya').trim();
+    const cat = (comp.category ?? '').trim();
     if (!cat) continue;
     if (!groups[cat]) groups[cat] = { name: cat, total: 0, sum: 0, count: 0 };
     groups[cat].count++;
@@ -1579,9 +1390,12 @@ const categoryConditionStats = computed(() => {
       groups[cat].total++;
     }
   }
-  return Object.values(groups)
+  const list = Object.values(groups)
     .map(g => ({ name: g.name, count: g.count, avg: g.total > 0 ? Math.round(g.sum / g.total) : 0 }))
     .sort((a, b) => a.name.localeCompare(b.name));
+  // Only show category breakdown when the machine actually has multiple distinct categories.
+  // If there is just one category, its average is essentially the same as the overall condition.
+  return list.length >= 2 ? list : [];
 });
 
 const getConditionLabel = (pct) => {
@@ -1703,15 +1517,28 @@ const loadSheetJS = () => {
   });
 };
 
+const parseIndicatorCell = (cellText) => {
+  const lines = String(cellText ?? '').split(/\n|\r\n/).map(l => l.trim()).filter(l => l);
+  const result = [];
+  for (const line of lines) {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx === -1) continue;
+    const name = line.substring(0, colonIdx).trim();
+    const description = line.substring(colonIdx + 1).trim();
+    if (name && description) result.push({ name, description });
+  }
+  return result;
+};
+
 const downloadComponentTemplate = async () => {
   try {
     const XLSX = await loadSheetJS();
     const headers = [
-      ['Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kondisi Awal (%)', 'Kesulitan (ringan/sedang/berat)']
+      ['Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kondisi Awal (%)', 'Kesulitan (ringan/sedang/berat)', 'Indikator']
     ];
     const rows = [
-      ['Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 100, 'sedang'],
-      ['Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 90, 'ringan']
+      ['Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 100, 'sedang', 'Visual: Casing utuh, tidak ada keretakan.\nKelistrikan: Tegangan stabil sesuai spesifikasi.'],
+      ['Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 90, 'ringan', 'Akurasi: Suhu terbaca sesuai alat ukur standar.\nKebersihan: Sensor bebas debu dan kotoran.']
     ];
 
     const wb = XLSX.utils.book_new();
@@ -1724,7 +1551,8 @@ const downloadComponentTemplate = async () => {
       { wch: 15 }, // Jumlah (Qty)
       { wch: 15 }, // Satuan
       { wch: 20 }, // Kondisi Awal (%)
-      { wch: 25 }, // Kesulitan
+      { wch: 30 }, // Kesulitan
+      { wch: 60 }, // Indikator
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Template Import Komponen');
@@ -1733,6 +1561,16 @@ const downloadComponentTemplate = async () => {
     console.error('Template download failed:', err);
     showAlert('error', 'Gagal!', 'Gagal mendownload template Excel.');
   }
+};
+
+const formatErrors = (err) => {
+  const errors = err.response?.data?.errors;
+  if (errors && Object.keys(errors).length) {
+    return Object.entries(errors)
+      .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+      .join(' | ');
+  }
+  return err.response?.data?.message || err.message;
 };
 
 const importComponents = async (file) => {
@@ -1756,36 +1594,70 @@ const importComponents = async (file) => {
           importingComponents.value = false;
           return;
         }
-        
+
+        const headers = (rows[0] ?? []).map(h => String(h ?? '').toLowerCase().trim());
+        const findIdx = (keys) => {
+          for (const k of keys) {
+            const idx = headers.findIndex(h => h.includes(k));
+            if (idx !== -1) return idx;
+          }
+          return -1;
+        };
+        const categoryIdx     = findIdx(['kategori']);
+        const nameIdx         = findIdx(['nama komponen', 'komponen']);
+        const specIdx         = findIdx(['spesifikasi', 'spec']);
+        const qtyIdx          = findIdx(['jumlah', 'qty']);
+        const unitIdx         = findIdx(['satuan', 'unit']);
+        const conditionIdx    = findIdx(['kondisi awal', 'kondisi']);
+        const difficultyIdx   = findIdx(['kesulitan', 'difficulty']);
+        const indicatorIdx    = findIdx(['indikator', 'parameter']);
+
+        const fallback = (idx, fb) => idx !== -1 ? idx : fb;
+        const cCategory   = fallback(categoryIdx, 0);
+        const cName       = fallback(nameIdx, 1);
+        const cSpec       = fallback(specIdx, 2);
+        const cQty        = fallback(qtyIdx, 3);
+        const cUnit       = fallback(unitIdx, 4);
+        const cCondition  = fallback(conditionIdx, 5);
+        const cDifficulty = fallback(difficultyIdx, 6);
+        const cIndicator  = fallback(indicatorIdx, 7);
+
         const mappedComponents = [];
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
-          if (row.length === 0 || !row[0]) continue;
+          if (!row || row.every(c => String(c ?? '').trim() === '')) continue;
+
+          const name = row[cName]?.toString()?.trim();
+          if (!name) continue;
+
+          const indicatorText = row[cIndicator]?.toString() ?? '';
+          const indicators = parseIndicatorCell(indicatorText);
 
           mappedComponents.push({
-            category: row[0]?.toString()?.trim() || '',
-            name: row[1]?.toString()?.trim() || '',
-            specification: row[2]?.toString()?.trim() || null,
-            qty: parseInt(row[3]) || 1,
-            unit: row[4]?.toString()?.trim() || 'Pcs',
-            last_condition_pct: parseFloat(row[5]) || 100,
-            difficulty: row[6]?.toString()?.trim() || null,
+            category: row[cCategory]?.toString()?.trim() || '',
+            name,
+            specification: row[cSpec]?.toString()?.trim() || null,
+            qty: parseInt(row[cQty]) || 1,
+            unit: row[cUnit]?.toString()?.trim() || 'Pcs',
+            last_condition_pct: parseFloat(row[cCondition]) || 100,
+            difficulty: row[cDifficulty]?.toString()?.trim() || null,
+            indicators,
           });
         }
-        
+
         if (mappedComponents.length === 0) {
-          showAlert('error', 'Gagal!', 'Tidak menemukan baris data komponen yang valid.');
+          showAlert('error', 'Gagal!', 'Tidak menemukan baris data komponen yang valid. Pastikan kolom "Nama Komponen" sudah terisi.');
           importingComponents.value = false;
           return;
         }
-        
+
         const res = await axios.post(`/api/machines/${machineId.value}/components/import`, { components: mappedComponents });
         showAlert('success', 'Berhasil!', res.data.message || `Berhasil mengimpor ${mappedComponents.length} komponen.`);
         showComponentImportModal.value = false;
         await loadData();
       } catch (err) {
         console.error('File parsing/import failed:', err);
-        showAlert('error', 'Gagal!', 'Gagal memproses file: ' + (err.response?.data?.message || err.message));
+        showAlert('error', 'Gagal!', 'Gagal memproses file: ' + formatErrors(err));
       } finally {
         importingComponents.value = false;
       }

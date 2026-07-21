@@ -11,7 +11,8 @@
         <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 hover:shadow-md transition-shadow">
           <div class="flex justify-between items-start mb-2 gap-2">
             <div>
-              <span class="text-sm font-bold text-slate-800">{{ formatDateTime(record.maintenance_date) }}</span>
+              <span class="text-sm font-bold text-slate-800">{{ formatDateTime(record.created_at) }}</span>
+              <p v-if="record.maintenance_date" class="text-[10px] text-slate-400 mt-0.5">Jadwal: {{ formatDateTime(record.maintenance_date) }}</p>
               <p class="text-xs text-slate-400 mt-0.5">Teknisi: {{ record.technician?.full_name ?? '-' }}</p>
               <p v-if="record.duration_minutes" class="text-xs text-brand-gradation font-semibold mt-0.5">
                 <span class="inline-block bg-brand-cream px-2 py-0.5 rounded-lg">Durasi: {{ formatDuration(record.duration_minutes) }}</span>
@@ -26,6 +27,7 @@
                 <span v-if="record.is_unscheduled" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wide">Luar Jadwal</span>
                 <span v-if="record.is_late" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-100 uppercase tracking-wide">Terlambat</span>
               </div>
+              <p v-if="record.latest_approval?.decided_at" class="text-[10px] text-slate-400">{{ formatDateTime(record.latest_approval.decided_at) }}</p>
             </div>
           </div>
 
@@ -42,14 +44,23 @@
 
           <div class="flex items-center justify-between gap-2">
             <p class="text-sm text-slate-500 italic">{{ record.notes || 'Tidak ada catatan.' }}</p>
-            <button
-              v-if="record.actions?.length > 0"
-              @click="openActionModal(record)"
-              class="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-              Lihat Laporan ({{ record.actions.length }})
-            </button>
+            <div class="flex items-center gap-3 shrink-0">
+              <button
+                @click="openNotesModal(record)"
+                class="text-amber-600 hover:text-amber-800 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                Lihat Catatan
+              </button>
+              <button
+                v-if="record.actions?.length > 0"
+                @click="openActionModal(record)"
+                class="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                Lihat Laporan ({{ record.actions.length }})
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -186,6 +197,13 @@
       </div>
     </div>
   </Teleport>
+
+  <!-- Approval Notes Modal -->
+  <ApprovalNotesModal
+    :show="notesModal.show"
+    :item="notesModal.item"
+    @close="notesModal.show = false"
+  />
   </div>
 </template>
 
@@ -193,6 +211,7 @@
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import ApprovalProgress from './ApprovalProgress.vue';
+import ApprovalNotesModal from './ApprovalNotesModal.vue';
 
 const props = defineProps({
   records: { type: Array, default: () => [] },
@@ -202,6 +221,7 @@ const props = defineProps({
 const flowSteps = ref([]);
 
 const actionModal      = ref({ show: false, date: '', notes: '', actions: [] });
+const notesModal       = ref({ show: false, item: null });
 const actionSearch     = ref('');
 const actionActiveTab  = ref('all');
 const activeTooltip    = ref(null);
@@ -220,6 +240,22 @@ const openActionModal = (record) => {
     date:    props.formatDateTime(record.maintenance_date),
     notes:   record.notes ?? '',
     actions: record.actions ?? [],
+  };
+};
+
+const openNotesModal = (record) => {
+  notesModal.value = {
+    show: true,
+    item: {
+      machine_name: record.machine?.name ?? '-',
+      approvals: (record.approvals ?? []).map(a => ({
+        step_order: a.step_order,
+        decision: a.decision,
+        approver: a.approver?.full_name ?? a.approver?.name ?? '-',
+        decided_at: a.decided_at,
+        notes: a.notes,
+      })).sort((a, b) => a.step_order - b.step_order),
+    },
   };
 };
 
