@@ -49,15 +49,15 @@
     </div>
   </Teleport>
 
-  <div v-if="show" class="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-20 p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
+  <div v-if="show" class="fixed inset-0 z-50 flex items-start justify-center pt-6 sm:pt-8 p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl lg:max-w-5xl xl:max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
 
       <!-- Calendar Header -->
-      <div class="bg-linear-to-tr from-brand-brown to-brand-gradation text-white p-4 sm:p-6 shrink-0">
+      <div class="bg-linear-to-tr from-brand-brown to-brand-gradation text-white px-4 py-3 sm:px-5 sm:py-4 shrink-0">
         <div class="flex items-center justify-between gap-4">
           <div>
-            <h3 class="text-lg sm:text-2xl font-bold">Kalender Maintenance</h3>
-            <p class="text-indigo-100 text-xs sm:text-sm mt-1">Jadwal maintenance semua mesin</p>
+            <h3 class="text-base sm:text-xl font-bold">Kalender Maintenance</h3>
+            
           </div>
           <div class="flex items-center gap-2 sm:gap-3">
             <select
@@ -77,13 +77,13 @@
           </div>
         </div>
         <!-- Month Navigation -->
-        <div class="flex items-center justify-between mt-3 sm:mt-4">
+        <div class="flex items-center justify-between mt-2 sm:mt-3">
           <button @click="previousMonth" class="hover:cursor-pointer p-2 hover:bg-white/20 rounded-xl transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
           </button>
-          <h4 class="text-lg sm:text-xl font-semibold">{{ currentMonthYear }}</h4>
+          <h4 class="text-base sm:text-lg font-semibold">{{ currentMonthYear }}</h4>
           <button @click="nextMonth" class="hover:cursor-pointer p-2 hover:bg-white/20 rounded-xl transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -93,7 +93,7 @@
       </div>
 
       <!-- Calendar Content -->
-      <div class="flex-1 overflow-y-auto p-3 sm:p-6">
+      <div class="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
         <!-- Legend -->
         <div class="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100 text-xs">
           <span class="font-bold text-slate-400 uppercase tracking-wider mr-1 sm:mr-2">Keterangan:</span>
@@ -183,7 +183,7 @@
             <div
               v-for="day in calendarDays" :key="day.date"
               :class="getCalendarDayClass(day)"
-              class="min-h-[90px] xl:min-h-[110px] p-1.5 sm:p-2 border border-slate-200 rounded-lg"
+              class="min-h-27.5 xl:min-h-32.5 p-1.5 sm:p-2 border border-slate-200 rounded-lg"
             >
               <!-- Day number -->
               <div class="text-sm font-medium mb-0.5" :class="(day.isSunday || day.isHolidayDay) && day.isCurrentMonth ? 'text-rose-500 font-bold' : ''">{{ day.dayNumber }}</div>
@@ -346,32 +346,36 @@ const nextMonth = () => {
 };
 
 // Build projected schedule entries covering the currently viewed month.
-// Walks backward from next_due_date to reach dates in or before viewMonthStart,
-// then forward to cover viewMonthEnd. This ensures mesin whose next_due was
-// already advanced to a future month still appear in past months on the calendar.
+// Starts from the actual next_due_date and walks backward/forward so every
+// scheduled date inside the month is included, even when next_due_date falls
+// at the very end of the month (e.g. 29-31).
 const buildProjections = (nextDueDate, intervalDays, viewMonthStart, viewMonthEnd) => {
   if (!intervalDays || intervalDays <= 0) return [];
   const intervalMs = intervalDays * 86400000;
   const base = new Date(nextDueDate); base.setHours(0, 0, 0, 0);
 
-  // Walk base backward until we are at or before viewMonthStart
-  let raw = new Date(base);
+  const startLimit = new Date(viewMonthStart.getTime() - 7 * 86400000);
+  const endLimit = new Date(viewMonthEnd.getTime() + 7 * 86400000);
+  const projections = [];
+
+  // Walk backward from base to reach dues inside the viewed month
+  let candidate = new Date(base);
   let safety = 0;
-  while (raw > viewMonthStart && safety++ < 200) {
-    raw = new Date(raw.getTime() - intervalMs);
+  while (candidate >= startLimit && safety++ < 200) {
+    const shifted = advancePastOffDays(new Date(candidate));
+    projections.push({ originalTime: candidate.getTime(), shiftedTime: shifted.getTime(), shiftedDate: shifted });
+    candidate = new Date(candidate.getTime() - intervalMs);
   }
 
-  const projections = [];
+  // Walk forward in case the next due is just outside the month (spills into the next month view)
+  candidate = new Date(base.getTime() + intervalMs);
   safety = 0;
-  // Walk forward, collect all entries that fall within viewMonthStart..viewMonthEnd (+7 days buffer)
-  const limit = new Date(viewMonthEnd.getTime() + 7 * 86400000);
-  while (raw <= limit && safety++ < 200) {
-    if (raw >= new Date(viewMonthStart.getTime() - 7 * 86400000)) {
-      const shifted = advancePastOffDays(raw);
-      projections.push({ originalTime: raw.getTime(), shiftedTime: shifted.getTime(), shiftedDate: shifted });
-    }
-    raw = new Date(raw.getTime() + intervalMs);
+  while (candidate <= endLimit && safety++ < 200) {
+    const shifted = advancePastOffDays(new Date(candidate));
+    projections.push({ originalTime: candidate.getTime(), shiftedTime: shifted.getTime(), shiftedDate: shifted });
+    candidate = new Date(candidate.getTime() + intervalMs);
   }
+
   return projections;
 };
 

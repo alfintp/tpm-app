@@ -13,7 +13,7 @@
         <label class="text-xs font-semibold text-slate-500">Pilih Bulan</label>
         <select
           v-model="selectedMonth"
-          class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-brown cursor-pointer min-w-[160px]"
+          class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-brown cursor-pointer min-w-40"
         >
           <option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
         </select>
@@ -42,6 +42,11 @@
       :replacements="statModal.replacements"
       show-machine
       @close="statModal.show = false"
+    />
+    <MachineSummaryModal
+      :show="summaryModal.show"
+      :machine="summaryModal.machine"
+      @close="summaryModal.show = false"
     />
 
     <!-- Charts + extra info -->
@@ -156,10 +161,23 @@
     <!-- Machine table -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6 4h6"/></svg>
-          Detail per Mesin
-        </h4>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6 4h6"/></svg>
+            Detail per Mesin
+          </h4>
+          <DashboardFilters
+            v-model:search="search"
+            v-model:city="city"
+            v-model:location="location"
+            :selected-location="selectedLocation"
+            :locations="locations"
+            :has-both-cities="hasBothCities"
+            :show-sort="false"
+            @select-location="$emit('select-location', $event)"
+            @clear-location="$emit('clear-location')"
+          />
+        </div>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="filter in issueFilters"
@@ -192,7 +210,10 @@
           <tbody class="divide-y divide-slate-100 text-xs">
             <tr v-for="row in paginatedMachineRows" :key="row.machine.id" class="hover:bg-slate-50/60 transition-colors">
               <td class="px-5 py-3">
-                <div class="font-bold text-slate-800">{{ row.machine.name }}</div>
+                <button
+                  class="font-bold text-slate-800 hover:text-indigo-700 cursor-pointer text-left"
+                  @click="router.visit(`/machine/${row.machine.id}`)"
+                >{{ row.machine.name }}</button>
                 <div class="text-slate-400 text-[10px]">{{ row.machine.location ?? '-' }}</div>
               </td>
               <td class="px-5 py-3 text-center">
@@ -224,7 +245,7 @@
               </td>
               <td class="px-5 py-3 text-right">
                 <button
-                  @click="router.visit(`/machine/${row.machine.id}`)"
+                  @click="openSummary(row.machine)"
                   class="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 ml-auto cursor-pointer"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -253,18 +274,46 @@ import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import ReportStatModal from './ReportStatModal.vue';
 import TablePagination from './TablePagination.vue';
+import DashboardFilters from './DashboardFilters.vue';
+import MachineSummaryModal from './MachineSummaryModal.vue';
 
 const props = defineProps({
   machines: { type: Array, default: () => [] },
+  search: { type: String, default: '' },
+  city: { type: String, default: '' },
+  location: { type: String, default: '' },
+  selectedLocation: { type: String, default: '' },
+  locations: { type: Array, default: () => [] },
+  hasBothCities: { type: Boolean, default: false },
 });
+
+const emit = defineEmits(['update:search', 'update:city', 'update:location', 'select-location', 'clear-location']);
 
 const today = new Date();
 const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 const selectedMonth = ref(currentMonth);
+
+const search = computed({
+  get: () => props.search,
+  set: (v) => emit('update:search', v),
+});
+const city = computed({
+  get: () => props.city,
+  set: (v) => emit('update:city', v),
+});
+const location = computed({
+  get: () => props.location,
+  set: (v) => emit('update:location', v),
+});
 const activeIssueFilters = ref([]);
 const currentPage = ref(1);
 const perPage = ref(10);
 const statModal = ref({ show: false, title: '', mode: 'records', records: [], replacements: [] });
+const summaryModal = ref({ show: false, machine: null });
+
+const openSummary = (machine) => {
+  summaryModal.value = { show: true, machine };
+};
 
 const issueFilters = [
   { key: 'late', label: 'Terlambat', activeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
@@ -413,16 +462,75 @@ const dashboardReplacementItems = computed(() => {
   return items.sort((a, b) => new Date(b.date) - new Date(a.date));
 });
 
-const statBoxes = computed(() => [
-  { key: 'machines', label: 'Mesin Laporan', value: stats.value.machinesWithReports, labelClass: 'text-slate-400', valueClass: 'text-slate-800', ringClass: 'border-slate-100 hover:border-slate-200 focus:ring-slate-200' },
-  { key: 'total', label: 'Total Laporan', value: stats.value.total, labelClass: 'text-slate-400', valueClass: 'text-slate-800', ringClass: 'border-slate-100 hover:border-slate-200 focus:ring-slate-200' },
-  { key: 'approved', label: 'Disetujui', value: stats.value.approved, labelClass: 'text-green-600', valueClass: 'text-green-700', ringClass: 'border-green-100 hover:border-green-200 focus:ring-green-200' },
-  { key: 'pending', label: 'Menunggu', value: stats.value.pending, labelClass: 'text-amber-600', valueClass: 'text-amber-700', ringClass: 'border-amber-100 hover:border-amber-200 focus:ring-amber-200' },
-  { key: 'rejected', label: 'Ditolak', value: stats.value.rejected, labelClass: 'text-red-600', valueClass: 'text-red-700', ringClass: 'border-red-100 hover:border-red-200 focus:ring-red-200' },
-  { key: 'onTime', label: 'Tepat Waktu', value: stats.value.onTime, labelClass: 'text-emerald-600', valueClass: 'text-emerald-700', ringClass: 'border-emerald-100 hover:border-emerald-200 focus:ring-emerald-200' },
-  { key: 'late', label: 'Terlambat', value: stats.value.late, labelClass: 'text-rose-600', valueClass: 'text-rose-700', ringClass: 'border-rose-100 hover:border-rose-200 focus:ring-rose-200' },
-  { key: 'replacements', label: 'Ganti Komponen', value: stats.value.replacements, labelClass: 'text-orange-600', valueClass: 'text-orange-700', ringClass: 'border-orange-100 hover:border-orange-200 focus:ring-orange-200' },
-]);
+const machineSummary = computed(() => {
+  const byMachine = {};
+  for (const { machine, record } of recordsInMonth.value) {
+    if (!byMachine[machine.id]) {
+      byMachine[machine.id] = { records: [], latest: null };
+    }
+    const entry = byMachine[machine.id];
+    entry.records.push(record);
+    if (!entry.latest || new Date(record.maintenance_date) > new Date(entry.latest.maintenance_date)) {
+      entry.latest = record;
+    }
+  }
+
+  return props.machines.map(machine => {
+    const entry = byMachine[machine.id];
+    const latest = entry?.latest ?? null;
+    const totalComponents = machine.components?.length ?? 0;
+    const checkedIds = new Set();
+    let replacements = 0;
+
+    if (entry) {
+      for (const record of entry.records) {
+        replacements += (record.actions ?? []).filter(a => a.action_type === 'replace').length;
+        if (record.status === 'completed' && getStatus(record) !== 'rejected') {
+          for (const action of record.actions ?? []) {
+            if (action.machine_component_id) checkedIds.add(action.machine_component_id);
+          }
+        }
+      }
+    }
+
+    const checked = Math.min(checkedIds.size, totalComponents);
+    let checkState = 'none';
+    if (totalComponents && checked === totalComponents) checkState = 'full';
+    else if (checked > 0) checkState = 'partial';
+
+    return {
+      machine,
+      latest,
+      checkState,
+      isOnTime: !!latest && !latest.is_late && !latest.is_unscheduled,
+      isLate: !!latest && latest.is_late && !latest.is_unscheduled,
+      isUnscheduled: !!latest && latest.is_unscheduled,
+      hasReplacement: replacements > 0,
+    };
+  });
+});
+
+const statBoxes = computed(() => {
+  const total = machineSummary.value.length;
+  const full = machineSummary.value.filter(s => s.checkState === 'full').length;
+  const partial = machineSummary.value.filter(s => s.checkState === 'partial').length;
+  const none = machineSummary.value.filter(s => s.checkState === 'none').length;
+  const onTime = machineSummary.value.filter(s => s.isOnTime).length;
+  const late = machineSummary.value.filter(s => s.isLate).length;
+  const unscheduled = machineSummary.value.filter(s => s.isUnscheduled).length;
+  const replacement = machineSummary.value.filter(s => s.hasReplacement).length;
+
+  return [
+    { key: 'totalMachines', label: 'Total Mesin', value: total, labelClass: 'text-slate-500', valueClass: 'text-slate-700', ringClass: 'border-slate-200 hover:border-slate-300 focus:ring-slate-200' },
+    { key: 'fullyChecked', label: 'Mesin Dicek Semua', value: full, labelClass: 'text-emerald-600', valueClass: 'text-emerald-700', ringClass: 'border-emerald-100 hover:border-emerald-200 focus:ring-emerald-200' },
+    { key: 'partialChecked', label: 'Mesin Dicek Sebagian', value: partial, labelClass: 'text-amber-600', valueClass: 'text-amber-700', ringClass: 'border-amber-100 hover:border-amber-200 focus:ring-amber-200' },
+    { key: 'notChecked', label: 'Mesin Tidak Dicek', value: none, labelClass: 'text-rose-600', valueClass: 'text-rose-700', ringClass: 'border-rose-100 hover:border-rose-200 focus:ring-rose-200' },
+    { key: 'onTime', label: 'Tepat Waktu', value: onTime, labelClass: 'text-emerald-600', valueClass: 'text-emerald-700', ringClass: 'border-emerald-100 hover:border-emerald-200 focus:ring-emerald-200' },
+    { key: 'late', label: 'Terlambat', value: late, labelClass: 'text-rose-600', valueClass: 'text-rose-700', ringClass: 'border-rose-100 hover:border-rose-200 focus:ring-rose-200' },
+    { key: 'unscheduled', label: 'Diluar Jadwal', value: unscheduled, labelClass: 'text-indigo-600', valueClass: 'text-indigo-700', ringClass: 'border-indigo-100 hover:border-indigo-200 focus:ring-indigo-200' },
+    { key: 'replacement', label: 'Ganti Komponen', value: replacement, labelClass: 'text-orange-600', valueClass: 'text-orange-700', ringClass: 'border-orange-100 hover:border-orange-200 focus:ring-orange-200' },
+  ];
+});
 
 const dashboardRecordToModal = ({ machine, record }, statusOverride) => ({
   machine_name: machine.name ?? '-',
@@ -434,9 +542,22 @@ const dashboardRecordToModal = ({ machine, record }, statusOverride) => ({
   is_unscheduled: record.is_unscheduled,
 });
 
+const makeModalItem = ({ machine, latest }) => {
+  if (latest) return dashboardRecordToModal({ machine, record: latest });
+  return {
+    machine_name: machine.name ?? '-',
+    maintenance_date: '',
+    technician_name: '-',
+    notes: '',
+    status: 'no_report',
+    is_late: false,
+    is_unscheduled: false,
+  };
+};
+
 const openStat = (key) => {
   const titleBase = selectedMonthLabel.value;
-  if (key === 'replacements') {
+  if (key === 'replacement') {
     statModal.value = {
       show: true,
       title: `Ganti Komponen - ${titleBase}`,
@@ -447,31 +568,32 @@ const openStat = (key) => {
     return;
   }
 
-  let records = [];
+  let list = [];
   let title = '';
-  if (key === 'machines') {
-    records = recordsInMonth.value.map(r => dashboardRecordToModal(r));
-    title = `Mesin dengan Laporan - ${titleBase}`;
-  } else if (key === 'total') {
-    records = recordsInMonth.value.map(r => dashboardRecordToModal(r));
-    title = `Semua Laporan - ${titleBase}`;
-  } else if (key === 'approved') {
-    records = recordsInMonth.value.filter(({ record }) => getStatus(record) === 'approved').map(r => dashboardRecordToModal(r, 'approved'));
-    title = `Laporan Disetujui - ${titleBase}`;
-  } else if (key === 'pending') {
-    records = recordsInMonth.value.filter(({ record }) => getStatus(record) === 'pending').map(r => dashboardRecordToModal(r, 'pending'));
-    title = `Laporan Menunggu - ${titleBase}`;
-  } else if (key === 'rejected') {
-    records = recordsInMonth.value.filter(({ record }) => getStatus(record) === 'rejected').map(r => dashboardRecordToModal(r, 'rejected'));
-    title = `Laporan Ditolak - ${titleBase}`;
+  if (key === 'totalMachines') {
+    list = machineSummary.value;
+    title = `Semua Mesin - ${titleBase}`;
+  } else if (key === 'fullyChecked') {
+    list = machineSummary.value.filter(s => s.checkState === 'full');
+    title = `Mesin Dicek Semua - ${titleBase}`;
+  } else if (key === 'partialChecked') {
+    list = machineSummary.value.filter(s => s.checkState === 'partial');
+    title = `Mesin Dicek Sebagian - ${titleBase}`;
+  } else if (key === 'notChecked') {
+    list = machineSummary.value.filter(s => s.checkState === 'none');
+    title = `Mesin Tidak Dicek - ${titleBase}`;
   } else if (key === 'onTime') {
-    records = recordsInMonth.value.filter(({ record }) => !record.is_late && !record.is_unscheduled).map(r => dashboardRecordToModal(r, 'onTime'));
+    list = machineSummary.value.filter(s => s.isOnTime);
     title = `Laporan Tepat Waktu - ${titleBase}`;
   } else if (key === 'late') {
-    records = recordsInMonth.value.filter(({ record }) => record.is_late && !record.is_unscheduled).map(r => dashboardRecordToModal(r, 'late'));
+    list = machineSummary.value.filter(s => s.isLate);
     title = `Laporan Terlambat - ${titleBase}`;
+  } else if (key === 'unscheduled') {
+    list = machineSummary.value.filter(s => s.isUnscheduled);
+    title = `Laporan Diluar Jadwal - ${titleBase}`;
   }
 
+  const records = list.map(makeModalItem);
   statModal.value = { show: true, title, mode: 'records', records, replacements: [] };
 };
 
@@ -500,10 +622,14 @@ const machineRows = computed(() => {
         unscheduled: 0,
         replacements: 0,
         checkedIds: new Set(),
+        latestRecord: null,
       };
     }
     const row = map[machine.id];
     row.total++;
+    if (!row.latestRecord || new Date(record.maintenance_date) > new Date(row.latestRecord.maintenance_date)) {
+      row.latestRecord = record;
+    }
     const status = getStatus(record);
     if (status === 'approved') row.approved++;
     else if (status === 'rejected') row.rejected++;
@@ -551,6 +677,7 @@ const machineRows = computed(() => {
       late: row.late,
       unscheduled: row.unscheduled,
       replacements: row.replacements,
+      latestRecord: row.latestRecord,
     };
   });
 

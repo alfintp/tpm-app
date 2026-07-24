@@ -100,6 +100,7 @@ const formatDate = (d) => {
 };
 
 const statusLabel = (record) => {
+  if (record.status === 'no_report') return 'Belum Ada Laporan';
   if (record.status === 'approved') return 'Disetujui';
   if (record.status === 'rejected') return 'Ditolak';
   if (record.status === 'pending') return 'Menunggu';
@@ -109,6 +110,7 @@ const statusLabel = (record) => {
 };
 
 const statusClass = (record) => {
+  if (record.status === 'no_report') return 'bg-slate-100 text-slate-500 border-slate-200';
   if (record.status === 'approved') return 'bg-green-50 text-green-700 border-green-100';
   if (record.status === 'rejected') return 'bg-red-50 text-red-700 border-red-100';
   if (record.status === 'pending') return 'bg-amber-50 text-amber-700 border-amber-100';

@@ -35,6 +35,14 @@
             </div>
           </div>
         </div>
+        <!-- penjelasan am pm agar user paham bedanya -->
+        <div class="text-xs text-slate-500">
+          
+          <div>AM = Pagi (00:00 - 11:59)</div>
+          <div>PM = Siang hingga Malam (12:00 - 23:59)</div>
+          
+          <div>(Tips: Jam 12:00 PM adalah siang hari, dan 12:00 AM adalah tengah malam)</div>
+        </div>
         <div class="space-y-1.5">
           <label class="text-xs font-bold text-slate-600 uppercase tracking-wide">Catatan Umum</label>
           <textarea :value="notes" @input="emit('update:notes', $event.target.value)" placeholder="Ringkasan pekerjaan atau kendala..." rows="3"

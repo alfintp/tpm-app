@@ -133,6 +133,8 @@ class ApprovalController extends Controller
 
         $baseQuery = MaintenanceRecord::with([
             'machine.components',
+            'machine.schedules',
+            'schedule',
             'technician',
             'actions.component',
             'actions.indicatorValues.indicator',
@@ -161,10 +163,13 @@ class ApprovalController extends Controller
                 'duration_minutes'=> $record->duration_minutes,
                 'is_unscheduled'  => (bool) $record->is_unscheduled,
                 'is_late'         => (bool) $record->is_late,
+                'schedule_id'     => $record->schedule_id,
+                'scheduled_period_date' => $record->scheduled_period_date,
                 'notes'           => $record->notes,
                 'actions_count'   => $record->actions->count(),
                 'actions'         => $record->actions->map(fn($a) => [
                     'component_name'     => $a->component?->name,
+                    'component_difficulty' => $a->component?->difficulty,
                     'action_type'        => $a->action_type,
                     'condition_before'   => $a->condition_before_pct,
                     'condition_after'    => $a->condition_after_pct,
@@ -187,10 +192,73 @@ class ApprovalController extends Controller
                 'approvals'       => $state['approvals'],
                 'flow_steps'        => $state['flow_steps'],
                 'component_stats'   => $this->computeComponentStats($record),
+                'monthly_progress'  => $this->computeMonthlyProgress($record),
             ];
         });
 
         return response()->json($records);
+    }
+
+    public function show($recordId)
+    {
+        $record = MaintenanceRecord::with([
+            'machine.components',
+            'machine.schedules',
+            'schedule',
+            'technician',
+            'actions.component',
+            'actions.indicatorValues.indicator',
+            'approvals.approver',
+        ])->findOrFail($recordId);
+
+        $flowSteps = ApprovalFlowStep::active()->ordered()->get();
+        $state = $this->recordApprovalState($record, $flowSteps);
+
+        return response()->json([
+            'record_id'       => $record->id,
+            'machine_name'    => $record->machine?->name,
+            'machine_id'      => $record->machine?->id,
+            'machine_kota'    => $record->machine?->kota,
+            'technician_id'   => $record->technician_id,
+            'technician_name' => $record->technician?->full_name,
+            'maintenance_date'=> $record->maintenance_date,
+            'created_at'      => $record->created_at,
+            'start_time'      => $record->start_time,
+            'end_time'        => $record->end_time,
+            'duration_minutes'=> $record->duration_minutes,
+            'is_unscheduled'  => (bool) $record->is_unscheduled,
+            'is_late'         => (bool) $record->is_late,
+            'schedule_id'     => $record->schedule_id,
+            'scheduled_period_date' => $record->scheduled_period_date,
+            'notes'           => $record->notes,
+            'actions_count'   => $record->actions->count(),
+            'actions'         => $record->actions->map(fn($a) => [
+                'component_name'     => $a->component?->name,
+                'component_difficulty' => $a->component?->difficulty,
+                'action_type'        => $a->action_type,
+                'condition_before'   => $a->condition_before_pct,
+                'condition_after'    => $a->condition_after_pct,
+                'description'        => $a->description,
+                'indicator_values'   => $a->indicatorValues->map(fn($iv) => [
+                    'indicator_name'        => $iv->indicator?->name,
+                    'indicator_description' => $iv->indicator?->description,
+                    'value'                 => (bool) $iv->value,
+                ])->values(),
+            ]),
+            'approval_status' => $state['approval_status'],
+            'approval_id'     => $state['approval_id'],
+            'approval_notes'  => $state['approval_notes'],
+            'approved_by'     => $state['approved_by'],
+            'decided_at'      => $state['decided_at'],
+            'current_step'    => $state['current_step'],
+            'completed_steps' => $state['completed_steps'],
+            'total_steps'     => $state['total_steps'],
+            'pending_role'    => $state['pending_role'],
+            'approvals'       => $state['approvals'],
+            'flow_steps'        => $state['flow_steps'],
+            'component_stats'   => $this->computeComponentStats($record),
+            'monthly_progress'  => $this->computeMonthlyProgress($record),
+        ]);
     }
 
     public function decide(Request $request, $recordId)
@@ -439,32 +507,140 @@ class ApprovalController extends Controller
         // Get all unique component IDs that were reported in this record
         $reportedComponentIds = $record->actions->pluck('machine_component_id')->unique();
 
-        $buckets = [
-            ['key' => 'teknisi', 'display_name' => 'Teknisi', 'difficulties' => ['berat', 'sedang', 'none', null]],
-            ['key' => 'operator', 'display_name' => 'Operator', 'difficulties' => ['ringan']],
-        ];
+        // Group components by difficulty: ringan vs everything else (sedang, berat, null, empty)
+        $ringanComponents = $allComponents->filter(fn ($comp) => ($comp->difficulty ?? null) === 'ringan');
+        $beratComponents = $allComponents->filter(fn ($comp) => ($comp->difficulty ?? null) !== 'ringan');
 
-        $roleStats = collect($buckets)->map(function ($bucket) use ($allComponents, $reportedComponentIds) {
-            $applicable = $allComponents->filter(function ($comp) use ($bucket) {
-                $diff = $comp->difficulty ?? null;
-                return in_array($diff, $bucket['difficulties'], true);
-            });
-
-            $applicableTotal = $applicable->count();
-            $applicableIds = $applicable->pluck('id');
-            $reported = $reportedComponentIds->intersect($applicableIds)->count();
+        $makeStat = function ($key, $displayName, $components) use ($reportedComponentIds) {
+            $ids = $components->pluck('id');
+            $reported = $reportedComponentIds->intersect($ids)->count();
 
             return [
-                'role'         => $bucket['key'],
-                'display_name' => $bucket['display_name'],
+                'role'         => $key,
+                'display_name' => $displayName,
                 'reported'     => $reported,
-                'total'        => $applicableTotal,
+                'total'        => $components->count(),
             ];
-        })->filter(fn ($s) => $s['total'] > 0)->values();
+        };
+
+        $roleStats = collect([
+            $makeStat('berat', 'Berat', $beratComponents),
+            $makeStat('ringan', 'Ringan', $ringanComponents),
+        ])->filter(fn ($s) => $s['total'] > 0)->values();
 
         return [
             'total_components' => $totalComponents,
             'roles'            => $roleStats,
+        ];
+    }
+
+    private function computeMonthlyProgress(MaintenanceRecord $record)
+    {
+        $machine = $record->machine;
+        $schedule = $record->schedule;
+        if (!$machine || !$schedule || $record->is_unscheduled || !$record->scheduled_period_date) {
+            return null;
+        }
+
+        $allComponents = $machine->components ?? collect();
+        if ($allComponents->isEmpty()) {
+            return null;
+        }
+
+        $intervalDays = (int) $schedule->interval_days;
+        if ($intervalDays <= 0) {
+            return null;
+        }
+
+        // Anchor to the report's scheduled period so Week 1 / Week 2 both match.
+        $baseDate = Carbon::parse($record->scheduled_period_date)->startOfDay();
+        $monthStart = $baseDate->copy()->startOfMonth();
+        $monthEnd = $baseDate->copy()->endOfMonth();
+        $monthStartTs = $monthStart->getTimestamp();
+        $monthEndTs = $monthEnd->getTimestamp();
+
+        $intervalMs = $intervalDays * 86400000;
+        $raw = $baseDate->getTimestamp();
+        $safety = 0;
+        while ($raw > $monthStartTs && $safety++ < 200) {
+            $raw -= $intervalMs;
+        }
+        if ($raw < $monthStartTs) {
+            $raw += $intervalMs;
+        }
+
+        $periodLimit = $intervalDays <= 14 ? 2 : 1;
+        $dueTimestamps = [];
+        $safety = 0;
+        while ($raw <= $monthEndTs && $safety++ < 200 && count($dueTimestamps) < $periodLimit) {
+            $dueTimestamps[] = $raw;
+            $raw += $intervalMs;
+        }
+
+        if (empty($dueTimestamps)) {
+            return null;
+        }
+
+        $periods = [];
+        foreach ($dueTimestamps as $idx => $dueTs) {
+            $due = Carbon::createFromTimestamp($dueTs)->startOfDay();
+            $prevDue = $idx === 0 ? $monthStart->copy()->subDay() : Carbon::createFromTimestamp($dueTimestamps[$idx - 1])->startOfDay();
+            $periods[] = [
+                'label' => count($dueTimestamps) > 1 ? 'Week ' . ($idx + 1) : 'Bulan Ini',
+                'due_date' => $due->toDateString(),
+                'start' => $prevDue->copy()->addDay(),
+                'end' => $due,
+            ];
+        }
+
+        $ringanIds = $allComponents->filter(fn ($c) => ($c->difficulty ?? null) === 'ringan')->pluck('id')->all();
+        $beratIds = $allComponents->filter(fn ($c) => ($c->difficulty ?? null) !== 'ringan')->pluck('id')->all();
+
+        $firstStart = $periods[0]['start'];
+        $lastEnd = $periods[count($periods) - 1]['end'];
+        $monthRecords = MaintenanceRecord::with(['actions', 'latestApproval'])
+            ->where('machine_id', $machine->id)
+            ->where('status', 'completed')
+            ->whereBetween('maintenance_date', [$firstStart->toDateString(), $lastEnd->toDateString()])
+            ->get();
+
+        $reportScheduleDate = $baseDate;
+        $result = [];
+        foreach ($periods as $period) {
+            $reportedIds = collect();
+            foreach ($monthRecords as $rec) {
+                if ($rec->latestApproval && $rec->latestApproval->decision === 'rejected') {
+                    continue;
+                }
+                $recDate = Carbon::parse($rec->maintenance_date)->startOfDay();
+                if ($recDate->lt($period['start']) || $recDate->gt($period['end'])) {
+                    continue;
+                }
+                foreach ($rec->actions as $action) {
+                    if ($action->machine_component_id) {
+                        $reportedIds->add($action->machine_component_id);
+                    }
+                }
+            }
+            $reported = $reportedIds->all();
+            $result[] = [
+                'label' => $period['label'],
+                'due_date' => $period['due_date'],
+                'is_report_period' => $reportScheduleDate->equalTo($period['end']),
+                'ringan' => [
+                    'reported' => count(array_intersect($reported, $ringanIds)),
+                    'total' => count($ringanIds),
+                ],
+                'berat' => [
+                    'reported' => count(array_intersect($reported, $beratIds)),
+                    'total' => count($beratIds),
+                ],
+            ];
+        }
+
+        return [
+            'total_components' => $allComponents->count(),
+            'periods' => $result,
         ];
     }
 

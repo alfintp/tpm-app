@@ -657,7 +657,7 @@ const submitReport = async () => {
       end_time: endTime.value || null,
       duration_minutes: calculatedDuration.value,
       status: 'completed',
-      notes: generalNotes.value || `Pemeriksaan rutin - ${doneRows.length} komponen diperiksa`,
+      notes: generalNotes.value || null,
       actions
     };
 

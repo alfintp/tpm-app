@@ -46,7 +46,7 @@
       <!-- Kolom: Mesin & Waktu -->
       <template #cell-machine_name="{ row }">
         <div class="flex items-center gap-1.5 flex-wrap">
-          <p class="font-semibold text-slate-800 text-sm cursor-pointer hover:text-indigo-600 transition-colors" @click="goToMachine(row.machine_id)">{{ row.machine_name }}</p>
+          <p class="font-semibold text-slate-800 text-sm cursor-pointer hover:text-indigo-600 transition-colors min-w-0 whitespace-normal break-words" @click="goToMachine(row.machine_id)">{{ row.machine_name }}</p>
           <span v-if="row.is_unscheduled" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 tracking-wider uppercase shrink-0">Luar Jadwal</span>
           <span v-else-if="row.is_late" class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-100 tracking-wider uppercase shrink-0">Terlambat</span>
           <span v-else class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 tracking-wider uppercase shrink-0">Sesuai Jadwal</span>

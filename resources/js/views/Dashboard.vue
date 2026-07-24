@@ -30,13 +30,14 @@
           </button>
         </div>
         <DashboardFilters
+          v-if="dashboardTab === 'machines'"
           v-model:search="machineSearch"
           v-model:city="machineKota"
           v-model:location="locationSearch"
           :selected-location="selectedLocation"
           :locations="uniqueLocations"
           v-model:sort="machineSort"
-          :show-sort="dashboardTab === 'machines'"
+          :show-sort="true"
           :has-both-cities="hasBothCities"
           @select-location="selectLocation"
           @clear-location="clearLocation"
@@ -44,7 +45,18 @@
       </div>
 
       <div class="p-5">
-        <DashboardReportPanel v-if="dashboardTab === 'reports'" :machines="filteredMachines" />
+        <DashboardReportPanel
+          v-if="dashboardTab === 'reports'"
+          :machines="filteredMachines"
+          v-model:search="machineSearch"
+          v-model:city="machineKota"
+          v-model:location="locationSearch"
+          :selected-location="selectedLocation"
+          :locations="uniqueLocations"
+          :has-both-cities="hasBothCities"
+          @select-location="selectLocation"
+          @clear-location="clearLocation"
+        />
         <DashboardMachineSection v-else :machines="filteredMachines" :loading="loading" v-model:page="currentPage" v-model:per-page="perPage" />
       </div>
     </div>

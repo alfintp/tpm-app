@@ -54,7 +54,7 @@
               </button>
               <button
                 v-if="record.actions?.length > 0"
-                @click="openActionModal(record)"
+                @click="openReportModal(record)"
                 class="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -153,26 +153,14 @@
                       <span class="text-xs text-slate-700 font-medium">{{ iv.indicator?.name ?? '-' }}</span>
                       <span
                         v-if="iv.indicator?.description"
-                        class="relative group cursor-pointer shrink-0"
-                        @click.stop="toggleTooltip(idx, ivIdx)"
+                        class="cursor-pointer shrink-0"
+                        @mouseenter="showTooltip($event, iv.indicator.description)"
+                        @mouseleave="hideTooltip"
+                        @click.stop="toggleTooltip($event, idx, ivIdx, iv.indicator.description)"
                       >
                         <svg class="w-3.5 h-3.5 text-slate-400 hover:text-indigo-500 transition-colors" fill="currentColor" viewBox="0 0 20 20">
                           <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                         </svg>
-                        <div class="pointer-events-none absolute z-30 hidden group-hover:block bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 bg-slate-800 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2 shadow-xl">
-                          <p class="font-bold text-slate-200 mb-0.5">Keterangan Indikator</p>
-                          <p>{{ iv.indicator.description }}</p>
-                          <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-                        </div>
-                        <div
-                          v-if="activeTooltip === `${idx}-${ivIdx}`"
-                          class="absolute z-30 bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 bg-slate-800 text-white text-[11px] leading-relaxed rounded-xl px-3 py-2 shadow-xl"
-                          @click.stop
-                        >
-                          <p class="font-bold text-slate-200 mb-0.5">Keterangan Indikator</p>
-                          <p>{{ iv.indicator.description }}</p>
-                          <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
-                        </div>
                       </span>
                     </div>
                   </div>
@@ -198,6 +186,29 @@
     </div>
   </Teleport>
 
+  <Teleport to="body">
+    <div
+      v-if="tooltip.show"
+      class="pointer-events-none fixed z-70 w-56 -translate-x-1/2 rounded-xl bg-slate-800 px-3 py-2 text-[11px] leading-relaxed text-white shadow-xl"
+      :class="tooltip.placement === 'top' ? '-translate-y-full' : ''"
+      :style="{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }"
+    >
+      <p class="mb-0.5 font-bold text-slate-200">Keterangan Indikator</p>
+      <p>{{ tooltip.description }}</p>
+      <div
+        class="absolute left-1/2 -translate-x-1/2 border-4 border-transparent"
+        :class="tooltip.placement === 'top' ? 'top-full border-t-slate-800' : 'bottom-full border-b-slate-800'"
+      ></div>
+    </div>
+  </Teleport>
+
+  <ApprovalDetailModal
+    :show="detailModal.show"
+    :item="detailModal.item"
+    :can-decide="false"
+    @close="detailModal.show = false"
+  />
+
   <!-- Approval Notes Modal -->
   <ApprovalNotesModal
     :show="notesModal.show"
@@ -212,6 +223,7 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import ApprovalProgress from './ApprovalProgress.vue';
 import ApprovalNotesModal from './ApprovalNotesModal.vue';
+import ApprovalDetailModal from './ApprovalDetailModal.vue';
 
 const props = defineProps({
   records: { type: Array, default: () => [] },
@@ -221,26 +233,66 @@ const props = defineProps({
 const flowSteps = ref([]);
 
 const actionModal      = ref({ show: false, date: '', notes: '', actions: [] });
+const detailModal      = ref({ show: false, item: null });
 const notesModal       = ref({ show: false, item: null });
 const actionSearch     = ref('');
 const actionActiveTab  = ref('all');
 const activeTooltip    = ref(null);
+const tooltip = ref({ show: false, x: 0, y: 0, description: '', placement: 'top' });
 
-const toggleTooltip = (idx, ivIdx) => {
-  const key = `${idx}-${ivIdx}`;
-  activeTooltip.value = activeTooltip.value === key ? null : key;
+const showTooltip = (event, description) => {
+  const rect = event.currentTarget.getBoundingClientRect();
+  const placement = rect.top >= 104 ? 'top' : 'bottom';
+  tooltip.value = {
+    show: true,
+    x: Math.min(Math.max(rect.left + (rect.width / 2), 128), window.innerWidth - 128),
+    y: placement === 'top' ? rect.top - 8 : rect.bottom + 8,
+    description,
+    placement,
+  };
 };
 
-const openActionModal = (record) => {
-  actionSearch.value    = '';
-  actionActiveTab.value = 'all';
-  activeTooltip.value   = null;
-  actionModal.value = {
-    show:    true,
-    date:    props.formatDateTime(record.maintenance_date),
-    notes:   record.notes ?? '',
-    actions: record.actions ?? [],
-  };
+const hideTooltip = () => {
+  if (!activeTooltip.value) tooltip.value.show = false;
+};
+
+const toggleTooltip = (event, idx, ivIdx, description) => {
+  const key = `${idx}-${ivIdx}`;
+  activeTooltip.value = activeTooltip.value === key ? null : key;
+  if (activeTooltip.value) showTooltip(event, description);
+  else tooltip.value.show = false;
+};
+
+const openReportModal = async (record) => {
+  try {
+    const res = await axios.get(`/api/approvals/${record.id}`);
+    detailModal.value = {
+      show: true,
+      item: res.data,
+    };
+  } catch (e) {
+    console.error('Failed to load report detail:', e);
+    detailModal.value = {
+      show: true,
+      item: {
+        ...record,
+        machine_name: record.machine?.name ?? '-',
+        technician_name: record.technician?.full_name ?? '-',
+        actions: (record.actions ?? []).map(action => ({
+          ...action,
+          component_name: action.component?.name ?? '-',
+          component_difficulty: action.component?.difficulty ?? null,
+          condition_before: action.condition_before_pct ?? '-',
+          condition_after: action.condition_after_pct ?? '-',
+          indicator_values: (action.indicator_values ?? []).map(value => ({
+            ...value,
+            indicator_name: value.indicator?.name ?? '-',
+            indicator_description: value.indicator?.description ?? '',
+          })),
+        })),
+      },
+    };
+  }
 };
 
 const openNotesModal = (record) => {

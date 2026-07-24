@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Approvals
     Route::get('/approvals', [ApprovalController::class, 'index']);
+    Route::get('/approvals/{recordId}', [ApprovalController::class, 'show']);
     Route::post('/approvals/{recordId}/decide', [ApprovalController::class, 'decide']);
     Route::get('/approval-flow', [ApprovalController::class, 'flowConfig']);
     Route::put('/approval-flow', [ApprovalController::class, 'updateFlowConfig']);
