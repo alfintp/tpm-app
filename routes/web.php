@@ -113,6 +113,11 @@ Route::get('/approvals', function () {
     return Inertia::render('Approval');
 });
 
+// Halaman Daftar Komponen menggunakan Inertia
+Route::get('/components', function () {
+    return Inertia::render('Components');
+});
+
 // Menggunakan view lama agar fungsi-fungsi SPA lama berjalan normal dahulu
 Route::get('/{any}', function () {
     return view('dashboard');

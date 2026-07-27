@@ -44,7 +44,7 @@
           @click="$emit('click-alert', alert)"
         >
           <!-- Icon -->
-          <div :class="iconClass(alert)" class="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center">
+          <div :class="iconClass(alert)" class="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center">
             <svg v-if="alert.isFullyChecked" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
@@ -63,7 +63,7 @@
                   <span v-if="alert.machine?.pic_mesin" class="text-slate-400"> · PIC: <span class="font-semibold text-slate-600">{{ alert.machine.pic_mesin.full_name }}</span></span>
                 </p>
               </div>
-              <span :class="badgeClass(alert)" class="text-xs font-semibold bg-white px-3 py-1 rounded-full border border-current flex-shrink-0">
+              <span :class="badgeClass(alert)" class="text-xs font-semibold bg-white px-3 py-1 rounded-full border border-current shrink-0">
                 {{ alert.isFullyChecked ? 'Selesai' : timeText(alert.next_due_date) }}
               </span>
             </div>
@@ -100,7 +100,7 @@
             </div>
           </div>
 
-          <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
             <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
@@ -157,10 +157,9 @@ const timeText = (dateStr) => {
   const d = new Date(dateStr); d.setHours(0,0,0,0);
   const t = new Date();        t.setHours(0,0,0,0);
   const days = Math.ceil((d - t) / 86400000);
-  if (days < 0)   return `Telat ${Math.abs(days)} hari`;
   if (days === 0) return 'Hari Ini';
-  if (days === 1) return 'Besok';
-  return `${days} Hari Lagi`;
+  if (days > 0)   return 'Bisa Dicek';
+  return `${Math.abs(days)} Hari Lalu`;
 };
 
 const formatDate = (d) =>

@@ -52,8 +52,11 @@
           <span v-else class="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 tracking-wider uppercase shrink-0">Sesuai Jadwal</span>
         </div>
         <div class="flex items-center gap-1.5 mt-0.5">
-          <span v-if="row.machine_kota" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wider">
+          <span v-if="row.machine_kota" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-cream text-brand-brown border border-brand-cream/50 uppercase tracking-wider">
             {{ row.machine_kota === 'sby' ? 'Surabaya' : row.machine_kota === 'pasuruan' ? 'Pasuruan' : row.machine_kota }}
+          </span>
+          <span v-if="row.machine_location" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wider">
+            {{ row.machine_location }}
           </span>
           <p class="text-xs text-slate-400">{{ formatDateTime(row.created_at) }}</p>
         </div>

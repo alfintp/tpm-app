@@ -35,6 +35,16 @@
       </template>
     </PageHeader>
 
+    <ReportMachineSelector
+      v-model:search="machineSearch"
+      :machines="machinesList"
+      :loading="machinesLoading"
+      :selected="selectedMachineId"
+      :machine="null"
+      @select="selectMachine"
+      @clear="clearMachine"
+    />
+
     <MachineDetailConditionCard
       :machine="machine"
       :category-condition-stats="categoryConditionStats"
@@ -134,6 +144,7 @@ import MachineMonthlyReportCard from '../components/MachineMonthlyReportCard.vue
 import IndicatorImportModal from '../components/IndicatorImportModal.vue';
 import Spinner from '../../views/components/ui/spinner/Spinner.vue';
 import Button from '../../views/components/ui/button/Button.vue';
+import ReportMachineSelector from '../components/ReportMachineSelector.vue';
 
 const props = defineProps({
   initialMachine: {
@@ -152,6 +163,12 @@ const loading = ref(!machine.value);
 const roles = ref([]);
 const rolesLoaded = ref(false);
 
+// Machine switcher state
+const machinesList = ref([]);
+const machinesLoading = ref(false);
+const machineSearch = ref('');
+const selectedMachineId = ref('');
+
 const fetchRoles = async () => {
   try {
     const res = await axios.get('/api/roles');
@@ -162,6 +179,57 @@ const fetchRoles = async () => {
     rolesLoaded.value = true;
   }
 };
+
+const loadMachinesList = async () => {
+  // Prevent redundant loading if already have data in memory
+  if (machinesList.value.length > 0) return;
+  
+  machinesLoading.value = true;
+  try {
+    const res = await axios.get('/api/machines');
+    machinesList.value = res.data?.data ?? res.data ?? [];
+  } catch (err) {
+    console.error('Failed to load machines list:', err);
+  } finally {
+    machinesLoading.value = false;
+  }
+};
+
+const selectMachine = async (m) => {
+  if (String(m.id) === String(selectedMachineId.value)) return;
+  const ok = await handleUnsavedAction();
+  if (!ok) return;
+  skipLeaveGuard.value = true;
+  
+  // Navigate to the new machine
+  router.visit(`/machine/${m.id}`, {
+    preserveState: true,
+    preserveScroll: false,
+    onSuccess: () => {
+      // After navigation, content should update via the watch on props.machine
+    }
+  });
+};
+
+const clearMachine = () => {
+  machineSearch.value = '';
+};
+
+// CRITICAL: Sync local machine ref when props update (e.g. during preserveState navigation)
+watch(() => props.machine, (newVal) => {
+  if (newVal && newVal.id !== machine.value?.id) {
+    machine.value = newVal;
+    initComponentRows();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}, { deep: true });
+
+watch(() => machine.value, (m) => {
+  if (m) {
+    selectedMachineId.value = m.id;
+    machineSearch.value = m.name;
+  }
+}, { immediate: true });
 
 const canReport = computed(() => {
   if (isAdmin.value) return true;
@@ -606,6 +674,7 @@ let unregisterBeforeListener = null;
 
 onMounted(() => {
   loadData();
+  loadMachinesList();
   fetchRoles();
   window.addEventListener('keydown', handleKeydown);
 

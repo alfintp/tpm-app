@@ -30,7 +30,31 @@
             <th class="py-3 px-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell w-40">Status</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-if="components.length === 0" class="bg-white">
+            <td colspan="4" class="px-6 py-20 text-center">
+              <div class="flex flex-col items-center justify-center gap-2">
+                <svg class="w-12 h-12 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div class="space-y-1">
+                  <p class="text-sm font-bold text-slate-500">
+                    <template v-if="search">
+                      Tidak ada komponen yang cocok dengan "{{ search }}"
+                    </template>
+                    <template v-else-if="difficultyFilter === 'ringan'">
+                      Mesin ini tidak memiliki komponen kategori ringan
+                    </template>
+                    <template v-else-if="difficultyFilter === 'berat'">
+                      Mesin ini tidak memiliki komponen kategori berat / sedang
+                    </template>
+                    <template v-else>
+                      Tidak ada komponen yang ditemukan
+                    </template>
+                  </p>
+                  <p class="text-xs text-slate-400">Silakan cek kembali filter atau daftar komponen mesin ini.</p>
+                </div>
+              </div>
+            </td>
+          </tr>
           <template v-for="comp in components" :key="comp.id">
 
             <tr :id="`comp-${comp.id}`"
@@ -222,6 +246,7 @@
 defineProps({
   components: { type: Array, default: () => [] },
   search: { type: String, default: '' },
+  difficultyFilter: { type: String, default: 'semua' },
   presets: { type: Array, default: () => [{ val: 100, label: 'OK' }, { val: 80, label: 'Minor' }, { val: 50, label: 'Medium' }, { val: 0, label: 'Broken' }] },
   setIndicator: { type: Function, required: true },
   applyPreset: { type: Function, required: true },

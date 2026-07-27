@@ -3,51 +3,75 @@
     <!-- Header -->
     <PageHeader title="Daftar Mesin" subtitle="Kelola semua mesin dalam sistem">
       <template #actions>
-        <Button
-          v-if="isAdmin"
-          @click="triggerMachineImport"
-          class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm gap-2 hover:cursor-pointer"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          Import Mesin
-        </Button>
-        <Button
-          v-if="isAdmin"
-          @click="triggerComponentImport"
-          class="bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold text-sm gap-2 hover:cursor-pointer"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          Import Komponen
-        </Button>
-        <Button
-          v-if="isAdmin"
-          @click="showIndicatorImportModal = true"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm gap-2 hover:cursor-pointer"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6 4h6"/></svg>
-          Import Indikator
-        </Button>
-        <Button
-          @click="showCalendarModal = true"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm gap-2 hover:cursor-pointer"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          Kalender
-        </Button>
-        <Button
-          v-if="isManagerOrAdmin"
-          @click="openCreate"
-          class="bg-linear-to-tr from-brand-brown to-brand-gradation text-white hover:opacity-90 rounded-xl font-semibold text-sm gap-2 shadow-md hover:cursor-pointer"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          Tambah Mesin
-        </Button>
+        <div class="flex items-center gap-2 flex-wrap md:flex-nowrap">
+          <Button
+            v-if="isAdmin"
+            @click="triggerMachineImport"
+            class="inline-flex flex-row items-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm px-4 py-2 whitespace-nowrap gap-2 hover:cursor-pointer min-w-fit"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Import Mesin
+          </Button>
+          <Button
+            v-if="isAdmin"
+            @click="triggerComponentImport"
+            class="inline-flex flex-row items-center bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold text-sm px-4 py-2 whitespace-nowrap gap-2 hover:cursor-pointer min-w-fit"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Import Komponen
+          </Button>
+          <Button
+            v-if="isAdmin"
+            @click="showIndicatorImportModal = true"
+            class="inline-flex flex-row items-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm px-4 py-2 whitespace-nowrap gap-2 hover:cursor-pointer min-w-fit"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6 4h6"/></svg>
+            Import Indikator
+          </Button>
+          <Button
+            @click="showCalendarModal = true"
+            class="inline-flex flex-row items-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm px-4 py-2 whitespace-nowrap gap-2 hover:cursor-pointer min-w-fit"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            Kalender
+          </Button>
+          <Button
+            v-if="isManagerOrAdmin"
+            @click="openCreate"
+            class="inline-flex flex-row items-center bg-linear-to-tr from-brand-brown to-brand-gradation text-white hover:opacity-90 rounded-xl font-semibold text-sm px-4 py-2 whitespace-nowrap gap-2 shadow-md hover:cursor-pointer min-w-fit"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Tambah Mesin
+          </Button>
+        </div>
       </template>
     </PageHeader>
 
-    <!-- Stats Summary -->
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-      <StatCard v-for="stat in stats" :key="stat.label" :value="stat.value" :label="stat.label" :color="stat.color" />
+    <!-- Stats Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div 
+        v-for="stat in machineStatusStats" 
+        :key="stat.id"
+        @click="toggleStatusFilter(stat.id)"
+        class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-pointer transition-all hover:shadow-md active:scale-95 relative overflow-hidden group"
+        :class="[
+          filterStatus === stat.id ? 'ring-2 ring-offset-2 ' + stat.ringColor : 'hover:border-slate-200'
+        ]"
+      >
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{{ stat.label }}</p>
+            <p class="text-xl font-black text-slate-800">{{ stat.count }}</p>
+          </div>
+          <div :class="stat.bgClass" class="p-1.5 rounded-lg text-white">
+            <component :is="stat.icon" class="w-4 h-4" />
+          </div>
+        </div>
+        <div 
+          class="absolute bottom-0 left-0 h-1 transition-all duration-300"
+          :class="[stat.bgClass, filterStatus === stat.id ? 'w-full' : 'w-0 group-hover:w-full']"
+        ></div>
+      </div>
     </div>
 
     <!-- Maintenance Alerts -->
@@ -62,15 +86,54 @@
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
       <SearchInput
         v-model="search"
-        placeholder="Cari nama mesin atau lokasi..."
-        class="flex-1 min-w-[200px]"
+        placeholder="Cari nama mesin atau deskripsi..."
+        class="flex-1 min-w-50"
       />
-      <select v-if="hasBothCities" v-model="filterKota" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-        <option value="">Semua Kota</option>
-        <option value="pasuruan">Pasuruan</option>
-        <option value="sby">Surabaya</option>
-      </select>
-      <div class="relative">
+      
+      <div class="relative group">
+        <select v-model="filterStatus" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white min-w-[140px]">
+          <option value="">Semua Status</option>
+          <option value="selesai">Selesai Dicek</option>
+          <option value="sebagian">Dicek Sebagian</option>
+          <option value="expired">Expired / Telat</option>
+          <option value="bisa_dicek">Bisa Dicek</option>
+          <option value="hari_ini">Hari Ini</option>
+        </select>
+        <button
+          v-if="filterStatus"
+          @click="clearStatusFilter"
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer transition-colors z-10"
+          title="Hapus filter status"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" v-if="!filterStatus">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+      </div>
+
+      <div class="relative group" v-if="hasBothCities">
+        <select v-model="filterKota" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white min-w-[120px]">
+          <option value="">Semua Kota</option>
+          <option value="pasuruan">Pasuruan</option>
+          <option value="sby">Surabaya</option>
+        </select>
+        <button
+          v-if="filterKota"
+          @click="clearKotaFilter"
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer transition-colors z-10"
+          title="Hapus filter kota"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" v-if="!filterKota">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+      </div>
+
+      <div class="relative group">
         <input
           v-model="locationSearch"
           @focus="showLocationDropdown = true"
@@ -78,8 +141,17 @@
           @input="handleLocationInput"
           type="text"
           placeholder="Lokasi / Area"
-          class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40"
+          class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-36"
         />
+        <button
+          v-if="locationSearch"
+          @click="clearLocationFilter"
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer transition-colors"
+          title="Hapus filter lokasi"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
         <div
           v-if="showLocationDropdown && filteredLocations.length > 0"
           class="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"
@@ -94,12 +166,62 @@
           </div>
         </div>
       </div>
-      <select v-model="filterSchedule" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-        <option value="">Semua Jadwal</option>
-        <option value="overdue">Telat / Overdue</option>
-        <option value="today">Hari Ini</option>
-        <option value="week">Minggu Ini</option>
-      </select>
+
+      <div class="relative group">
+        <input
+          v-model="machineSearch"
+          @focus="showMachineDropdown = true"
+          @blur="handleMachineBlur"
+          @input="handleMachineInput"
+          type="text"
+          placeholder="Pilih Mesin"
+          class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-44"
+        />
+        <button
+          v-if="machineSearch"
+          @click="clearMachineFilter"
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer transition-colors"
+          title="Hapus filter mesin"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div
+          v-if="showMachineDropdown && filteredMachinesBySearch.length > 0"
+          class="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto"
+        >
+          <div
+            v-for="m in filteredMachinesBySearch"
+            :key="m.id"
+            @mousedown="selectMachine(m)"
+            class="px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer"
+          >
+            {{ m.name }}
+          </div>
+        </div>
+      </div>
+
+      <div class="relative group">
+        <select v-model="filterSchedule" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white min-w-[120px]">
+          <option value="">Semua Jadwal</option>
+          <option value="overdue">Telat / Overdue</option>
+          <option value="today">Hari Ini</option>
+          <option value="week">Minggu Ini</option>
+        </select>
+        <button
+          v-if="filterSchedule"
+          @click="clearScheduleFilter"
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full cursor-pointer transition-colors z-10"
+          title="Hapus filter jadwal"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" v-if="!filterSchedule">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+      </div>
+
       <select v-model="sortBy" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
         <option value="name">Nama A-Z</option>
         <option value="name_desc">Nama Z-A</option>
@@ -234,7 +356,14 @@ import MaintenanceAlerts from '../components/MaintenanceAlerts.vue';
 import MachineImportModal from '../components/MachineImportModal.vue';
 import IndicatorImportModal from '../components/IndicatorImportModal.vue';
 import MachineCalendarModal from '../components/MachineCalendarModal.vue';
-import Button from '../../views/components/ui/button/Button.vue';
+import { 
+  CheckCircle2, 
+  Clock, 
+  AlertTriangle, 
+  Calendar, 
+  AlertCircle,
+  HelpCircle
+} from 'lucide-vue-next';
 
 const props = defineProps({
   initialMachines: {
@@ -275,6 +404,10 @@ const filterKota = ref('');
 const locationSearch = ref('');
 const showLocationDropdown = ref(false);
 const selectedLocation = ref('');
+const machineSearch = ref('');
+const selectedMachineId = ref('');
+const showMachineDropdown = ref(false);
+const filterStatus = ref('');
 const showCreate = ref(false);
 const currentPage = ref(1);
 const perPage = ref(10);
@@ -376,33 +509,127 @@ const stats = computed(() => {
   ];
 });
 
-// Location filter logic
-const uniqueLocations = computed(() => {
-  const locations = new Set();
-  allowedMachines.value.forEach(m => {
-    if (m.location) locations.add(m.location);
+const uniqueMachines = computed(() => {
+  const list = allowedMachines.value;
+  return [...list].sort((a, b) => a.name.localeCompare(b.name));
+});
+
+const filteredMachinesBySearch = computed(() => {
+  if (!machineSearch.value) return uniqueMachines.value;
+  const q = machineSearch.value.toLowerCase();
+  return uniqueMachines.value.filter(m => m.name.toLowerCase().includes(q));
+});
+
+const machineStatusStats = computed(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const stats = {
+    selesai: 0,
+    sebagian: 0,
+    expired: 0,
+    bisa_dicek: 0,
+    hari_ini: 0
+  };
+
+  allowedMachines.value.forEach(machine => {
+    const schedule = getMachineSchedule(machine);
+    if (!schedule) return;
+
+    const dueDate = new Date(schedule.next_due_date);
+    dueDate.setHours(0, 0, 0, 0);
+    const daysUntil = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+    // Calculate completion in current period
+    const periodStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), 1);
+    periodStart.setHours(0, 0, 0, 0);
+
+    const periodRecords = (machine.records || []).filter(r => {
+      if (r.status !== 'completed') return false;
+      const approvalStatus = r.latest_approval?.decision ?? 'pending';
+      if (approvalStatus === 'rejected') return false;
+      const recDate = new Date(r.maintenance_date); recDate.setHours(0, 0, 0, 0);
+      return recDate >= periodStart && recDate <= today;
+    });
+
+    const checkedComponentIds = new Set();
+    periodRecords.forEach(r => {
+      (r.actions || []).forEach(a => {
+        if (a.machine_component_id) checkedComponentIds.add(a.machine_component_id);
+      });
+    });
+
+    const totalComponents = machine.components ? machine.components.length : 0;
+    let checkedCount = 0;
+    if (machine.components) {
+      machine.components.forEach(c => {
+        if (checkedComponentIds.has(c.id)) checkedCount++;
+      });
+    }
+
+    const isFullyChecked = totalComponents > 0 && checkedCount === totalComponents;
+    const isPartiallyChecked = checkedCount > 0 && checkedCount < totalComponents;
+
+    if (isFullyChecked) stats.selesai++;
+    else if (isPartiallyChecked) stats.sebagian++;
+
+    if (!isFullyChecked) {
+      if (daysUntil < 0) stats.expired++;
+      if (daysUntil >= 0 && daysUntil <= 5) stats.bisa_dicek++;
+      if (daysUntil === 0) stats.hari_ini++;
+    }
   });
-  return Array.from(locations).sort();
+
+  return [
+    { id: 'selesai',   label: 'Selesai',    count: stats.selesai,   icon: CheckCircle2, bgClass: 'bg-emerald-500', ringColor: 'ring-emerald-500' },
+    { id: 'sebagian',  label: 'Sebagian',   count: stats.sebagian,  icon: Clock,        bgClass: 'bg-blue-500',    ringColor: 'ring-blue-500' },
+    { id: 'expired',   label: 'Expired',    count: stats.expired,   icon: AlertCircle,  bgClass: 'bg-red-500',     ringColor: 'ring-red-500' },
+    { id: 'bisa_dicek',label: 'Bisa Dicek', count: stats.bisa_dicek,icon: Calendar,     bgClass: 'bg-amber-500',   ringColor: 'ring-amber-500' },
+    { id: 'hari_ini',  label: 'Hari Ini',   count: stats.hari_ini,  icon: AlertTriangle,bgClass: 'bg-orange-500',  ringColor: 'ring-orange-500' },
+  ];
 });
 
-const filteredLocations = computed(() => {
-  if (!locationSearch.value) return uniqueLocations.value;
-  const q = locationSearch.value.toLowerCase();
-  return uniqueLocations.value.filter(loc => loc.toLowerCase().includes(q));
-});
-
-const handleLocationBlur = () => {
-  setTimeout(() => { showLocationDropdown.value = false; }, 200);
+const toggleStatusFilter = (id) => {
+  if (filterStatus.value === id) {
+    filterStatus.value = '';
+  } else {
+    filterStatus.value = id;
+  }
 };
 
-const handleLocationInput = () => {
-  showLocationDropdown.value = true;
+const handleMachineBlur = () => {
+  setTimeout(() => { showMachineDropdown.value = false; }, 200);
 };
 
-const selectLocation = (loc) => {
-  locationSearch.value = loc;
-  selectedLocation.value = loc;
-  showLocationDropdown.value = false;
+const handleMachineInput = () => {
+  showMachineDropdown.value = true;
+  if (!machineSearch.value) {
+    selectedMachineId.value = '';
+  }
+};
+
+const selectMachine = (m) => {
+  machineSearch.value = m.name;
+  selectedMachineId.value = m.id;
+  showMachineDropdown.value = false;
+};
+
+const clearMachineFilter = () => {
+  machineSearch.value = '';
+  selectedMachineId.value = '';
+  showMachineDropdown.value = false;
+};
+
+const clearKotaFilter = () => {
+  filterKota.value = '';
+};
+
+const clearScheduleFilter = () => {
+  filterSchedule.value = '';
+};
+
+const clearStatusFilter = () => {
+  filterStatus.value = '';
 };
 
 // Maintenance alerts - show from H-1 (1 day before) and hide if maintenance already done
@@ -423,21 +650,16 @@ const maintenanceAlerts = computed(() => {
     dueDate.setHours(0, 0, 0, 0);
 
     const daysUntil = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-    // Only show alerts from H-1 up to end of same calendar month as due date
-    const dueMonth = dueDate.getMonth();
-    const dueYear  = dueDate.getFullYear();
-    const todayMonth = today.getMonth();
-    const todayYear  = today.getFullYear();
-    // Hide if due date is in a past month (already passed the month boundary)
-    if (dueYear < todayYear || (dueYear === todayYear && dueMonth < todayMonth)) return null;
-    // Hide if more than 1 day in the future (not yet H-1)
-    if (daysUntil > 1) return null;
+    // Only show alerts from H-5 up to today (hide overdue and far future schedules)
+    if (daysUntil < 0 || daysUntil > 5) return null;
 
     const machine = allowedMachines.value.find(m => m.id === notif.machine_id);
     if (!machine) return null;
 
-    // Period start for this schedule: start of the month of dueDate
-    const periodStart = new Date(dueYear, dueMonth, 1);
+    // Period start for this schedule: 5 days before due date or start of month, whichever is earlier
+    const periodStart = new Date(dueDate);
+    periodStart.setDate(dueDate.getDate() - 5);
+    if (periodStart < today) periodStart.setTime(today.getTime());
     periodStart.setHours(0, 0, 0, 0);
 
     // Calculate component check status within this period (periodStart..today)
@@ -480,17 +702,7 @@ const maintenanceAlerts = computed(() => {
       isPartiallyChecked,
       daysUntil
     };
-  }).filter(item => item !== null).sort((a, b) => {
-    const priority = (d) => {
-      if (d < 0)  return 0; // overdue
-      if (d === 0) return 1; // today
-      if (d === 1) return 2; // tomorrow
-      return 3;
-    };
-    const pa = priority(a.daysUntil), pb = priority(b.daysUntil);
-    if (pa !== pb) return pa - pb;
-    return a.daysUntil - b.daysUntil;
-  });
+  }).filter(item => item !== null).sort((a, b) => a.daysUntil - b.daysUntil);
 });
 
 const filtered = computed(() => {
@@ -506,13 +718,61 @@ const filtered = computed(() => {
     list = list.filter(m => m.location === selectedLocation.value);
   }
 
+  // Apply machine filter
+  if (selectedMachineId.value) {
+    list = list.filter(m => m.id === selectedMachineId.value);
+  }
+
+  // Apply status filter
+  if (filterStatus.value) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    
+    list = list.filter(machine => {
+      const schedule = getMachineSchedule(machine);
+      if (!schedule) return false;
+
+      const dueDate = new Date(schedule.next_due_date);
+      dueDate.setHours(0, 0, 0, 0);
+      const daysUntil = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+      // Completion logic
+      const periodStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), 1);
+      periodStart.setHours(0, 0, 0, 0);
+      const periodRecords = (machine.records || []).filter(r => {
+        if (r.status !== 'completed') return false;
+        const appStat = r.latest_approval?.decision ?? 'pending';
+        if (appStat === 'rejected') return false;
+        const recDate = new Date(r.maintenance_date); recDate.setHours(0,0,0,0);
+        return recDate >= periodStart && recDate <= today;
+      });
+      const checkedIds = new Set();
+      periodRecords.forEach(r => (r.actions || []).forEach(a => { if (a.machine_component_id) checkedIds.add(a.machine_component_id); }));
+      const total = machine.components ? machine.components.length : 0;
+      let count = 0;
+      if (machine.components) machine.components.forEach(c => { if (checkedIds.has(c.id)) count++; });
+
+      const isFullyChecked = total > 0 && count === total;
+      const isPartiallyChecked = count > 0 && count < total;
+
+      if (filterStatus.value === 'selesai') return isFullyChecked;
+      if (filterStatus.value === 'sebagian') return isPartiallyChecked;
+      
+      if (!isFullyChecked) {
+        if (filterStatus.value === 'expired') return daysUntil < 0;
+        if (filterStatus.value === 'bisa_dicek') return daysUntil >= 0 && daysUntil <= 5;
+        if (filterStatus.value === 'hari_ini') return daysUntil === 0;
+      }
+      return false;
+    });
+  }
+
   // Apply search filter
   if (search.value) {
     const q = search.value.toLowerCase();
-    list = list.filter(m => m.name.toLowerCase().includes(q) || (m.location ?? '').toLowerCase().includes(q));
+    list = list.filter(m => m.name.toLowerCase().includes(q) || (m.location ?? '').toLowerCase().includes(q) || (m.description ?? '').toLowerCase().includes(q));
   }
 
-  // Apply schedule filter
+  // Apply schedule filter (backward compatible)
   if (filterSchedule.value) {
     list = list.filter(m => {
       const schedule = getMachineSchedule(m);
@@ -540,7 +800,7 @@ const paginatedMachines = computed(() => {
   return filtered.value.slice(start, start + perPage.value);
 });
 
-watch([search, filterSchedule, sortBy, filterKota, selectedLocation, perPage], () => { currentPage.value = 1; });
+watch([search, filterSchedule, filterStatus, sortBy, filterKota, selectedLocation, selectedMachineId, machineSearch, perPage], () => { currentPage.value = 1; });
 
 const openCreate = () => { showCreate.value = true; };
 const onMachineSaved = async () => {

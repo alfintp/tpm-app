@@ -153,6 +153,7 @@ class ApprovalController extends Controller
                 'record_id'       => $record->id,
                 'machine_name'    => $record->machine?->name,
                 'machine_id'      => $record->machine?->id,
+                'machine_location'=> $record->machine?->location,
                 'machine_kota'    => $record->machine?->kota,
                 'technician_id'   => $record->technician_id,
                 'technician_name' => $record->technician?->full_name,
@@ -169,6 +170,7 @@ class ApprovalController extends Controller
                 'actions_count'   => $record->actions->count(),
                 'actions'         => $record->actions->map(fn($a) => [
                     'component_name'     => $a->component?->name,
+                    'component_spec'     => $a->component?->specification,
                     'component_difficulty' => $a->component?->difficulty,
                     'action_type'        => $a->action_type,
                     'condition_before'   => $a->condition_before_pct,
@@ -218,6 +220,7 @@ class ApprovalController extends Controller
             'record_id'       => $record->id,
             'machine_name'    => $record->machine?->name,
             'machine_id'      => $record->machine?->id,
+            'machine_location'=> $record->machine?->location,
             'machine_kota'    => $record->machine?->kota,
             'technician_id'   => $record->technician_id,
             'technician_name' => $record->technician?->full_name,
@@ -234,6 +237,7 @@ class ApprovalController extends Controller
             'actions_count'   => $record->actions->count(),
             'actions'         => $record->actions->map(fn($a) => [
                 'component_name'     => $a->component?->name,
+                'component_spec'     => $a->component?->specification,
                 'component_difficulty' => $a->component?->difficulty,
                 'action_type'        => $a->action_type,
                 'condition_before'   => $a->condition_before_pct,

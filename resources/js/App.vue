@@ -45,6 +45,15 @@
               </SidebarMenuItem>
 
               <SidebarMenuItem>
+                <SidebarMenuButton as-child :is-active="isUrl('/components')" tooltip="Components">
+                  <Link href="/components">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    <span>Components</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
                 <SidebarMenuButton as-child :is-active="isUrl('/report')" tooltip="Report">
                   <Link href="/report">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6 4h6"/></svg>
@@ -111,7 +120,7 @@
     <SidebarInset class="bg-slate-50 overflow-hidden flex flex-col h-svh">
       <div class="flex-1 overflow-y-auto relative">
         <!-- Floating sidebar toggle — visible only when sidebar is collapsed or on mobile -->
-        <div class="sticky top-0 z-60 flex items-center gap-2 px-3 py-2 pointer-events-none">
+        <div class="sticky top-0 z-40 flex items-center gap-2 px-3 py-2 pointer-events-none">
           <SidebarTrigger class="pointer-events-auto text-brand-brown hover:bg-brand-cream border border-sidebar-border shadow-md bg-white cursor-pointer" />
         </div>
         <div class="px-6 md:px-8 pb-8 -mt-2">

@@ -65,6 +65,7 @@
       <ReportComponentTable
         v-model:search="componentSearch"
         :components="filteredComponentsList"
+        :difficulty-filter="difficultyFilter"
         :presets="presets"
         :set-indicator="setIndicator"
         :apply-preset="applyPreset"

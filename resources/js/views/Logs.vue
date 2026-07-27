@@ -8,10 +8,11 @@
     />
 
     <!-- Search & Filter Controls -->
-    <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+    <div class="flex flex-col lg:flex-row gap-4 lg:items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
       <SearchInput
         v-model="search"
-        placeholder="Cari aktivitas, nama pengguna, detail"
+        placeholder="Cari aktivitas..."
+        wrapper-class="lg:max-w-xs"
       />
       <FilterTabs v-model="activeTypeFilter" :tabs="logTypes" />
     </div>

@@ -109,10 +109,9 @@ const getAlertTimeText = (dateStr) => {
   const d = new Date(dateStr); d.setHours(0,0,0,0);
   const t = new Date();        t.setHours(0,0,0,0);
   const days = Math.ceil((d - t) / (1000 * 60 * 60 * 24));
-  if (days < 0)  return `Telat ${Math.abs(days)} hari`;
   if (days === 0) return 'Hari ini';
-  if (days === 1) return 'Besok';
-  return `${days} hari lagi`;
+  if (days > 0)   return 'Bisa Dicek';
+  return `Telat ${Math.abs(days)} hari`;
 };
 
 const formatDate = (d) => {

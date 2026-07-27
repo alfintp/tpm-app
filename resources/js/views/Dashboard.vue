@@ -13,6 +13,7 @@
       <div class="p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div class="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
           <button
+            v-if="isApprover"
             @click="dashboardTab = 'reports'"
             :class="dashboardTab === 'reports' ? 'bg-white text-brand-gradation shadow-sm' : 'text-slate-500 hover:text-slate-700'"
             class="px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
@@ -78,12 +79,12 @@ const props = defineProps({
   notifications: { type: Array, default: () => [] },
 });
 
-const { user, hasBothCities } = useAuth();
+const { user, isApprover, hasBothCities } = useAuth();
 
 const machines      = ref(props.machines);
 const notifications = ref(props.notifications);
 const loading       = ref(false);
-const dashboardTab  = ref('reports');
+const dashboardTab  = ref(isApprover.value ? 'reports' : 'machines');
 const machineSearch = ref('');
 const machineSort   = ref('name');
 const machineKota   = ref('');
@@ -163,7 +164,9 @@ const maintenanceAlerts = computed(() => {
   return notifications.value.map(notif => {
     const dueDate = new Date(notif.next_due_date); dueDate.setHours(0,0,0,0);
     const daysUntil = Math.ceil((dueDate - today) / 86400000);
-    if (daysUntil < -1) return null;
+
+    // Only show alerts from H-5 up to today (hide overdue and far future schedules)
+    if (daysUntil < 0 || daysUntil > 5) return null;
 
     const machine = cityFilteredMachines.value.find(m => m.id === notif.machine_id);
     if (!machine) return null;
@@ -178,27 +181,7 @@ const maintenanceAlerts = computed(() => {
     const isFullyChecked  = totalComponents > 0 && checkedCount === totalComponents;
     const isPartiallyChecked = checkedCount > 0 && checkedCount < totalComponents;
 
-    const lastRecord = [...(machine.records || [])]
-      .filter(r => r.status === 'completed')
-      .sort((a, b) => new Date(b.maintenance_date) - new Date(a.maintenance_date))[0];
-
-    if (lastRecord) {
-      const lastDate = new Date(lastRecord.maintenance_date); lastDate.setHours(0,0,0,0);
-      const prevDue  = new Date(dueDate); prevDue.setDate(prevDue.getDate() - (notif.interval_days || 7));
-      if (lastDate >= prevDue && !isFullyChecked && !isPartiallyChecked && daysUntil !== 1) return null;
-    }
-
     return { ...notif, machine, totalComponents, checkedCount, uncheckedCount, isFullyChecked, isPartiallyChecked, daysUntil };
-  }).filter(Boolean).sort((a, b) => {
-    const priority = (d) => {
-      if (d < 0)   return 0;
-      if (d === 0) return 1;
-      if (d === 1) return 2;
-      return 3;
-    };
-    const pa = priority(a.daysUntil), pb = priority(b.daysUntil);
-    if (pa !== pb) return pa - pb;
-    return a.daysUntil - b.daysUntil;
-  });
+  }).filter(Boolean).sort((a, b) => a.daysUntil - b.daysUntil);
 });
 </script>

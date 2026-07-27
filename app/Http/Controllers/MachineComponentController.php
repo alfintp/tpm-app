@@ -18,6 +18,29 @@ class MachineComponentController extends Controller
         return response()->json($machine->components()->with('indicators')->orderBy('category')->orderBy('name')->get());
     }
 
+    public function allComponents(Request $request)
+    {
+        $query = MachineComponent::has('machine')->with(['machine', 'indicators']);
+
+        if ($request->has('difficulty') && $request->difficulty !== 'all') {
+            if ($request->difficulty === 'none') {
+                $query->whereNull('difficulty');
+            } else {
+                $query->where('difficulty', $request->difficulty);
+            }
+        }
+
+        if ($request->has('category') && $request->category !== 'all') {
+            if ($request->category === 'none') {
+                $query->whereNull('category')->orWhere('category', '');
+            } else {
+                $query->where('category', $request->category);
+            }
+        }
+
+        return response()->json($query->orderBy('name')->get());
+    }
+
     public function store(Request $request, $machineId)
     {
         $machine = Machine::findOrFail($machineId);

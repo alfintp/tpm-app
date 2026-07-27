@@ -9,6 +9,7 @@ import Approval from './views/Approval.vue';
 import Login from './views/Login.vue';
 import Users from './views/Users.vue';
 import Logs from './views/Logs.vue';
+import Components from './views/Components.vue';
 
 const routes = [
     { 
@@ -40,6 +41,12 @@ const routes = [
         path: '/machines', 
         component: Machines, 
         name: 'machines',
+        meta: { requiresAuth: true }
+    },
+    { 
+        path: '/components', 
+        component: Components, 
+        name: 'components',
         meta: { requiresAuth: true }
     },
     { 

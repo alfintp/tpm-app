@@ -8,7 +8,9 @@
         <div>
           <h3 class="text-xl font-bold text-slate-800">Detail Laporan</h3>
           <p class="text-slate-500 text-xs mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 leading-relaxed">
-            <span>Mesin: <span class="font-bold text-slate-700">{{ item?.machine_name }}</span></span> &bull;
+            <span>Mesin: <span class="font-bold text-slate-700">{{ item?.machine_name }}</span></span>
+            <span v-if="item?.machine_location" class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 uppercase text-[10px] font-bold">{{ item.machine_location }}</span>
+            &bull;
             <span>Teknisi: <span class="font-bold text-slate-700">{{ item?.technician_name }}</span></span> &bull;
             <span>Tanggal: <span class="font-bold text-slate-700">{{ formatDateTime(item?.created_at) }}</span></span> &bull;
             <span v-if="item?.is_unscheduled" class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">Luar Jadwal</span>
@@ -155,11 +157,16 @@
               class="hover:bg-slate-50/50 transition-colors align-top"
             >
               <td class="px-6 py-3.5">
-                <span class="text-sm font-semibold text-slate-800">{{ action.component_name }}</span>
-                <span
-                  class="ml-1.5 text-[9px] font-semibold px-1.5 py-0.5 rounded border uppercase tracking-wide"
-                  :class="difficultyClass(action.component_difficulty)"
-                >{{ difficultyLabel(action.component_difficulty) }}</span>
+                <div class="flex flex-col">
+                  <span class="text-sm font-semibold text-slate-800">{{ action.component_name }}</span>
+                  <span v-if="action.component_spec" class="text-[11px] text-slate-400 mt-0.5">{{ action.component_spec }}</span>
+                </div>
+                <div class="mt-1 flex items-center gap-1.5">
+                  <span
+                    class="text-[9px] font-semibold px-1.5 py-0.5 rounded border uppercase tracking-wide"
+                    :class="difficultyClass(action.component_difficulty)"
+                  >{{ difficultyLabel(action.component_difficulty) }}</span>
+                </div>
               </td>
               <td class="px-4 py-3.5">
                 <span :class="actionBadgeClass(action.action_type)" class="text-[10px] font-semibold px-2.5 py-0.5 rounded-full capitalize">
