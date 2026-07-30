@@ -39,4 +39,9 @@ class MaintenanceSchedule extends Model
     {
         return $this->belongsTo(Machine::class);
     }
+
+    public function occurrences()
+    {
+        return $this->hasMany(ScheduleOccurrence::class, 'schedule_id');
+    }
 }

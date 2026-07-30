@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="w-full max-w-5xl mx-auto space-y-6">
     <!-- Header -->
     <PageHeader
@@ -6,15 +6,24 @@
       :subtitle="isApproverUser ? 'Review dan approve laporan maintenance dari teknisi' : 'Status laporan maintenance yang sudah kamu kirimkan'"
     />
 
-    <!-- Admin Tabs -->
-    <div v-if="isAdmin" class="border-b border-slate-200">
+    <!-- Admin/Manager Tabs -->
+    <div v-if="isAdmin || currentUser?.is_manager" class="border-b border-slate-200">
       <nav class="flex gap-6 -mb-px">
         <button
           @click="currentTab = 'list'"
           :class="currentTab === 'list' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
           class="pb-3 border-b-2 text-sm font-semibold transition-all cursor-pointer bg-transparent border-0"
         >
-          Daftar Approval
+          Approval Laporan
+        </button>
+        <button
+          v-if="isAdmin || currentUser?.is_manager"
+          @click="currentTab = 'unlock'"
+          :class="currentTab === 'unlock' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+          class="pb-3 border-b-2 text-sm font-semibold transition-all cursor-pointer bg-transparent border-0"
+        >
+          Approval Kunci Mesin
+          <span v-if="pendingUnlockCount > 0" class="ml-2 px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded-full">{{ pendingUnlockCount }}</span>
         </button>
         <button
           @click="currentTab = 'flow'"
@@ -73,6 +82,15 @@
       @update-role-display-name="({ role, value }) => role.display_name = value"
       @toggle-can-approve="({ role, value }) => role.can_approve = value"
       @toggle-can-report="({ role, value }) => role.can_report = value"
+    />
+
+    <ApprovalUnlockPanel
+      v-else-if="currentTab === 'unlock'"
+      :items="unlockRequests"
+      :loading="loadingUnlock"
+      :format-date-time="formatDateTime"
+      @refresh="loadUnlockRequests"
+      @go-to-machine="goToMachine"
     />
 
     <ApprovalListPanel
@@ -152,11 +170,14 @@ import ApprovalNotesModal from '../components/ApprovalNotesModal.vue';
 import ApprovalListPanel from '../components/ApprovalListPanel.vue';
 import ApprovalFlowPanel from '../components/ApprovalFlowPanel.vue';
 import ApprovalRolesPanel from '../components/ApprovalRolesPanel.vue';
+import ApprovalUnlockPanel from '../components/ApprovalUnlockPanel.vue';
 import { showAlert, showConfirm } from '../composables/useAlert.js';
 
 const loading = ref(true);
 const deciding = ref(false);
 const items = ref([]);
+const unlockRequests = ref([]);
+const loadingUnlock = ref(false);
 const activeFilter = ref('all');
 const searchQuery = ref('');
 const sortOrder = ref('newest');
@@ -245,8 +266,26 @@ const loadData = async () => {
   }
 };
 
+const loadUnlockRequests = async () => {
+  if (!isAdmin.value && !currentUser.value?.is_manager) return;
+  loadingUnlock.value = true;
+  try {
+    const res = await axios.get('/api/machines/unlock-history');
+    unlockRequests.value = Array.isArray(res.data) ? res.data : [];
+  } catch (e) {
+    console.error('Failed to load unlock requests:', e);
+  } finally {
+    loadingUnlock.value = false;
+  }
+};
+
+const pendingUnlockCount = computed(() => unlockRequests.value.filter(r => r.unlock_status === 'pending').length);
+
 onMounted(() => {
-  if (authReady.value) loadData();
+  if (authReady.value) {
+    loadData();
+    loadUnlockRequests();
+  }
 });
 
 watch(authReady, (ready) => {
@@ -319,20 +358,23 @@ const openDecide = (item, decision) => {
 };
 
 const submitDecision = async (notes) => {
-  deciding.value = true;
-  try {
-    await axios.post(`/api/approvals/${decideModal.value.item.record_id}/decide`, {
-      decision: decideModal.value.decision,
-      notes: notes || null,
-    });
-    decideModal.value.show = false;
-    detailModal.value.show = false;
-    await loadData();
-  } catch (e) {
-    showAlert('error', 'Gagal Memproses', e.response?.data?.message || e.message);
-  } finally {
-    deciding.value = false;
-  }
+    deciding.value = true;
+    try {
+      await axios.post(`/api/approvals/${decideModal.value.item.record_id}/decide`, {
+        decision: decideModal.value.decision,
+        notes: notes || null,
+      });
+      // Show success notification based on decision
+      const decisionText = decideModal.value.decision === 'approved' ? 'disetujui' : 'ditolak';
+      showAlert('success', 'Berhasil', `Laporan berhasil ${decisionText}.`);
+      decideModal.value.show = false;
+      detailModal.value.show = false;
+      await loadData();
+    } catch (e) {
+      showAlert('error', 'Gagal Memproses', e.response?.data?.message || e.message);
+    } finally {
+      deciding.value = false;
+    }
 };
 
 const canDecide = (item) => {

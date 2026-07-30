@@ -82,6 +82,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { getCurrentPeriod } from '../composables/useSchedulePeriods.js';
 
 const props = defineProps({
   loading: { type: Boolean, default: false },
@@ -148,11 +149,10 @@ const scheduleStatus = (m) => {
   });
   if (partialThisMonth) return { label: 'Belum dicek', badgeClass: 'bg-red-100 text-red-700', rowClass: 'bg-red-50/30' };
 
-  const schedules = (m.schedules ?? []).filter(s => s.is_active !== false && s.next_due_date);
-  if (!schedules.length) return { label: null, badgeClass: '', rowClass: '' };
+  const period = getCurrentPeriod(m.schedules ?? []);
+  if (!period) return { label: null, badgeClass: '', rowClass: '' };
 
-  const nextDue = new Date(schedules[0].next_due_date); nextDue.setHours(0,0,0,0);
-  const diffDays = Math.ceil((nextDue - today) / 86400000);
+  const diffDays = period.diffDays;
 
   if (diffDays < 0) return { label: `Terlambat ${Math.abs(diffDays)}h`, badgeClass: 'bg-red-100 text-red-700', rowClass: 'bg-red-50/30' };
   if (diffDays === 0) return { label: 'Hari ini', badgeClass: 'bg-emerald-100 text-emerald-700', rowClass: 'bg-emerald-50/20' };

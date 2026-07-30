@@ -21,13 +21,13 @@
     </div>
 
     <div class="overflow-x-auto">
-      <table class="w-full min-w-0 sm:w-auto text-sm">
+      <table class="w-full text-sm table-fixed sm:table-auto">
         <thead>
           <tr class="bg-slate-50 border-b border-slate-100">
-            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Komponen</th>
-            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Deskripsi</th>
-            <th class="py-3 px-1 text-center text-xs font-bold text-slate-500 uppercase tracking-wide sm:hidden" style="width:100px">Status</th>
-            <th class="py-3 px-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell w-40">Status</th>
+            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wide w-full sm:w-[45%]">Komponen</th>
+            <th class="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell w-[35%]">Deskripsi</th>
+            <th class="py-3 px-1 text-center text-xs font-bold text-slate-500 uppercase tracking-wide sm:hidden w-25">Status</th>
+            <th class="py-3 px-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell w-[20%]">Status</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
@@ -96,7 +96,7 @@
                     @click="comp.is_component_replacement = !comp.is_component_replacement"
                     :disabled="comp.isLocked"
                     :class="comp.is_component_replacement ? 'bg-amber-500 border-amber-400 text-white' : 'bg-white border-amber-200 text-slate-500 hover:border-amber-500'"
-                    class="hidden sm:flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer"
+                    class="hidden sm:flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     {{ comp.is_component_replacement ? 'Diganti' : 'Ganti?' }}
@@ -105,7 +105,7 @@
                     @click="comp.is_component_replacement = !comp.is_component_replacement"
                     :disabled="comp.isLocked"
                     :class="comp.is_component_replacement ? 'bg-amber-500 border-amber-400 text-white' : 'bg-white border-amber-200 text-slate-500'"
-                    class="sm:hidden flex items-center gap-1 px-2 py-2 rounded border text-[10px] font-semibold transition-all cursor-pointer"
+                    class="sm:hidden flex items-center gap-1 px-2 py-2 rounded border text-[10px] font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     {{ comp.is_component_replacement ? 'Diganti' : 'Ganti?' }}
@@ -114,7 +114,7 @@
                     @click="comp.showNote = !comp.showNote"
                     :disabled="comp.isLocked"
                     :class="comp.showNote || comp.description ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'"
-                    class="hidden sm:flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer"
+                    class="hidden sm:flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
                     Catatan
@@ -123,7 +123,7 @@
                     @click="comp.showNote = !comp.showNote"
                     :disabled="comp.isLocked"
                     :class="comp.showNote || comp.description ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500'"
-                    class="sm:hidden flex items-center gap-1 px-2 py-2 rounded border text-[10px] font-semibold transition-all cursor-pointer"
+                    class="sm:hidden flex items-center gap-1 px-2 py-2 rounded border text-[10px] font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
                     Catatan
@@ -159,19 +159,19 @@
                 <td class="px-4 py-2.5 hidden sm:table-cell">
                   <span class="text-xs text-slate-500 leading-relaxed">{{ ind.description || '-' }}</span>
                 </td>
-                <td class="py-2 pl-1 pr-2 text-center sm:hidden" style="width:100px">
+                <td class="py-2 pl-1 pr-2 text-center sm:hidden w-25">
                   <div class="flex flex-col items-center justify-center gap-1.5">
                     <button
                       @click="setIndicator(comp, ind.id, true)"
                       :disabled="comp.isLocked"
                       :class="comp.indicatorValues[ind.id] === true ? 'bg-emerald-500 text-white border-emerald-400 shadow-sm' : 'bg-white text-slate-500 border-emerald-200'"
-                      class="w-14 py-4 rounded border text-[10px] font-bold transition-all cursor-pointer text-center"
+                      class="w-14 py-4 rounded border text-[10px] font-bold transition-all cursor-pointer text-center disabled:cursor-not-allowed disabled:opacity-60"
                     >OK</button>
                     <button
                       @click="setIndicator(comp, ind.id, false)"
                       :disabled="comp.isLocked"
                       :class="comp.indicatorValues[ind.id] === false ? 'bg-red-500 text-white border-red-400 shadow-sm' : 'bg-white text-slate-500 border-red-200'"
-                      class="w-14 py-4 rounded border text-[10px] font-bold transition-all cursor-pointer text-center"
+                      class="w-14 py-4 rounded border text-[10px] font-bold transition-all cursor-pointer text-center disabled:cursor-not-allowed disabled:opacity-60"
                     >Not OK</button>
                     <span v-if="comp.indicatorValues[ind.id] === null && comp.hasError" class="text-[10px] text-red-500 font-semibold">!</span>
                   </div>
@@ -182,13 +182,13 @@
                       @click="setIndicator(comp, ind.id, true)"
                       :disabled="comp.isLocked"
                       :class="comp.indicatorValues[ind.id] === true ? 'bg-emerald-500 text-white border-emerald-400 shadow-sm' : 'bg-white text-slate-500 border-emerald-200 hover:border-emerald-300 hover:text-emerald-600'"
-                      class="px-4 py-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer"
+                      class="px-4 py-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                     >OK</button>
                     <button
                       @click="setIndicator(comp, ind.id, false)"
                       :disabled="comp.isLocked"
                       :class="comp.indicatorValues[ind.id] === false ? 'bg-red-500 text-white border-red-400 shadow-sm' : 'bg-white text-slate-500 border-red-200 hover:border-red-300 hover:text-red-500'"
-                      class="px-4 py-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer"
+                      class="px-4 py-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                     >Not OK</button>
                     <span v-if="comp.indicatorValues[ind.id] === null && comp.hasError" class="text-[10px] text-red-500 font-semibold">!</span>
                   </div>
@@ -205,28 +205,28 @@
                   <input type="range" min="0" max="100" step="5" v-model.number="comp.conditionPct"
                     :disabled="comp.isLocked"
                     @input="comp.inProgress = true"
-                    class="flex-1 h-1.5 accent-brand-brown cursor-pointer"/>
+                    class="flex-1 h-1.5 accent-brand-brown cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"/>
                   <div class="flex items-center gap-1">
                     <input type="number" min="0" max="100" step="1" v-model.number="comp.conditionPct"
                       :disabled="comp.isLocked"
                       @input="comp.inProgress = true"
-                      class="w-14 text-right text-xs font-black font-mono border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-brown" :class="condClass(comp.conditionPct)"/>
+                      class="w-14 text-right text-xs font-black font-mono border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-brown disabled:cursor-not-allowed disabled:opacity-60" :class="condClass(comp.conditionPct)"/>
                     <span class="text-xs font-black font-mono text-slate-400">%</span>
                   </div>
                 </div>
                 <div class="flex gap-1.5 mt-2">
                   <button v-for="p in presets" :key="p.val" @click="applyPreset(comp, p.val)" :disabled="comp.isLocked"
                     :class="comp.conditionPct === p.val ? 'bg-brand-brown text-white border-brand-brown' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'"
-                    class="px-2 py-0.5 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors"
+                    class="px-2 py-0.5 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                   >{{ p.label }}</button>
                 </div>
               </td>
-              <td class="py-2 pl-1 pr-2 text-center sm:hidden" style="width:100px">
+              <td class="py-2 pl-1 pr-2 text-center sm:hidden w-25">
                 <div class="flex items-center justify-center gap-1">
                   <input type="number" min="0" max="100" step="5" v-model.number="comp.conditionPct"
                     :disabled="comp.isLocked"
                     @input="comp.inProgress = true"
-                    class="w-12 text-center text-xs font-bold border border-slate-200 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-brand-brown" :class="condClass(comp.conditionPct)"/>
+                    class="w-12 text-center text-xs font-bold border border-slate-200 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-brand-brown disabled:cursor-not-allowed disabled:opacity-60" :class="condClass(comp.conditionPct)"/>
                   <span class="text-[10px] text-slate-400">%</span>
                 </div>
               </td>

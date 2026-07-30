@@ -64,7 +64,7 @@
                 </p>
               </div>
               <span :class="badgeClass(alert)" class="text-xs font-semibold bg-white px-3 py-1 rounded-full border border-current shrink-0">
-                {{ alert.isFullyChecked ? 'Selesai' : timeText(alert.next_due_date) }}
+                {{ alert.isFullyChecked ? 'Selesai' : timeText(alert) }}
               </span>
             </div>
 
@@ -153,13 +153,12 @@ const badgeClass = (a) => {
   return 'text-amber-600';
 };
 
-const timeText = (dateStr) => {
-  const d = new Date(dateStr); d.setHours(0,0,0,0);
-  const t = new Date();        t.setHours(0,0,0,0);
-  const days = Math.ceil((d - t) / 86400000);
+const timeText = (alert) => {
+  const days = alert.daysUntil;
   if (days === 0) return 'Hari Ini';
-  if (days > 0)   return 'Bisa Dicek';
-  return `${Math.abs(days)} Hari Lalu`;
+  if (days > 0 && days <= (alert.daysBeforeSetting ?? 2)) return `H-${days} · Sudah bisa dicek`;
+  if (days > 0)   return `${days} hari lagi`;
+  return `Telat ${Math.abs(days)} hari`;
 };
 
 const formatDate = (d) =>

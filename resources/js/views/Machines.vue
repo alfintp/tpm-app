@@ -36,6 +36,14 @@
             Kalender
           </Button>
           <Button
+            v-if="isAdmin"
+            @click="showMaintenanceWindowModal = true"
+            class="inline-flex flex-row items-center bg-slate-700 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm px-4 py-2 whitespace-nowrap gap-2 hover:cursor-pointer min-w-fit"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Periode Laporan
+          </Button>
+          <Button
             v-if="isManagerOrAdmin"
             @click="openCreate"
             class="inline-flex flex-row items-center bg-linear-to-tr from-brand-brown to-brand-gradation text-white hover:opacity-90 rounded-xl font-semibold text-sm px-4 py-2 whitespace-nowrap gap-2 shadow-md hover:cursor-pointer min-w-fit"
@@ -91,7 +99,7 @@
       />
       
       <div class="relative group">
-        <select v-model="filterStatus" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white min-w-[140px]">
+        <select v-model="filterStatus" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white min-w-35">
           <option value="">Semua Status</option>
           <option value="selesai">Selesai Dicek</option>
           <option value="sebagian">Dicek Sebagian</option>
@@ -113,8 +121,8 @@
         </div>
       </div>
 
-      <div class="relative group" v-if="hasBothCities">
-        <select v-model="filterKota" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white min-w-[120px]">
+      <div class="relative group" v-if="isManagerOrAdmin || hasBothCities">
+        <select v-model="filterKota" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white min-w-30">
           <option value="">Semua Kota</option>
           <option value="pasuruan">Pasuruan</option>
           <option value="sby">Surabaya</option>
@@ -202,7 +210,7 @@
       </div>
 
       <div class="relative group">
-        <select v-model="filterSchedule" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white min-w-[120px]">
+        <select v-model="filterSchedule" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white min-w-30">
           <option value="">Semua Jadwal</option>
           <option value="overdue">Telat / Overdue</option>
           <option value="today">Hari Ini</option>
@@ -297,7 +305,15 @@
 
       <!-- Kolom: Komponen -->
       <template #cell-components_count="{ row }">
-        <span class="text-sm text-slate-600">{{ row.components?.length ?? 0 }}</span>
+        <div class="flex flex-col items-center gap-1">
+          <span class="text-sm text-slate-600" v-if="!getMachineProgress(row).isPartiallyChecked">{{ row.components?.length ?? 0 }}</span>
+          <div v-if="getMachineProgress(row).isPartiallyChecked" 
+               class="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-black border border-amber-300 shadow-sm animate-pulse"
+               title="Progres Pengecekan (Sebagian)">
+            <Clock class="w-3.5 h-3.5" />
+            {{ getMachineProgress(row).count }} / {{ getMachineProgress(row).total }}
+          </div>
+        </div>
       </template>
 
       <!-- Slot Actions: Hapus -->
@@ -338,6 +354,13 @@
       @close="showCalendarModal = false"
       @go-to-machine="goToMachine"
     />
+
+    <!-- Maintenance Window Settings Modal (admin only) -->
+    <MaintenanceWindowSettingsModal
+      :show="showMaintenanceWindowModal"
+      @close="showMaintenanceWindowModal = false"
+      @saved="onSettingsSaved"
+    />
   </div>
 </template>
 
@@ -356,6 +379,8 @@ import MaintenanceAlerts from '../components/MaintenanceAlerts.vue';
 import MachineImportModal from '../components/MachineImportModal.vue';
 import IndicatorImportModal from '../components/IndicatorImportModal.vue';
 import MachineCalendarModal from '../components/MachineCalendarModal.vue';
+import MaintenanceWindowSettingsModal from '../components/MaintenanceWindowSettingsModal.vue';
+import { getCurrentPeriod } from '../composables/useSchedulePeriods.js';
 import { 
   CheckCircle2, 
   Clock, 
@@ -411,6 +436,8 @@ const filterStatus = ref('');
 const showCreate = ref(false);
 const currentPage = ref(1);
 const perPage = ref(10);
+const alertDaysBefore = ref(7);
+const daysBeforeSetting = ref(2);
 
 const allowedMachines = computed(() => {
   let list = machines.value;
@@ -418,6 +445,37 @@ const allowedMachines = computed(() => {
   if (city && city !== 'both') {
     list = list.filter(m => m.kota === city);
   }
+  return list;
+});
+
+const filteredBase = computed(() => {
+  let list = allowedMachines.value;
+
+  // Apply kota filter (manager/admin only)
+  if (filterKota.value) {
+    list = list.filter(m => m.kota === filterKota.value);
+  }
+
+  // Apply location filter
+  if (selectedLocation.value) {
+    list = list.filter(m => m.location === selectedLocation.value);
+  }
+
+  // Apply machine filter
+  if (selectedMachineId.value) {
+    list = list.filter(m => m.id === selectedMachineId.value);
+  }
+
+  // Apply search filter
+  if (search.value) {
+    const q = search.value.toLowerCase();
+    list = list.filter(m =>
+      m.name.toLowerCase().includes(q) ||
+      (m.location ?? '').toLowerCase().includes(q) ||
+      (m.description ?? '').toLowerCase().includes(q)
+    );
+  }
+
   return list;
 });
 
@@ -434,17 +492,21 @@ const showImportModal = ref(false);
 const importing = ref(false);
 const showIndicatorImportModal = ref(false);
 const showCalendarModal = ref(false);
+const showMaintenanceWindowModal = ref(false);
 
 const loadData = async () => {
   try {
-    const [machinesRes, schedulesRes, notifRes] = await Promise.all([
+    const [machinesRes, schedulesRes, notifRes, settingsRes] = await Promise.all([
       axios.get('/api/machines'),
       axios.get('/api/schedules'),
-      axios.get('/api/schedules/notifications')
+      axios.get('/api/schedules/notifications'),
+      axios.get('/api/settings/maintenance-window')
     ]);
     machines.value = machinesRes.data;
     schedules.value = schedulesRes.data;
     notifications.value = notifRes.data;
+    alertDaysBefore.value = settingsRes.data.alert_days_before ?? 7;
+    daysBeforeSetting.value = settingsRes.data.days_before ?? 2;
   } catch (e) {
     console.error(e);
   } finally {
@@ -477,7 +539,13 @@ const getMachineSchedule = (machine) => {
   const active = machine.schedules
     .filter(s => s.is_active !== false)
     .sort((a, b) => new Date(a.next_due_date) - new Date(b.next_due_date));
-  return active.length > 0 ? active[0] : null;
+  if (active.length === 0) return null;
+
+  // Override next_due_date with the canonical current-period due date (same source
+  // as MachineDetail page) so all schedule displays/filters/stats stay consistent —
+  // the raw column can be from next month already for 1x/2x-per-month schedules.
+  const period = getCurrentPeriod(machine.schedules ?? []);
+  return period ? { ...active[0], next_due_date: period.due } : active[0];
 };
 
 const urgencyClass = (dateStr) => {
@@ -499,6 +567,49 @@ const formatDate = (d) => {
   return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+const getMachineProgress = (machine) => {
+  const total = machine.components ? machine.components.length : 0;
+  if (total === 0) return { count: 0, total: 0, isPartiallyChecked: false };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const schedule = getMachineSchedule(machine);
+  
+  if (!schedule) {
+    return { count: 0, total, isPartiallyChecked: false };
+  }
+
+  const dueDate = new Date(schedule.next_due_date);
+  dueDate.setHours(0, 0, 0, 0);
+
+  const periodStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), 1);
+  periodStart.setHours(0, 0, 0, 0);
+
+  const periodRecords = (machine.records || []).filter(r => {
+    if (r.status !== 'completed') return false;
+    const approvalStatus = r.latest_approval?.decision ?? 'pending';
+    if (approvalStatus === 'rejected') return false;
+    const recDate = new Date(r.maintenance_date); 
+    recDate.setHours(0, 0, 0, 0);
+    return recDate >= periodStart && recDate <= today;
+  });
+
+  const checkedComponentIds = new Set();
+  periodRecords.forEach(r => {
+    (r.actions || []).forEach(a => {
+      if (a.machine_component_id) checkedComponentIds.add(a.machine_component_id);
+    });
+  });
+
+  let count = 0;
+  machine.components.forEach(c => {
+    if (checkedComponentIds.has(c.id)) count++;
+  });
+
+  const isPartiallyChecked = count > 0 && count < total;
+  return { count, total, isPartiallyChecked };
+};
+
 const stats = computed(() => {
   const m = allowedMachines.value;
   const machineSchedules = m.map(machine => getMachineSchedule(machine)).filter(s => s !== null);
@@ -509,8 +620,32 @@ const stats = computed(() => {
   ];
 });
 
+const uniqueLocations = computed(() => {
+  const locations = new Set();
+  let list = allowedMachines.value;
+  if (filterKota.value) {
+    list = list.filter(m => m.kota === filterKota.value);
+  }
+  list.forEach(m => {
+    if (m.location) locations.add(m.location);
+  });
+  return Array.from(locations).sort();
+});
+
+const filteredLocations = computed(() => {
+  if (!locationSearch.value) return uniqueLocations.value;
+  const q = locationSearch.value.toLowerCase();
+  return uniqueLocations.value.filter(loc => loc.toLowerCase().includes(q));
+});
+
 const uniqueMachines = computed(() => {
-  const list = allowedMachines.value;
+  let list = allowedMachines.value;
+  if (filterKota.value) {
+    list = list.filter(m => m.kota === filterKota.value);
+  }
+  if (selectedLocation.value) {
+    list = list.filter(m => m.location === selectedLocation.value);
+  }
   return [...list].sort((a, b) => a.name.localeCompare(b.name));
 });
 
@@ -532,7 +667,7 @@ const machineStatusStats = computed(() => {
     hari_ini: 0
   };
 
-  allowedMachines.value.forEach(machine => {
+  filteredBase.value.forEach(machine => {
     const schedule = getMachineSchedule(machine);
     if (!schedule) return;
 
@@ -597,6 +732,29 @@ const toggleStatusFilter = (id) => {
   }
 };
 
+const handleLocationBlur = () => {
+  setTimeout(() => { showLocationDropdown.value = false; }, 200);
+};
+
+const handleLocationInput = () => {
+  showLocationDropdown.value = true;
+  if (!locationSearch.value) {
+    selectedLocation.value = '';
+  }
+};
+
+const selectLocation = (loc) => {
+  locationSearch.value = loc;
+  selectedLocation.value = loc;
+  showLocationDropdown.value = false;
+};
+
+const clearLocationFilter = () => {
+  locationSearch.value = '';
+  selectedLocation.value = '';
+  showLocationDropdown.value = false;
+};
+
 const handleMachineBlur = () => {
   setTimeout(() => { showMachineDropdown.value = false; }, 200);
 };
@@ -646,15 +804,18 @@ const maintenanceAlerts = computed(() => {
   };
 
   return notifications.value.map(notif => {
-    const dueDate = new Date(notif.next_due_date);
-    dueDate.setHours(0, 0, 0, 0);
-
-    const daysUntil = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-    // Only show alerts from H-5 up to today (hide overdue and far future schedules)
-    if (daysUntil < 0 || daysUntil > 5) return null;
-
     const machine = allowedMachines.value.find(m => m.id === notif.machine_id);
     if (!machine) return null;
+
+    // Use the canonical current-period due date (same source as MachineDetail page)
+    // instead of the raw schedule's next_due_date, which may have already advanced
+    // past the period actually being tracked for schedules that occur 1x/2x a month.
+    const period = getCurrentPeriod(machine.schedules ?? []);
+    const dueDate = period ? period.due : (() => { const d = new Date(notif.next_due_date); d.setHours(0, 0, 0, 0); return d; })();
+
+    const daysUntil = period ? period.diffDays : Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+    // Alert window: H-[alertDaysBefore] up to H (today). Overdue and far-future schedules are hidden here.
+    if (daysUntil < 0 || daysUntil > alertDaysBefore.value) return null;
 
     // Period start for this schedule: 5 days before due date or start of month, whichever is earlier
     const periodStart = new Date(dueDate);
@@ -694,34 +855,23 @@ const maintenanceAlerts = computed(() => {
 
     return {
       ...notif,
+      next_due_date: dueDate,
       machine,
       totalComponents,
       checkedCount,
       uncheckedCount,
       isFullyChecked,
       isPartiallyChecked,
-      daysUntil
+      daysUntil,
+      daysBeforeSetting: daysBeforeSetting.value
     };
-  }).filter(item => item !== null).sort((a, b) => a.daysUntil - b.daysUntil);
+  }).filter(item => item !== null)
+    .sort((a, b) => a.daysUntil - b.daysUntil)
+    .filter((item, index, self) => self.findIndex(i => i.machine_id === item.machine_id) === index);
 });
 
 const filtered = computed(() => {
-  let list = allowedMachines.value;
-
-  // Apply kota filter (manager/admin only)
-  if (filterKota.value) {
-    list = list.filter(m => m.kota === filterKota.value);
-  }
-
-  // Apply location filter
-  if (selectedLocation.value) {
-    list = list.filter(m => m.location === selectedLocation.value);
-  }
-
-  // Apply machine filter
-  if (selectedMachineId.value) {
-    list = list.filter(m => m.id === selectedMachineId.value);
-  }
+  let list = filteredBase.value;
 
   // Apply status filter
   if (filterStatus.value) {
@@ -766,12 +916,6 @@ const filtered = computed(() => {
     });
   }
 
-  // Apply search filter
-  if (search.value) {
-    const q = search.value.toLowerCase();
-    list = list.filter(m => m.name.toLowerCase().includes(q) || (m.location ?? '').toLowerCase().includes(q) || (m.description ?? '').toLowerCase().includes(q));
-  }
-
   // Apply schedule filter (backward compatible)
   if (filterSchedule.value) {
     list = list.filter(m => {
@@ -800,6 +944,15 @@ const paginatedMachines = computed(() => {
   return filtered.value.slice(start, start + perPage.value);
 });
 
+watch(filterKota, () => {
+  clearLocationFilter();
+  clearMachineFilter();
+});
+
+watch(selectedLocation, () => {
+  clearMachineFilter();
+});
+
 watch([search, filterSchedule, filterStatus, sortBy, filterKota, selectedLocation, selectedMachineId, machineSearch, perPage], () => { currentPage.value = 1; });
 
 const openCreate = () => { showCreate.value = true; };
@@ -807,6 +960,11 @@ const onMachineSaved = async () => {
   showCreate.value = false;
   await loadData();
   showAlert('success', 'Berhasil!', 'Mesin baru berhasil ditambahkan.');
+};
+
+const onSettingsSaved = (newSettings) => {
+  alertDaysBefore.value = newSettings.alert_days_before ?? 7;
+  daysBeforeSetting.value = newSettings.days_before ?? 2;
 };
 
 const deleteMachine = async (machine, event) => {
@@ -1157,96 +1315,6 @@ const formatDateISO = (val) => {
     return dateObj.toISOString().split('T')[0];
   }
   return val.toString();
-};
-
-const getMachinesForDate = (date) => {
-  const machinesForDate = [];
-  
-  const targetDate = new Date(date);
-  targetDate.setHours(0, 0, 0, 0);
-  const targetTime = targetDate.getTime();
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayTime = today.getTime();
-  
-  allowedMachines.value.forEach(machine => {
-    // 1. Check if there is a completed/submitted maintenance record on this date
-    const hasRecord = (machine.records ?? []).some(record => {
-      const recDate = new Date(record.maintenance_date);
-      recDate.setHours(0, 0, 0, 0);
-      return recDate.getTime() === targetTime;
-    });
-    
-    if (hasRecord) {
-      machinesForDate.push({
-        id: machine.id,
-        name: machine.name,
-        status: 'completed',
-        label: 'Selesai'
-      });
-      return; // Skip further checks for this machine on this date
-    }
-    
-    // 2. Check schedules and project future dates based on interval_days
-    (machine.schedules ?? []).forEach(sched => {
-      if (sched.is_active === false) return;
-      
-      const baseDueDate = new Date(sched.next_due_date);
-      baseDueDate.setHours(0, 0, 0, 0);
-      
-      // Generate a sequence of actual scheduled dates (up to 60 days ahead)
-      const projectedTimes = [];
-      let currentProjDate = new Date(baseDueDate);
-      
-      for (let k = 0; k < 20; k++) {
-        const projTime = currentProjDate.getTime();
-        projectedTimes.push({
-          time: projTime,
-          isOriginal: k === 0
-        });
-        
-        // Advance by interval days
-        const nextDate = new Date(currentProjDate);
-        nextDate.setDate(currentProjDate.getDate() + sched.interval_days);
-        
-        // Rule: If nextDate falls on a Sunday (getDay() === 0), shift to Monday (add 1 day)
-        if (nextDate.getDay() === 0) {
-          nextDate.setDate(nextDate.getDate() + 1);
-        }
-        
-        currentProjDate = nextDate;
-        
-        // Stop generating if we exceed 60 days to prevent infinite loops
-        const diffDays = Math.round((currentProjDate - baseDueDate) / (1000 * 60 * 60 * 24));
-        if (diffDays > 60) break;
-      }
-      
-      // Check if targetTime matches any of the projected times
-      const match = projectedTimes.find(p => p.time === targetTime);
-      if (match) {
-        if (match.isOriginal) {
-          const isPast = targetTime < todayTime;
-          machinesForDate.push({
-            id: machine.id,
-            name: machine.name,
-            status: isPast ? 'overdue' : 'pending',
-            label: isPast ? 'Terlambat' : 'Jadwal'
-          });
-        } else {
-          machinesForDate.push({
-            id: machine.id,
-            name: machine.name,
-            status: 'pending',
-            label: 'Proyeksi'
-          });
-        }
-      }
-    });
-  });
-  
-  // Sort by name
-  return machinesForDate.sort((a, b) => a.name.localeCompare(b.name));
 };
 
 </script>

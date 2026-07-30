@@ -22,84 +22,28 @@ Route::get('/login', function () {
 
 // Halaman Dashboard menggunakan Inertia
 Route::get('/', function () {
-    $tomorrow = \Carbon\Carbon::tomorrow();
-
-    $machines = \App\Models\Machine::with([
-        'schedules',
-        'components',
-        'picMesin',
-        'records.actions',
-        'records.technician',
-        'records.approvals.approver',
-        'records.latestApproval',
-    ])->get();
-    $schedules = \App\Models\MaintenanceSchedule::with('machine')->get();
-    $notifications = \App\Models\MaintenanceSchedule::with('machine')
-        ->where('is_active', true)
-        ->where('next_due_date', '<=', $tomorrow)
-        ->get();
-
-    return Inertia::render('Dashboard', [
-        'machines' => $machines,
-        'schedules' => $schedules,
-        'notifications' => $notifications
-    ]);
+    return Inertia::render('Dashboard');
 });
 
-// Halaman Logs menggunakan Inertia dengan data logs langsung dikirim sebagai props
+// Halaman Logs menggunakan Inertia
 Route::get('/logs', function () {
-    $logs = ActivityLog::with(['user'])
-        ->orderBy('created_at', 'desc')
-        ->get();
-
-    return Inertia::render('Logs', [
-        'logs' => $logs
-    ]);
+    return Inertia::render('Logs');
 });
 
-// Halaman Users menggunakan Inertia dengan data users langsung dikirim sebagai props
+// Halaman Users menggunakan Inertia
 Route::get('/users', function () {
-    $users = \App\Models\User::orderBy('full_name')->get();
-
-    return Inertia::render('Users', [
-        'users' => $users
-    ]);
+    return Inertia::render('Users');
 });
 
-// Halaman Machines menggunakan Inertia dengan data langsung dikirim sebagai props
+// Halaman Machines menggunakan Inertia
 Route::get('/machines', function () {
-    $tomorrow = \Carbon\Carbon::tomorrow();
-
-    $machines = \App\Models\Machine::with(['schedules', 'components', 'picMesin', 'records.actions'])->get();
-    $schedules = \App\Models\MaintenanceSchedule::with('machine')->get();
-    $notifications = \App\Models\MaintenanceSchedule::with('machine')
-        ->where('is_active', true)
-        ->where('next_due_date', '<=', $tomorrow)
-        ->get();
-
-    return Inertia::render('Machines', [
-        'machines' => $machines,
-        'schedules' => $schedules,
-        'notifications' => $notifications
-    ]);
+    return Inertia::render('Machines');
 });
 
-// Halaman Machine Detail menggunakan Inertia dengan data mesin dikirim sebagai props
+// Halaman Machine Detail menggunakan Inertia
 Route::get('/machine/{id}', function ($id) {
-    $machine = \App\Models\Machine::with([
-        'schedules',
-        'components.indicators',
-        'records.actions.component.indicators',
-        'records.actions.indicatorValues.indicator',
-        'records.technician',
-        'records.approvals.approver',
-        'records.latestApproval',
-        'records.machine',
-        'picMesin'
-    ])->findOrFail($id);
-
     return Inertia::render('MachineDetail', [
-        'machine' => $machine
+        'id' => $id
     ]);
 });
 

@@ -15,7 +15,7 @@ class MachineController extends Controller
     {
         $authUser = auth('sanctum')->user();
 
-        $query = Machine::with(['schedules', 'components.indicators', 'picMesin', 'records.actions.indicatorValues']);
+        $query = Machine::with(['schedules.occurrences', 'components.indicators', 'picMesin', 'records.actions.indicatorValues']);
 
         // Filter machines by user's assigned city (unless city is 'both')
         if ($authUser && isset($authUser->city) && $authUser->city !== 'both') {
@@ -45,7 +45,7 @@ class MachineController extends Controller
     public function show(Request $request, $id)
     {
         $machine = Machine::with([
-            'schedules',
+            'schedules.occurrences',
             'components.indicators',
             'records.actions.component.indicators',
             'records.actions.indicatorValues',
@@ -81,6 +81,7 @@ class MachineController extends Controller
             'location' => 'nullable|string|max:255',
             'kota' => 'required|string|in:pasuruan,sby',
             'status' => 'required|in:active,inactive,maintenance',
+            'is_locked' => 'nullable|boolean',
             'pic_mesin_id' => 'nullable|uuid|exists:users,id',
             'maintenance_duration' => 'nullable|integer|min:1',
             'maintenance_start_date' => 'nullable|date',
@@ -139,9 +140,18 @@ class MachineController extends Controller
             ], 422);
         }
 
+        // Continue the import-order counter per city so newly imported rows are
+        // appended after whatever machines already exist for that city.
+        $counters = Machine::selectRaw('kota, MAX(import_order) as max_order')
+            ->groupBy('kota')
+            ->pluck('max_order', 'kota')
+            ->map(fn ($v) => (int) $v)
+            ->toArray();
+
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             $createdCount = 0;
+            $affectedCities = [];
             foreach ($request->machines as $item) {
                 // Find PIC by email
                 $picId = null;
@@ -152,6 +162,9 @@ class MachineController extends Controller
                     }
                 }
 
+                $counters[$item['kota']] = ($counters[$item['kota']] ?? 0) + 1;
+                $affectedCities[$item['kota']] = true;
+
                 $machine = Machine::create([
                     'kode' => $item['kode'],
                     'name' => $item['name'],
@@ -159,6 +172,7 @@ class MachineController extends Controller
                     'condition_pct' => $item['condition_pct'],
                     'location' => $item['location'] ?? null,
                     'kota' => $item['kota'],
+                    'import_order' => $counters[$item['kota']],
                     'status' => $item['status'],
                     'pic_mesin_id' => $picId,
                     'maintenance_duration' => $item['maintenance_duration'] ?? null,
@@ -180,6 +194,11 @@ class MachineController extends Controller
 
             ActivityLog::log('Import Mesin', "Mengimpor {$createdCount} data mesin baru melalui Excel");
             \Illuminate\Support\Facades\DB::commit();
+
+            $generator = app(\App\Services\ScheduleOccurrenceGenerator::class);
+            foreach (array_keys($affectedCities) as $kota) {
+                $generator->generateUpcomingForCity($kota);
+            }
 
             return response()->json([
                 'message' => "Berhasil mengimpor {$createdCount} mesin.",
@@ -211,6 +230,7 @@ class MachineController extends Controller
             'location' => 'nullable|string|max:255',
             'kota' => 'sometimes|required|string|in:pasuruan,sby',
             'status' => 'sometimes|required|in:active,inactive,maintenance',
+            'is_locked' => 'nullable|boolean',
             'pic_mesin_id' => 'nullable|uuid|exists:users,id',
             'maintenance_duration' => 'nullable|integer|min:1',
             'maintenance_start_date' => 'nullable|date',
@@ -278,5 +298,101 @@ class MachineController extends Controller
             'exists' => $exists,
             'kode' => $request->kode,
         ]);
+    }
+
+    public function requestUnlock(Request $request, $id)
+    {
+        $machine = Machine::findOrFail($id);
+        
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+            'requested_period' => 'nullable|string|max:100',
+        ]);
+
+        $machine->update([
+            'unlock_status' => 'pending',
+            'unlock_reason' => $validated['reason'],
+            'unlock_requested_period' => $validated['requested_period'] ?? null,
+            'unlock_requested_by_id' => $request->user()->id,
+            'last_unlock_request_at' => now(),
+        ]);
+
+        $periodInfo = $validated['requested_period'] ? " untuk jadwal: {$validated['requested_period']}" : "";
+        ActivityLog::log('Pengajuan Unlock', "Mengajukan buka kunci untuk mesin: {$machine->name}{$periodInfo} dengan alasan: {$validated['reason']}");
+
+        return response()->json([
+            'message' => 'Pengajuan buka kunci berhasil dikirim. Menunggu persetujuan Factory Manager.',
+            'machine' => $machine
+        ]);
+    }
+
+    public function approveUnlock(Request $request, $id)
+    {
+        $user = $request->user();
+        if ($user->role !== 'admin' && !$user->is_manager) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $machine = Machine::findOrFail($id);
+        
+        $validated = $request->validate([
+            'decision' => 'required|in:approved,rejected',
+        ]);
+
+        if ($validated['decision'] === 'approved') {
+            $machine->update([
+                'unlock_status' => 'approved',
+                'unlock_expires_at' => now()->addHours(24), // Unlock valid for 24 hours
+                'is_locked' => false,
+            ]);
+            $action = 'Menyetujui';
+        } else {
+            $machine->update([
+                'unlock_status' => 'rejected',
+                'unlock_expires_at' => null,
+            ]);
+            $action = 'Menolak';
+        }
+
+        ActivityLog::log('Persetujuan Unlock', "{$action} pengajuan buka kunci untuk mesin: {$machine->name}");
+
+        return response()->json([
+            'message' => "Pengajuan buka kunci berhasil di-{$validated['decision']}.",
+            'machine' => $machine
+        ]);
+    }
+
+    public function unlockHistory(Request $request)
+    {
+        $user = $request->user();
+        if ($user->role !== 'admin' && !$user->is_manager) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        $machines = Machine::with('unlockRequester')
+            ->whereNotIn('unlock_status', ['none'])
+            ->whereNotNull('last_unlock_request_at')
+            ->orderByDesc('last_unlock_request_at')
+            ->get()
+            ->map(function ($m) {
+                return [
+                    'id'                       => $m->id,
+                    'name'                     => $m->name,
+                    'kode'                     => $m->kode,
+                    'location'                 => $m->location,
+                    'kota'                     => $m->kota,
+                    'unlock_status'            => $m->unlock_status,
+                    'unlock_status_label'      => $m->unlock_status_label,
+                    'unlock_reason'            => $m->unlock_reason,
+                    'unlock_requested_period'  => $m->unlock_requested_period,
+                    'last_unlock_request_at'   => $m->last_unlock_request_at,
+                    'unlock_expires_at'        => $m->unlock_expires_at,
+                    'unlock_requested_by_id'   => $m->unlock_requested_by_id,
+                    'requester_name'           => $m->unlockRequester?->name ?? '-',
+                    'requester_role'           => $m->unlockRequester?->role ?? '-',
+                ];
+            });
+
+        return response()->json($machines);
     }
 }

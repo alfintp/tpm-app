@@ -40,7 +40,7 @@
           <div class="flex justify-between items-center gap-2">
             <h4 class="text-sm font-bold text-slate-800 truncate">{{ alert.machine?.name }}</h4>
             <span :class="getAlertBadgeClasses(alert)" class="text-xs font-semibold bg-white px-2 py-0.5 rounded-full border border-current shrink-0">
-              {{ alert.isFullyChecked ? 'Sudah Dicek' : getAlertTimeText(alert.next_due_date) }}
+              {{ alert.isFullyChecked ? 'Sudah Dicek' : getAlertTimeText(alert) }}
             </span>
           </div>
           <p class="text-xs text-slate-500 mt-0.5">
@@ -105,12 +105,11 @@ const getAlertBadgeClasses = (alert) => {
   return 'text-amber-600';
 };
 
-const getAlertTimeText = (dateStr) => {
-  const d = new Date(dateStr); d.setHours(0,0,0,0);
-  const t = new Date();        t.setHours(0,0,0,0);
-  const days = Math.ceil((d - t) / (1000 * 60 * 60 * 24));
-  if (days === 0) return 'Hari ini';
-  if (days > 0)   return 'Bisa Dicek';
+const getAlertTimeText = (alert) => {
+  const days = alert.daysUntil;
+  if (days === 0) return 'Hari Ini';
+  if (days > 0 && days <= (alert.daysBeforeSetting ?? 2)) return `H-${days} · Sudah Bisa dicek`;
+  if (days > 0)   return `${days} hari lagi`;
   return `Telat ${Math.abs(days)} hari`;
 };
 

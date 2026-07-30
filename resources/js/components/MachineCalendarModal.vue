@@ -228,6 +228,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
 import { useAuth } from '../composables/useAuth.js';
+import { getMonthlyPeriods } from '../composables/useSchedulePeriods.js';
 
 const props = defineProps({
   show:     { type: Boolean, required: true },
@@ -345,41 +346,34 @@ const nextMonth = () => {
   else currentMonth.value++;
 };
 
-// Build projected schedule entries covering the currently viewed month.
-// Starts from the actual next_due_date and walks backward/forward so every
-// scheduled date inside the month is included, even when next_due_date falls
-// at the very end of the month (e.g. 29-31).
-const buildProjections = (nextDueDate, intervalDays, viewMonthStart, viewMonthEnd) => {
-  if (!intervalDays || intervalDays <= 0) return [];
-  const intervalMs = intervalDays * 86400000;
-  const base = new Date(nextDueDate); base.setHours(0, 0, 0, 0);
-
-  const startLimit = new Date(viewMonthStart.getTime() - 7 * 86400000);
-  const endLimit = new Date(viewMonthEnd.getTime() + 7 * 86400000);
-  const projections = [];
-
-  // Walk backward from base to reach dues inside the viewed month
-  let candidate = new Date(base);
-  let safety = 0;
-  while (candidate >= startLimit && safety++ < 200) {
-    const shifted = advancePastOffDays(new Date(candidate));
-    projections.push({ originalTime: candidate.getTime(), shiftedTime: shifted.getTime(), shiftedDate: shifted });
-    candidate = new Date(candidate.getTime() - intervalMs);
+// Build the canonical due-date projections covering the currently viewed month.
+// Uses the same canonical monthly-period calculation as MachineDetail.vue
+// (getMonthlyPeriods) instead of naively walking forward/backward by a fixed
+// interval_days step, which drifts across months for 14/28-day schedules.
+// Also pulls in the previous/next month's periods so the 42-cell calendar grid
+// (which spills a few days into adjacent months) is fully covered.
+const buildProjections = (schedules, viewYear, viewMonth) => {
+  const dueDates = [];
+  for (let offset = -1; offset <= 1; offset++) {
+    const refDate = new Date(viewYear, viewMonth + offset, 15);
+    getMonthlyPeriods(schedules, refDate).forEach(p => dueDates.push(p.due));
   }
+  // Dedupe by timestamp
+  const seen = new Set();
+  const uniqueDues = dueDates.filter(d => {
+    const t = d.getTime();
+    if (seen.has(t)) return false;
+    seen.add(t);
+    return true;
+  });
 
-  // Walk forward in case the next due is just outside the month (spills into the next month view)
-  candidate = new Date(base.getTime() + intervalMs);
-  safety = 0;
-  while (candidate <= endLimit && safety++ < 200) {
-    const shifted = advancePastOffDays(new Date(candidate));
-    projections.push({ originalTime: candidate.getTime(), shiftedTime: shifted.getTime(), shiftedDate: shifted });
-    candidate = new Date(candidate.getTime() + intervalMs);
-  }
-
-  return projections;
+  return uniqueDues.map(due => {
+    const shifted = advancePastOffDays(new Date(due));
+    return { originalTime: due.getTime(), shiftedTime: shifted.getTime(), shiftedDate: shifted };
+  });
 };
 
-const getMachinesForDate = (date, viewMonthStart, viewMonthEnd) => {
+const getMachinesForDate = (date, viewYear, viewMonth) => {
   const targetDate = new Date(date); targetDate.setHours(0, 0, 0, 0);
   const targetTime = targetDate.getTime();
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -395,31 +389,28 @@ const getMachinesForDate = (date, viewMonthStart, viewMonthEnd) => {
       result.push({ id: machine.id, name: machine.name, kota: machine.kota, status: 'completed', rescheduledTo: null });
       return;
     }
-    (machine.schedules ?? []).forEach(sched => {
-      if (sched.is_active === false) return;
-      const projections = buildProjections(sched.next_due_date, sched.interval_days, viewMonthStart, viewMonthEnd);
+    const projections = buildProjections(machine.schedules ?? [], viewYear, viewMonth);
 
-      // Case 1: this date is a shifted (working-day) scheduled date
-      const shiftedMatch = projections.find(p => p.shiftedTime === targetTime);
-      if (shiftedMatch) {
-        result.push({
-          id: machine.id, name: machine.name, kota: machine.kota,
-          status: targetTime < todayTime ? 'overdue' : 'pending',
-          rescheduledTo: null,
-        });
-        return;
-      }
+    // Case 1: this date is a shifted (working-day) scheduled date
+    const shiftedMatch = projections.find(p => p.shiftedTime === targetTime);
+    if (shiftedMatch) {
+      result.push({
+        id: machine.id, name: machine.name, kota: machine.kota,
+        status: targetTime < todayTime ? 'overdue' : 'pending',
+        rescheduledTo: null,
+      });
+      return;
+    }
 
-      // Case 2: this date was the ORIGINAL scheduled date but got shifted to another day
-      const originalMatch = projections.find(p => p.originalTime === targetTime && p.shiftedTime !== targetTime);
-      if (originalMatch) {
-        result.push({
-          id: machine.id, name: machine.name, kota: machine.kota,
-          status: 'rescheduled',
-          rescheduledTo: localDateStr(originalMatch.shiftedDate),
-        });
-      }
-    });
+    // Case 2: this date was the ORIGINAL scheduled date but got shifted to another day
+    const originalMatch = projections.find(p => p.originalTime === targetTime && p.shiftedTime !== targetTime);
+    if (originalMatch) {
+      result.push({
+        id: machine.id, name: machine.name, kota: machine.kota,
+        status: 'rescheduled',
+        rescheduledTo: localDateStr(originalMatch.shiftedDate),
+      });
+    }
   });
   return result.sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -444,7 +435,7 @@ const calendarDays = computed(() => {
       isSunday: date.getDay() === 0,
       isHolidayDay: isHoliday(dateStr),
       holidayName: getHolidayName(dateStr),
-      machines: getMachinesForDate(date, firstDay, lastDay),
+      machines: getMachinesForDate(date, currentYear.value, currentMonth.value),
     };
   });
 });

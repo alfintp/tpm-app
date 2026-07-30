@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="space-y-4 pb-24">
 
     <!-- ══════════════════════════════════════════════════════════════
@@ -48,8 +48,10 @@
         :schedule-periods="schedulePeriods"
         :selected-period="selectedPeriod"
         :is-unscheduled="isUnscheduled"
+        :machine="machine"
         @select-period="selectPeriod"
         @select-unscheduled="selectUnscheduled"
+        @request-unlock="showUnlockModal = true"
       />
 
       <ReportProgressPanel
@@ -61,6 +63,11 @@
         @update:difficulty-filter="v => difficultyFilter = v"
         @toggle:show-only-pending="showOnlyPending = !showOnlyPending"
       />
+
+      <div v-if="selectedPeriod?.isLocked && !isUnscheduled && !isAdmin" class="w-full max-w-5xl mx-auto p-4 bg-amber-50 rounded-2xl border border-amber-200 flex items-center gap-3">
+        <svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        <p class="text-xs font-bold text-amber-700">Jadwal ini terkunci karena sudah melewati batas jadwal maintenance.</p>
+      </div>
 
       <ReportComponentTable
         v-model:search="componentSearch"
@@ -77,7 +84,7 @@
     </template>
 
     <button
-      v-if="machine"
+      v-if="machine && (!selectedPeriod?.isLocked || isUnscheduled || isAdmin)"
       @click="triggerSaveReport"
       :disabled="submitting || !hasCheckedComponents"
       class="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-4 py-3 sm:px-5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-sm font-bold rounded-2xl shadow-lg transition-all cursor-pointer"
@@ -111,6 +118,14 @@
       @close="showAccessDeniedModal = false"
       @back="router.visit('/')"
     />
+
+    <MachineUnlockRequestModal
+      :show="showUnlockModal"
+      :machine="machine"
+      :requested-period="selectedPeriod ? `${selectedPeriod.label} (${selectedPeriod.dateStr})` : null"
+      @close="showUnlockModal = false"
+      @submitted="m => { machine = m; showUnlockModal = false; }"
+    />
   </div>
 </template>
 
@@ -127,6 +142,8 @@ import ReportProgressPanel from '../components/ReportProgressPanel.vue';
 import ReportComponentTable from '../components/ReportComponentTable.vue';
 import ReportSaveModal from '../components/ReportSaveModal.vue';
 import ReportAccessDeniedModal from '../components/ReportAccessDeniedModal.vue';
+import MachineUnlockRequestModal from '../components/MachineUnlockRequestModal.vue';
+import { getMonthlyPeriods } from '../composables/useSchedulePeriods.js';
 
 const { user, isAdmin, isTechnician } = useAuth();
 
@@ -198,12 +215,27 @@ const canCreateReport = computed(() => {
 const selectedPeriod = ref(null);
 const isUnscheduled = ref(false);
 
+// Admin-configured maintenance report window (H-x to H+y)
+const maintenanceWindow = ref({ days_before: 2, days_after: 0 });
+const fetchMaintenanceWindow = async () => {
+  try {
+    const res = await axios.get('/api/settings/maintenance-window');
+    maintenanceWindow.value = {
+      days_before: res.data.days_before ?? 2,
+      days_after: res.data.days_after ?? 0,
+    };
+  } catch (e) {
+    console.error('Failed to fetch maintenance window setting:', e);
+  }
+};
+
 // ── Time inputs (no date — auto today) ────────────────────────────────────
 const maintenanceDate = ref(new Date().toISOString().split('T')[0]);
 const startTime = ref('');
 const endTime = ref('');
 const generalNotes = ref('');
 const showSaveModal = ref(false);
+const showUnlockModal = ref(false);
 const skipLeaveGuard = ref(false);
 let unregisterBeforeListener = null;
 
@@ -274,28 +306,18 @@ const getDifficultyBadgeClass = (difficulty) => {
 };
 
 // ── Schedule Periods ───────────────────────────────────────────────────────
+// Canonical due dates come from getMonthlyPeriods (backend-generated occurrences);
+// this only layers progress/lock/label display fields on top.
 const schedulePeriods = computed(() => {
-  const schedules = (machine.value?.schedules ?? []).filter(s => s.is_active !== false && s.interval_days && s.next_due_date);
-  if (!schedules.length) return [];
-
   const today = new Date(); today.setHours(0,0,0,0);
-  const sched = schedules[0];
-  const intervalDays = Number(sched.interval_days);
-  const intervalMs = intervalDays * 86400000;
+  const rawPeriods = getMonthlyPeriods(machine.value?.schedules ?? [], today);
+  if (!rawPeriods.length) return [];
 
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  monthStart.setHours(0,0,0,0); monthEnd.setHours(0,0,0,0);
+  const sched = (machine.value?.schedules ?? []).find(s => s.id === rawPeriods[0].scheduleId);
+  const intervalDays = Number(sched?.interval_days ?? 28);
 
-  let cursor = new Date(sched.next_due_date); cursor.setHours(0,0,0,0);
-  while (cursor > monthStart) cursor = new Date(cursor.getTime() - intervalMs);
-  if (cursor < monthStart) cursor = new Date(cursor.getTime() + intervalMs);
-
-  const periods = [];
-  const periodLimit = intervalDays <= 14 ? 2 : 1;
-  let idx = 1;
-  while (cursor <= monthEnd && periods.length < periodLimit) {
-    const due = new Date(cursor);
+  return rawPeriods.map((rawPeriod, idx) => {
+    const due = rawPeriod.due;
     const diffDays = Math.ceil((due - today) / 86400000);
     let statusLabel, statusClass;
     if (diffDays > 1) { statusLabel = `${diffDays} hari lagi`; statusClass = 'bg-blue-50 text-blue-600'; }
@@ -309,7 +331,7 @@ const schedulePeriods = computed(() => {
           record.status === 'completed' &&
           !record.is_unscheduled &&
           record.latest_approval?.decision !== 'rejected' &&
-          String(record.schedule_id) === String(sched.id) &&
+          String(record.schedule_id) === String(rawPeriod.scheduleId) &&
           String(record.scheduled_period_date).slice(0, 10) === periodDate
         )
         .flatMap(record => (record.actions ?? []).map(action => String(action.machine_component_id)))
@@ -317,12 +339,41 @@ const schedulePeriods = computed(() => {
     const componentCount = machine.value?.components?.length ?? 0;
     const progressCount = completedComponentIds.size;
     const progressPct = componentCount > 0 ? Math.round((progressCount / componentCount) * 100) : 0;
-    const label = intervalDays <= 14 ? `Week ${idx}` : intervalDays <= 21 ? `Periode ${idx}` : 'Bulan Ini';
-    periods.push({ label, dateStr: formatDateStr(due), dueDate: due, scheduleId: sched.id, statusLabel, statusClass, diffDays, componentCount, progressCount, progressPct });
-    cursor = new Date(cursor.getTime() + intervalMs);
-    idx++;
-  }
-  return periods;
+
+    // Period Locking Logic:
+    // A period is LOCKED if:
+    // 1. Not an admin
+    // 2. AND NOT within the admin-configured window (H-x to H+y)
+    // 3. AND progress is 0% OR 100% (not currently being worked on)
+    // 4. AND Machine unlock_status is not 'approved'
+    let isLocked = false;
+    if (!isAdmin.value) {
+      const isWindowOpen = diffDays >= -maintenanceWindow.value.days_after && diffDays <= maintenanceWindow.value.days_before;
+      const isPartiallyDone = progressPct > 0 && progressPct < 100;
+      const isManuallyUnlocked = machine.value?.unlock_status === 'approved' && 
+                                machine.value?.unlock_expires_at && 
+                                new Date(machine.value.unlock_expires_at) > new Date();
+      
+      if (!isWindowOpen && !isPartiallyDone && !isManuallyUnlocked) {
+        isLocked = true;
+      }
+    }
+
+    const label = intervalDays <= 14 ? `Week ${idx + 1}` : intervalDays <= 21 ? `Periode ${idx + 1}` : 'Bulan Ini';
+    return {
+      label,
+      dateStr: formatDateStr(due),
+      dueDate: due,
+      scheduleId: rawPeriod.scheduleId,
+      statusLabel,
+      statusClass,
+      diffDays,
+      componentCount,
+      progressCount,
+      progressPct,
+      isLocked
+    };
+  });
 });
 
 const discardReportDraft = () => {
@@ -341,7 +392,9 @@ const selectPeriod = async (period) => {
   isUnscheduled.value = false;
   componentSearch.value = '';
   showOnlyPending.value = false;
-  maintenanceDate.value = dateKey(period.dueDate);
+  // Maintenance date always reflects the actual date the report is being made (today),
+  // not the schedule's due date — otherwise lateness can never be detected on the backend.
+  maintenanceDate.value = dateKey(new Date());
   applyPeriodProgress(period);
 };
 
@@ -440,6 +493,16 @@ const applyPeriodProgress = (period) => {
       });
     });
   });
+
+  // If the whole period is locked (outside H-2 to H-0 and no progress), lock all remaining components
+  if (period.isLocked && !isAdmin.value) {
+    componentsList.value.forEach(comp => {
+      if (!comp.isLocked) {
+        comp.isLocked = true;
+        comp.lockStatus = 'Jadwal Terkunci';
+      }
+    });
+  }
 };
 
 // ── Machine load ───────────────────────────────────────────────────────────
@@ -543,14 +606,16 @@ const reportScheduleLabel = computed(() => {
 const reportScheduleStatus = computed(() => {
   if (isUnscheduled.value) return 'Di luar jadwal';
   if (!selectedPeriod.value) return '-';
-  return selectedPeriod.value.diffDays < 0
-    ? `Terlambat ${Math.abs(selectedPeriod.value.diffDays)} hari`
+  const daysPastGrace = -selectedPeriod.value.diffDays - maintenanceWindow.value.days_after;
+  return daysPastGrace > 0
+    ? `Terlambat ${daysPastGrace} hari`
     : 'Tepat waktu';
 });
 const reportScheduleClass = computed(() => {
   if (isUnscheduled.value) return 'text-indigo-600';
-  if (selectedPeriod.value?.diffDays < 0) return 'text-red-600';
-  return 'text-emerald-600';
+  if (!selectedPeriod.value) return '';
+  const daysPastGrace = -selectedPeriod.value.diffDays - maintenanceWindow.value.days_after;
+  return daysPastGrace > 0 ? 'text-red-600' : 'text-emerald-600';
 });
 
 const totalCompliance = computed(() => {
@@ -692,6 +757,7 @@ onMounted(async () => {
 
   await loadMachinesList();
   await fetchRoles();
+  await fetchMaintenanceWindow();
 
   if (!canCreateReport.value) {
     showAccessDeniedModal.value = true;

@@ -65,12 +65,55 @@ class MaintenanceRecordController extends Controller
 
         // City-based access check
         $authUser = $request->user();
+        $machine = Machine::with(['components', 'records' => function($q) {
+            $q->where('status', 'completed');
+        }])->find($validated['machine_id']);
+
+        if (!$machine) {
+            return response()->json(['error' => 'Mesin tidak ditemukan.'], 404);
+        }
+
         if ($authUser && ($authUser->city ?? 'both') !== 'both') {
-            $machine = Machine::find($validated['machine_id']);
-            if ($machine && $machine->kota !== $authUser->city) {
+            if ($machine->kota !== $authUser->city) {
                 return response()->json([
                     'error' => 'Akses ditolak. Anda tidak dapat membuat laporan untuk mesin di luar kota yang ditugaskan kepada Anda.'
                 ], 403);
+            }
+        }
+
+        // Machine Locking Logic
+        if ($authUser && $authUser->role !== 'admin') {
+            $isOpen = $machine->isOpenForMaintenance();
+            
+            if (!$isOpen) {
+                // Check if this is a continuation of a partially checked machine
+                // A machine is "partially checked" if some components are already completed for the current/nearest period
+                $dueDate = Carbon::parse($validated['scheduled_period_date'] ?? now())->startOfDay();
+                $periodStart = $dueDate->copy()->startOfMonth();
+                
+                $periodRecords = $machine->records()
+                    ->where('status', 'completed')
+                    ->whereDate('maintenance_date', '>=', $periodStart)
+                    ->whereDate('maintenance_date', '<=', Carbon::today())
+                    ->get();
+
+                $checkedIds = [];
+                foreach ($periodRecords as $r) {
+                    foreach ($r->actions as $a) {
+                        if ($a->machine_component_id) $checkedIds[] = $a->machine_component_id;
+                    }
+                }
+                $checkedIds = array_unique($checkedIds);
+                $totalComponents = $machine->components()->count();
+                $checkedCount = count($checkedIds);
+                
+                $isPartiallyDone = ($checkedCount > 0 && $checkedCount < $totalComponents);
+
+                if (!$isPartiallyDone) {
+                    return response()->json([
+                        'error' => 'Mesin sedang terkunci. Laporan hanya dapat dibuat dalam periode jadwal maintenance yang ditentukan.'
+                    ], 403);
+                }
             }
         }
 
@@ -93,12 +136,15 @@ class MaintenanceRecordController extends Controller
                 return response()->json(['error' => 'Pilih periode jadwal untuk laporan terjadwal.'], 422);
             }
 
-            // Calculate lateness against the selected immutable schedule period.
+            // Calculate lateness against the selected immutable schedule period,
+            // respecting the admin-configured grace period after the due date (H+y).
             $isLate = false;
             if (!$recordData['is_unscheduled']) {
+                $window = \App\Models\MaintenanceWindowSetting::current();
                 $dueDate = Carbon::parse($recordData['scheduled_period_date'])->startOfDay();
+                $lateAfterDate = $dueDate->copy()->addDays($window->days_after);
                 $maintenanceDate = Carbon::parse($recordData['maintenance_date'])->startOfDay();
-                $isLate = $maintenanceDate->greaterThan($dueDate);
+                $isLate = $maintenanceDate->greaterThan($lateAfterDate);
             }
             $recordData['is_late'] = $isLate;
 
@@ -150,6 +196,15 @@ class MaintenanceRecordController extends Controller
 
                     // NOTE: component and machine condition updates are deferred until approval
                 }
+            }
+
+            // Reset unlock status if progress is now 100%
+            $progress = $machine->maintenance_progress;
+            if ($progress >= 100) {
+                $machine->update([
+                    'unlock_status' => 'none',
+                    'unlock_expires_at' => null,
+                ]);
             }
 
             DB::commit();

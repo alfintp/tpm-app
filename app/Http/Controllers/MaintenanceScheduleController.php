@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\MaintenanceSchedule;
+use App\Models\ScheduleOccurrence;
+use App\Services\ScheduleOccurrenceGenerator;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -17,22 +19,18 @@ class MaintenanceScheduleController extends Controller
     
     public function notifications()
     {
-        $today = Carbon::today();
         $tomorrow = Carbon::tomorrow();
         $monthStart = Carbon::today()->startOfMonth();
         $monthEnd = Carbon::today()->endOfMonth();
 
-        // Base query: schedules with next_due <= tomorrow OR schedules that were advanced
-        // but have no approved record in the current month
-        $schedules = MaintenanceSchedule::with(['machine.records.latestApproval', 'machine.components'])
-            ->where('is_active', true)
+        // Base query: occurrences due within H-1..tomorrow OR occurrences further ahead
+        // that have no approved record yet for that period in the current month.
+        $occurrences = ScheduleOccurrence::with(['schedule', 'machine.records.latestApproval', 'machine.components'])
+            ->whereHas('schedule', fn ($q) => $q->where('is_active', true))
             ->where(function ($query) use ($tomorrow, $monthStart, $monthEnd) {
-                // Case 1: next_due is within H-1..tomorrow
-                $query->where('next_due_date', '<=', $tomorrow)
-                    // OR Case 2: next_due is in the future (already advanced) but no approved
-                    // record exists in the current month for this machine
+                $query->where('due_date', '<=', $tomorrow)
                     ->orWhere(function ($q) use ($monthStart, $monthEnd) {
-                        $q->where('next_due_date', '>', Carbon::tomorrow())
+                        $q->where('due_date', '>', Carbon::tomorrow())
                             ->whereDoesntHave('machine.records', function ($recordQ) use ($monthStart, $monthEnd) {
                                 $recordQ->where('status', 'completed')
                                     ->whereHas('latestApproval', function ($approvalQ) {
@@ -44,7 +42,19 @@ class MaintenanceScheduleController extends Controller
             })
             ->get();
 
-        return response()->json($schedules);
+        // Shape the response like the schedules this endpoint used to return (machine_id,
+        // next_due_date, schedule_type, id) so existing frontend consumers keep working.
+        $result = $occurrences->map(function (ScheduleOccurrence $occ) {
+            return [
+                'id' => $occ->schedule_id,
+                'machine_id' => $occ->machine_id,
+                'schedule_type' => $occ->schedule?->schedule_type,
+                'next_due_date' => $occ->due_date,
+                'machine' => $occ->machine,
+            ];
+        })->values();
+
+        return response()->json($result);
     }
 
     public function store(Request $request)
@@ -58,6 +68,7 @@ class MaintenanceScheduleController extends Controller
         ]);
 
         $schedule = MaintenanceSchedule::create($validated);
+        app(ScheduleOccurrenceGenerator::class)->regenerateForSchedule($schedule);
         return response()->json($schedule, 201);
     }
 
@@ -80,6 +91,7 @@ class MaintenanceScheduleController extends Controller
         ]);
 
         $schedule->update($validated);
+        app(ScheduleOccurrenceGenerator::class)->regenerateForSchedule($schedule);
         return response()->json($schedule);
     }
 

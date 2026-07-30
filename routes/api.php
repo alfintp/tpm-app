@@ -10,6 +10,7 @@ use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SettingsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +46,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/machines', [MachineController::class, 'store']);
     Route::post('/machines/import', [MachineController::class, 'bulkStore']);
     Route::get('/machines/check-kode', [MachineController::class, 'checkKode']);
+    Route::get('/machines/unlock-history', [MachineController::class, 'unlockHistory']);
+    Route::post('/machines/{id}/request-unlock', [MachineController::class, 'requestUnlock']);
+    Route::post('/machines/{id}/approve-unlock', [MachineController::class, 'approveUnlock']);
     Route::get('/machines/{id}', [MachineController::class, 'show']);
     Route::put('/machines/{id}', [MachineController::class, 'update']);
     Route::delete('/machines/{id}', [MachineController::class, 'destroy']);
@@ -88,6 +92,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/approvals/{recordId}/decide', [ApprovalController::class, 'decide']);
     Route::get('/approval-flow', [ApprovalController::class, 'flowConfig']);
     Route::put('/approval-flow', [ApprovalController::class, 'updateFlowConfig']);
+
+    // Maintenance report window settings (admin-configurable H-x to H+y)
+    Route::get('/settings/maintenance-window', [SettingsController::class, 'getMaintenanceWindow']);
+    Route::put('/settings/maintenance-window', [SettingsController::class, 'updateMaintenanceWindow']);
 
     // Holiday proxy — fetches Indonesian national holidays server-side (avoids browser CORS)
     Route::get('/holidays', function (Request $request) {

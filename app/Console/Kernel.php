@@ -12,7 +12,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Idempotent — only generates months that don't have occurrences yet, so this
+        // safely keeps the current + next month schedule window always populated.
+        $schedule->command('schedules:generate-occurrences')->daily();
     }
 
     /**

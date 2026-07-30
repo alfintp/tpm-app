@@ -61,7 +61,7 @@
         </div>
       </div>
 
-      <div class="relative group" v-if="hasBothCities">
+      <div class="relative group" v-if="isManagerOrAdmin || hasBothCities">
         <select v-model="filterKota" class="rounded-xl border border-slate-200 pl-3 pr-8 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none bg-white">
           <option value="">Semua Kota</option>
           <option value="pasuruan">Pasuruan</option>
@@ -230,15 +230,41 @@
 
       <!-- Actions -->
       <template #actions="{ row }">
-        <button
-          @click="viewHistory(row)"
-          class="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg cursor-pointer transition-colors"
-          title="Riwayat"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </button>
+        <div class="flex items-center justify-end gap-1">
+          <button
+            v-if="isManagerOrAdmin"
+            @click="editComponent(row)"
+            class="p-2 text-slate-400 hover:text-brand-gradation hover:bg-brand-cream rounded-lg cursor-pointer transition-colors"
+            title="Edit Komponen"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
+          <button
+            @click="viewHistory(row)"
+            class="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg cursor-pointer transition-colors"
+            title="Riwayat"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </button>
+        </div>
       </template>
     </DataTable>
+
+    <!-- Component Form Modal -->
+    <ComponentForm
+      v-if="showComponentForm"
+      :machine-id="editingComponent.machine_id"
+      :component="editingComponent"
+      @close="showComponentForm = false"
+      @saved="onComponentSaved"
+    />
+
+    <!-- Component History Modal -->
+    <ComponentHistory
+      v-if="showComponentHistory"
+      :component="historyComponent"
+      @close="showComponentHistory = false"
+    />
   </div>
 </template>
 
@@ -249,6 +275,8 @@ import axios from 'axios';
 import PageHeader from '../components/PageHeader.vue';
 import SearchInput from '../components/SearchInput.vue';
 import DataTable from '../components/DataTable.vue';
+import ComponentForm from '../components/ComponentForm.vue';
+import ComponentHistory from '../components/ComponentHistory.vue';
 import { useAuth } from '../composables/useAuth.js';
 import { 
   CheckCircle2, 
@@ -257,7 +285,7 @@ import {
   HelpCircle 
 } from 'lucide-vue-next';
 
-const { user, hasBothCities } = useAuth();
+const { user, isAdmin, isManagerOrAdmin, hasBothCities } = useAuth();
 const components = ref([]);
 const loading = ref(true);
 const search = ref('');
@@ -273,9 +301,26 @@ const sortBy = ref('name');
 const currentPage = ref(1);
 const perPage = ref(20);
 
+const showComponentForm = ref(false);
+const editingComponent = ref(null);
+const showComponentHistory = ref(false);
+const historyComponent = ref(null);
+
+const cityFilteredComponents = computed(() => {
+  const city = user.value?.city;
+  if (city && city !== 'both') {
+    return components.value.filter(c => c.machine?.kota === city);
+  }
+  return components.value;
+});
+
 const uniqueLocations = computed(() => {
   const locations = new Set();
-  components.value.forEach(c => {
+  let list = cityFilteredComponents.value;
+  if (filterKota.value) {
+    list = list.filter(c => c.machine?.kota === filterKota.value);
+  }
+  list.forEach(c => {
     if (c.machine?.location) locations.add(c.machine.location);
   });
   return Array.from(locations).sort();
@@ -288,13 +333,20 @@ const filteredLocations = computed(() => {
 });
 
 const uniqueMachines = computed(() => {
-  const machines = new Map();
-  components.value.forEach(c => {
-    if (c.machine && !machines.has(c.machine.id)) {
-      machines.set(c.machine.id, { id: c.machine.id, name: c.machine.name });
+  const machinesMap = new Map();
+  let list = cityFilteredComponents.value;
+  if (filterKota.value) {
+    list = list.filter(c => c.machine?.kota === filterKota.value);
+  }
+  if (selectedLocation.value) {
+    list = list.filter(c => c.machine?.location === selectedLocation.value);
+  }
+  list.forEach(c => {
+    if (c.machine && !machinesMap.has(c.machine.id)) {
+      machinesMap.set(c.machine.id, { id: c.machine.id, name: c.machine.name });
     }
   });
-  return Array.from(machines.values()).sort((a, b) => a.name.localeCompare(b.name));
+  return Array.from(machinesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 });
 
 const filteredMachinesBySearch = computed(() => {
@@ -365,7 +417,7 @@ const difficultyStats = computed(() => {
     none: 0
   };
 
-  components.value.forEach(c => {
+  filteredBase.value.forEach(c => {
     if (!c.difficulty) counts.none++;
     else if (counts.hasOwnProperty(c.difficulty)) counts[c.difficulty]++;
   });
@@ -436,8 +488,8 @@ const loadData = async () => {
 
 onMounted(loadData);
 
-const filtered = computed(() => {
-  let list = components.value;
+const filteredBase = computed(() => {
+  let list = cityFilteredComponents.value;
 
   // Search
   if (search.value) {
@@ -447,15 +499,6 @@ const filtered = computed(() => {
       (c.specification && c.specification.toLowerCase().includes(q)) ||
       (c.machine?.name && c.machine.name.toLowerCase().includes(q))
     );
-  }
-
-  // Difficulty
-  if (filterDifficulty.value !== 'all') {
-    if (filterDifficulty.value === 'none') {
-      list = list.filter(c => !c.difficulty);
-    } else {
-      list = list.filter(c => c.difficulty === filterDifficulty.value);
-    }
   }
 
   // Kota
@@ -473,6 +516,21 @@ const filtered = computed(() => {
     list = list.filter(c => c.machine_id === selectedMachineId.value);
   }
 
+  return list;
+});
+
+const filtered = computed(() => {
+  let list = filteredBase.value;
+
+  // Difficulty
+  if (filterDifficulty.value !== 'all') {
+    if (filterDifficulty.value === 'none') {
+      list = list.filter(c => !c.difficulty);
+    } else {
+      list = list.filter(c => c.difficulty === filterDifficulty.value);
+    }
+  }
+
   // Sort
   if (sortBy.value === 'name')           list = [...list].sort((a, b) => a.name.localeCompare(b.name));
   if (sortBy.value === 'name_desc')      list = [...list].sort((a, b) => b.name.localeCompare(a.name));
@@ -486,6 +544,15 @@ const filtered = computed(() => {
 const paginatedComponents = computed(() => {
   const start = (currentPage.value - 1) * perPage.value;
   return filtered.value.slice(start, start + perPage.value);
+});
+
+watch(filterKota, () => {
+  clearLocationFilter();
+  clearMachineFilter();
+});
+
+watch(selectedLocation, () => {
+  clearMachineFilter();
 });
 
 watch([search, filterDifficulty, filterKota, selectedLocation, selectedMachineId, machineSearch, sortBy, perPage], () => { currentPage.value = 1; });
@@ -507,9 +574,20 @@ const goToMachine = (id) => {
   if (id) router.visit(`/machine/${id}`);
 };
 
+const editComponent = (row) => {
+  editingComponent.value = row;
+  showComponentForm.value = true;
+};
+
+const onComponentSaved = async () => {
+  showComponentForm.value = false;
+  await loadData();
+};
+
 const viewHistory = (row) => {
-  if (row.machine_id) {
-    router.visit(`/machine/${row.machine_id}?tab=history`);
+  if (row) {
+    historyComponent.value = row;
+    showComponentHistory.value = true;
   }
 };
 </script>

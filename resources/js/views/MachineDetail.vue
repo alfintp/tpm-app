@@ -123,12 +123,19 @@
       @close="showIndicatorImportModal = false"
       @imported="onIndicatorImported"
     />
+    <MachineUnlockRequestModal
+      :show="showUnlockModal"
+      :machine="machine"
+      @close="showUnlockModal = false"
+      @submitted="m => { machine = m; showUnlockModal = false; }"
+    />
     </div>
 
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { Lock, Unlock } from 'lucide-vue-next';
 import axios from 'axios';
 import { showAlert, showUnsavedConfirm, showConfirm } from '../composables/useAlert.js';
 import ComponentForm from '../components/ComponentForm.vue';
@@ -145,8 +152,14 @@ import IndicatorImportModal from '../components/IndicatorImportModal.vue';
 import Spinner from '../../views/components/ui/spinner/Spinner.vue';
 import Button from '../../views/components/ui/button/Button.vue';
 import ReportMachineSelector from '../components/ReportMachineSelector.vue';
+import MachineUnlockRequestModal from '../components/MachineUnlockRequestModal.vue';
+import { getMonthlyPeriods, getCurrentPeriod, getNextUpcomingPeriod } from '../composables/useSchedulePeriods.js';
 
 const props = defineProps({
+  id: {
+    type: [String, Number],
+    default: null
+  },
   initialMachine: {
     type: Object,
     default: null
@@ -168,6 +181,7 @@ const machinesList = ref([]);
 const machinesLoading = ref(false);
 const machineSearch = ref('');
 const selectedMachineId = ref('');
+const showUnlockModal = ref(false);
 
 const fetchRoles = async () => {
   try {
@@ -223,6 +237,12 @@ watch(() => props.machine, (newVal) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }, { deep: true });
+
+watch(() => props.id, (newId) => {
+  if (newId && String(newId) !== String(machine.value?.id)) {
+    loadData();
+  }
+});
 
 watch(() => machine.value, (m) => {
   if (m) {
@@ -475,6 +495,7 @@ const currentUserRequiredDifficulties = computed(() => {
 });
 
 const machineId = computed(() => {
+  if (props.id) return props.id;
   if (machine.value) return machine.value.id;
   
   if (typeof window !== 'undefined') {
@@ -551,73 +572,12 @@ const isSameDay = (d1, d2) => {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 };
 
-// Build list of all maintenance period windows for the current month based on interval and schedule day.
-// A period = { start, due } where due is the maintenance date and start is the day after the previous due.
-// Periods are capped to the calendar month — no period can have its due date past end of month.
-const monthlyPeriods = computed(() => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const schedules = machine.value?.schedules ?? [];
-  const active = schedules
-    .filter(s => s.is_active !== false && s.interval_days && s.next_due_date)
-    .sort((a, b) => new Date(a.next_due_date) - new Date(b.next_due_date));
-  if (active.length === 0) return [];
-  const sched = active[0];
-  const intervalDays = Number(sched.interval_days);
-
-  // The canonical due-day-of-month comes from the machine's maintenance_start_date on the schedule's next_due_date.
-  // We walk backwards from next_due_date by interval to find all due dates within this calendar month.
-  const nextDue = new Date(sched.next_due_date);
-  nextDue.setHours(0, 0, 0, 0);
-  const monthYear = { year: today.getFullYear(), month: today.getMonth() };
-  const monthEnd = new Date(monthYear.year, monthYear.month + 1, 0); // last day of month
-  monthEnd.setHours(0, 0, 0, 0);
-  const monthStart = new Date(monthYear.year, monthYear.month, 1);
-  monthStart.setHours(0, 0, 0, 0);
-
-  // Walk backwards from nextDue until we find a date before or at monthStart,
-  // then walk forward collecting all dates that fall within the month.
-  const intervalMs = intervalDays * 86400000;
-  const dueDates = [];
-  let cursor = new Date(nextDue);
-  // Step back until cursor is before or at monthStart
-  while (cursor > monthStart && intervalMs > 0) {
-    cursor = new Date(cursor.getTime() - intervalMs);
-  }
-  // If we overshot (cursor before month), step forward once
-  if (cursor < monthStart) {
-    cursor = new Date(cursor.getTime() + intervalMs);
-  }
-  // Limit number of periods per month based on frequency (not strictly by month bounds).
-  // Match Report.vue: twice-a-month (<=14 days) shows up to 2 periods, otherwise 1.
-  const periodLimit = intervalDays <= 14 ? 2 : 1;
-  while (cursor <= monthEnd && dueDates.length < periodLimit) {
-    if (cursor >= monthStart) {
-      dueDates.push(new Date(cursor));
-    }
-    cursor = new Date(cursor.getTime() + intervalMs);
-  }
-
-  // Build period windows
-  return dueDates.map((due, idx) => {
-    const prevDue = idx === 0 ? new Date(monthStart.getTime() - 86400000) : dueDates[idx - 1];
-    const periodStart = new Date(prevDue.getTime() + 86400000);
-    return { start: periodStart, due };
-  });
-});
+// Canonical maintenance period computation — delegated to useSchedulePeriods.js so
+// every page (alerts, machine picker, report period selector) stays consistent.
+const monthlyPeriods = computed(() => getMonthlyPeriods(machine.value?.schedules ?? []));
 
 // Current active period: the period whose due date is today or in the past (or the first future one if none passed yet).
-const currentPeriod = computed(() => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const periods = monthlyPeriods.value;
-  if (periods.length === 0) return null;
-  // Find the latest period whose due <= today (already due or overdue)
-  const past = periods.filter(p => p.due <= today);
-  if (past.length > 0) return past[past.length - 1];
-  // All future — return first upcoming
-  return periods[0];
-});
+const currentPeriod = computed(() => getCurrentPeriod(machine.value?.schedules ?? []));
 
 // For backward compat with todayChecks which uses currentPeriodStart
 const currentPeriodStart = computed(() => {
@@ -646,6 +606,7 @@ const loadData = async () => {
     }
     return;
   }
+  loading.value = true;
   try {
     const res = await axios.get(`/api/machines/${machineId.value}`);
     machine.value = res.data;
@@ -914,21 +875,24 @@ const nextSchedule = computed(() => {
 });
 
 // Effective due date to show in banner:
-// - If period is done (allComponentsDone) and next_due is in the future → show next_due (bulan depan)
+// - If period is done (allComponentsDone) and there's a later occurrence → show that (bulan depan)
 // - Otherwise show currentPeriod.due (periode aktif bulan ini, meski mungkin terlambat)
 const effectiveDueDate = computed(() => {
   if (!nextSchedule.value) return null;
-  const rawDue = new Date(nextSchedule.value.next_due_date);
-  rawDue.setHours(0, 0, 0, 0);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const period = currentPeriod.value;
-  // If all done in current period, show raw next_due (next month or future)
-  if (allComponentsDoneInPeriod.value && rawDue > today) return rawDue;
+  // If all done in current period, show the next upcoming occurrence (next month or future)
+  if (allComponentsDoneInPeriod.value) {
+    const next = getNextUpcomingPeriod(machine.value?.schedules ?? [], today);
+    if (next) return next.due;
+  }
   // Otherwise use the active period's due date
   if (period) {
     const periodDue = new Date(period.due); periodDue.setHours(0, 0, 0, 0);
     return periodDue;
   }
+  const rawDue = new Date(nextSchedule.value.next_due_date);
+  rawDue.setHours(0, 0, 0, 0);
   return rawDue;
 });
 
@@ -960,15 +924,20 @@ const allComponentsDoneInPeriod = computed(() => {
   return total > 0 && checkedInCurrentPeriod.value >= total;
 });
 
-// Block report hanya jika jadwal ada di masa depan DAN semua komponen sudah dilaporkan di periode ini.
-// Jika jadwal sudah lewat (terlambat) dan masih ada komponen belum dilaporkan → tetap buka.
+// Determine if the report should be blocked based solely on the maintenance schedule and administrative locks.
 const isReportBlocked = computed(() => {
-  const d = maintenanceDaysFromNow.value;
-  if (d === null) return false;
-  // Jadwal masa depan: selalu lock
-  if (d > 0) return true;
-  // Hari ini atau terlambat: lock hanya jika semua sudah dilaporkan
-  return allComponentsDoneInPeriod.value;
+  if (!machine.value) return true; // No machine, block by default
+  if (isAdmin.value) return false; // Admin can always report
+  if (machine.value.is_locked) return true; // Manual lock overrides
+
+  // Block when the schedule is open (reporting period active)
+  if (machine.value.is_open) return true;
+
+  // Block when the schedule has expired (past due)
+  if (maintenanceDaysFromNow.value < 0) return true;
+
+  // Otherwise allow reporting
+  return false;
 });
 
 const maintenanceBannerClass = computed(() => {

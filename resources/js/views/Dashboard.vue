@@ -1,6 +1,9 @@
 <template>
   <div class="w-full max-w-5xl mx-auto space-y-6">
-    <DashboardStats :machines="cityFilteredMachines" />
+    <div v-if="loading" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+      <div v-for="i in 4" :key="i" class="h-24 bg-white rounded-2xl border border-slate-100 shadow-sm animate-pulse"></div>
+    </div>
+    <DashboardStats v-else :machines="cityFilteredMachines" />
 
     <DashboardAlertPanel
       :alerts="maintenanceAlerts"
@@ -46,8 +49,15 @@
       </div>
 
       <div class="p-5">
+        <div v-if="loading && dashboardTab === 'reports'" class="space-y-4 animate-pulse">
+          <div class="h-16 bg-slate-50 rounded-2xl w-full"></div>
+          <div class="grid grid-cols-4 gap-4">
+            <div v-for="i in 4" :key="i" class="h-20 bg-slate-50 rounded-xl"></div>
+          </div>
+          <div class="h-64 bg-slate-50 rounded-2xl w-full"></div>
+        </div>
         <DashboardReportPanel
-          v-if="dashboardTab === 'reports'"
+          v-else-if="dashboardTab === 'reports'"
           :machines="filteredMachines"
           v-model:search="machineSearch"
           v-model:city="machineKota"
@@ -65,25 +75,29 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 import { useAuth } from '../composables/useAuth.js';
 import DashboardAlertPanel from '../components/DashboardAlertPanel.vue';
 import DashboardReportPanel from '../components/DashboardReportPanel.vue';
 import DashboardStats from '../components/DashboardStats.vue';
 import DashboardFilters from '../components/DashboardFilters.vue';
 import DashboardMachineSection from '../components/DashboardMachineSection.vue';
+import { getCurrentPeriod } from '../composables/useSchedulePeriods.js';
 
 const props = defineProps({
-  machines:      { type: Array, default: () => [] },
-  notifications: { type: Array, default: () => [] },
+  machines:      { type: Array, default: null },
+  notifications: { type: Array, default: null },
+  initialMachines: { type: Array, default: null },
+  initialNotifications: { type: Array, default: null },
 });
 
 const { user, isApprover, hasBothCities } = useAuth();
 
-const machines      = ref(props.machines);
-const notifications = ref(props.notifications);
-const loading       = ref(false);
+const machines      = ref(props.machines || props.initialMachines || []);
+const notifications = ref(props.notifications || props.initialNotifications || []);
+const loading       = ref(!props.machines && !props.initialMachines);
 const dashboardTab  = ref(isApprover.value ? 'reports' : 'machines');
 const machineSearch = ref('');
 const machineSort   = ref('name');
@@ -92,6 +106,32 @@ const locationSearch = ref('');
 const selectedLocation = ref('');
 const currentPage   = ref(1);
 const perPage       = ref(12);
+const alertDaysBefore = ref(7);
+const daysBeforeSetting = ref(2);
+
+const loadData = async () => {
+  try {
+    const [machinesRes, notifRes, settingsRes] = await Promise.all([
+      axios.get('/api/machines'),
+      axios.get('/api/schedules/notifications'),
+      axios.get('/api/settings/maintenance-window')
+    ]);
+    machines.value = machinesRes.data;
+    notifications.value = notifRes.data;
+    alertDaysBefore.value = settingsRes.data.alert_days_before ?? 7;
+    daysBeforeSetting.value = settingsRes.data.days_before ?? 2;
+  } catch (e) {
+    console.error('Failed to load dashboard data:', e);
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  if (!props.machines && !props.initialMachines) {
+    loadData();
+  }
+});
 
 const cityFilteredMachines = computed(() => {
   const city = user.value?.city;
@@ -162,14 +202,17 @@ const maintenanceAlerts = computed(() => {
   };
 
   return notifications.value.map(notif => {
-    const dueDate = new Date(notif.next_due_date); dueDate.setHours(0,0,0,0);
-    const daysUntil = Math.ceil((dueDate - today) / 86400000);
-
-    // Only show alerts from H-5 up to today (hide overdue and far future schedules)
-    if (daysUntil < 0 || daysUntil > 5) return null;
-
     const machine = cityFilteredMachines.value.find(m => m.id === notif.machine_id);
     if (!machine) return null;
+
+    // Use the canonical current-period due date (same source as MachineDetail page)
+    // instead of the raw schedule's next_due_date.
+    const period = getCurrentPeriod(machine.schedules ?? []);
+    const dueDate = period ? period.due : (() => { const d = new Date(notif.next_due_date); d.setHours(0,0,0,0); return d; })();
+    const daysUntil = period ? period.diffDays : Math.ceil((dueDate - today) / 86400000);
+
+    // Alert window: H-[alertDaysBefore] up to H (today). Overdue and far-future schedules are hidden here.
+    if (daysUntil < 0 || daysUntil > alertDaysBefore.value) return null;
 
     const todayRecords = (machine.records || []).filter(r => r.status === 'completed' && isSameDay(r.maintenance_date, today));
     const checkedIds = new Set();
@@ -181,7 +224,9 @@ const maintenanceAlerts = computed(() => {
     const isFullyChecked  = totalComponents > 0 && checkedCount === totalComponents;
     const isPartiallyChecked = checkedCount > 0 && checkedCount < totalComponents;
 
-    return { ...notif, machine, totalComponents, checkedCount, uncheckedCount, isFullyChecked, isPartiallyChecked, daysUntil };
-  }).filter(Boolean).sort((a, b) => a.daysUntil - b.daysUntil);
+    return { ...notif, next_due_date: dueDate, machine, totalComponents, checkedCount, uncheckedCount, isFullyChecked, isPartiallyChecked, daysUntil, daysBeforeSetting: daysBeforeSetting.value };
+  }).filter(Boolean)
+    .sort((a, b) => a.daysUntil - b.daysUntil)
+    .filter((item, index, self) => self.findIndex(i => i.machine_id === item.machine_id) === index);
 });
 </script>
