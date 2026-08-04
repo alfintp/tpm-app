@@ -49,6 +49,7 @@
         :selected-period="selectedPeriod"
         :is-unscheduled="isUnscheduled"
         :machine="machine"
+        :days-before="maintenanceWindow.days_before"
         @select-period="selectPeriod"
         @select-unscheduled="selectUnscheduled"
         @request-unlock="showUnlockModal = true"
@@ -64,10 +65,39 @@
         @toggle:show-only-pending="showOnlyPending = !showOnlyPending"
       />
 
-      <div v-if="selectedPeriod?.isLocked && !isUnscheduled && !isAdmin" class="w-full max-w-5xl mx-auto p-4 bg-amber-50 rounded-2xl border border-amber-200 flex items-center gap-3">
-        <svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-        <p class="text-xs font-bold text-amber-700">Jadwal ini terkunci karena sudah melewati batas jadwal maintenance.</p>
+      <!-- Unlock Pending Banner -->
+      <div v-if="machine?.unlock_status === 'pending' && machine?.last_unlock_request_at" class="w-full max-w-5xl mx-auto p-4 bg-amber-50 rounded-2xl border border-amber-200 flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="flex-1">
+          <p class="text-xs font-bold text-amber-800">Pengajuan Buka Kunci Menunggu Persetujuan</p>
+          <p class="text-[11px] text-amber-700 mt-0.5">
+            Diajukan pada: {{ formatDateTime(machine.last_unlock_request_at) }}
+            <span v-if="machine.unlock_requester"> oleh <strong>{{ machine.unlock_requester.full_name }}</strong></span>
+          </p>
+          <p v-if="machine.unlock_reason" class="text-[11px] text-amber-600 mt-0.5 italic">"{{ machine.unlock_reason }}"</p>
+        </div>
       </div>
+
+      <!-- Unlock Approved Banner -->
+      <div v-if="machine?.unlock_status === 'approved' && (machine?.unlock_approved_at || machine?.unlock_expires_at)" class="w-full max-w-5xl mx-auto p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-start gap-3">
+        <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="flex-1">
+          <p class="text-xs font-bold text-emerald-800">Pengajuan Buka Kunci Disetujui</p>
+          <p class="text-[11px] text-emerald-700 mt-0.5">
+            <template v-if="machine.unlock_approved_at">
+              Disetujui pada: {{ formatDateTime(machine.unlock_approved_at) }}
+              <span v-if="machine.unlock_approver"> oleh <strong>{{ machine.unlock_approver.full_name }}</strong></span>
+            </template>
+            <template v-else>
+              Mesin ini telah dibuka kuncinya.
+            </template>
+          </p>
+          <p v-if="machine.unlock_approval_notes" class="text-[11px] text-emerald-600 mt-0.5 italic">Catatan: "{{ machine.unlock_approval_notes }}"</p>
+          <p class="text-[10px] text-emerald-500 mt-1 font-semibold">Mesin terbuka hingga akhir bulan ini. Laporan akan masuk kategori Terlambat.</p>
+        </div>
+      </div>
+
+      
 
       <ReportComponentTable
         v-model:search="componentSearch"
@@ -290,6 +320,11 @@ const dateKey = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const formatDateTime = (d) => {
+  if (!d) return '-';
+  return new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
 const condClass = (pct) => {
   if (pct < 50) return 'text-red-500';
   if (pct < 80) return 'text-amber-500';
@@ -350,9 +385,18 @@ const schedulePeriods = computed(() => {
     if (!isAdmin.value) {
       const isWindowOpen = diffDays >= -maintenanceWindow.value.days_after && diffDays <= maintenanceWindow.value.days_before;
       const isPartiallyDone = progressPct > 0 && progressPct < 100;
-      const isManuallyUnlocked = machine.value?.unlock_status === 'approved' && 
-                                machine.value?.unlock_expires_at && 
-                                new Date(machine.value.unlock_expires_at) > new Date();
+      const isManuallyUnlocked = machine.value?.unlock_status === 'approved' &&
+                                (() => {
+                                  // Check unlock_approved_at month first, fallback to unlock_expires_at
+                                  const approvedAt = machine.value?.unlock_approved_at;
+                                  if (approvedAt) {
+                                    const d = new Date(approvedAt);
+                                    return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+                                  }
+                                  // Fallback: check if unlock_expires_at is still in the future
+                                  const expiresAt = machine.value?.unlock_expires_at;
+                                  return expiresAt && new Date(expiresAt) > new Date();
+                                })();
       
       if (!isWindowOpen && !isPartiallyDone && !isManuallyUnlocked) {
         isLocked = true;

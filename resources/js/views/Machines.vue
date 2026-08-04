@@ -338,7 +338,7 @@
       :type="importType"
       :loading="importing"
       @close="showImportModal = false"
-      @download-template="importType === 'machine' ? downloadMachineTemplate() : downloadComponentTemplateGlobal()"
+      @download-template="handleDownloadTemplate"
       @import="handleImportFile"
     />
     <IndicatorImportModal
@@ -380,7 +380,7 @@ import MachineImportModal from '../components/MachineImportModal.vue';
 import IndicatorImportModal from '../components/IndicatorImportModal.vue';
 import MachineCalendarModal from '../components/MachineCalendarModal.vue';
 import MaintenanceWindowSettingsModal from '../components/MaintenanceWindowSettingsModal.vue';
-import { getCurrentPeriod } from '../composables/useSchedulePeriods.js';
+import { getCurrentPeriod, getMonthlyPeriods } from '../composables/useSchedulePeriods.js';
 import { 
   CheckCircle2, 
   Clock, 
@@ -573,37 +573,39 @@ const getMachineProgress = (machine) => {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const schedule = getMachineSchedule(machine);
-  
-  if (!schedule) {
+
+  // Get all periods for the current month to aggregate progress across all of them
+  const allPeriods = getMonthlyPeriods(machine.schedules ?? [], today);
+  if (!allPeriods.length) {
     return { count: 0, total, isPartiallyChecked: false };
   }
 
-  const dueDate = new Date(schedule.next_due_date);
-  dueDate.setHours(0, 0, 0, 0);
+  // Collect valid schedule IDs and period dates for this month
+  // Use local date formatting (not toISOString which shifts to UTC)
+  const fmtDate = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const scheduleIds = new Set(allPeriods.map(p => String(p.scheduleId)));
+  const periodDates = new Set(allPeriods.map(p => fmtDate(p.due)));
 
-  const periodStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), 1);
-  periodStart.setHours(0, 0, 0, 0);
-
-  const periodRecords = (machine.records || []).filter(r => {
-    if (r.status !== 'completed') return false;
-    const approvalStatus = r.latest_approval?.decision ?? 'pending';
-    if (approvalStatus === 'rejected') return false;
-    const recDate = new Date(r.maintenance_date); 
-    recDate.setHours(0, 0, 0, 0);
-    return recDate >= periodStart && recDate <= today;
-  });
-
-  const checkedComponentIds = new Set();
-  periodRecords.forEach(r => {
-    (r.actions || []).forEach(a => {
-      if (a.machine_component_id) checkedComponentIds.add(a.machine_component_id);
-    });
-  });
+  const completedComponentIds = new Set(
+    (machine.records || [])
+      .filter(record =>
+        record.status === 'completed' &&
+        !record.is_unscheduled &&
+        record.latest_approval?.decision !== 'rejected' &&
+        scheduleIds.has(String(record.schedule_id)) &&
+        periodDates.has(String(record.scheduled_period_date).slice(0, 10))
+      )
+      .flatMap(record => (record.actions || []).map(action => String(action.machine_component_id)))
+  );
 
   let count = 0;
   machine.components.forEach(c => {
-    if (checkedComponentIds.has(c.id)) count++;
+    if (completedComponentIds.has(String(c.id))) count++;
   });
 
   const isPartiallyChecked = count > 0 && count < total;
@@ -807,6 +809,16 @@ const maintenanceAlerts = computed(() => {
     const machine = allowedMachines.value.find(m => m.id === notif.machine_id);
     if (!machine) return null;
 
+    const isUnlockPriority = notif.is_unlock_priority === true ||
+      (machine.unlock_status === 'approved' && (() => {
+        if (machine.unlock_approved_at) {
+          const d = new Date(machine.unlock_approved_at);
+          return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+        }
+        // Fallback: check unlock_expires_at is still valid
+        return machine.unlock_expires_at && new Date(machine.unlock_expires_at) > new Date();
+      })());
+
     // Use the canonical current-period due date (same source as MachineDetail page)
     // instead of the raw schedule's next_due_date, which may have already advanced
     // past the period actually being tracked for schedules that occur 1x/2x a month.
@@ -814,8 +826,9 @@ const maintenanceAlerts = computed(() => {
     const dueDate = period ? period.due : (() => { const d = new Date(notif.next_due_date); d.setHours(0, 0, 0, 0); return d; })();
 
     const daysUntil = period ? period.diffDays : Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-    // Alert window: H-[alertDaysBefore] up to H (today). Overdue and far-future schedules are hidden here.
-    if (daysUntil < 0 || daysUntil > alertDaysBefore.value) return null;
+    // Alert window: H-[alertDaysBefore] up to H (today).
+    // Unlock-priority machines show even if overdue.
+    if (!isUnlockPriority && (daysUntil < 0 || daysUntil > alertDaysBefore.value)) return null;
 
     // Period start for this schedule: 5 days before due date or start of month, whichever is earlier
     const periodStart = new Date(dueDate);
@@ -863,10 +876,16 @@ const maintenanceAlerts = computed(() => {
       isFullyChecked,
       isPartiallyChecked,
       daysUntil,
-      daysBeforeSetting: daysBeforeSetting.value
+      daysBeforeSetting: daysBeforeSetting.value,
+      isUnlockPriority
     };
   }).filter(item => item !== null)
-    .sort((a, b) => a.daysUntil - b.daysUntil)
+    .sort((a, b) => {
+      // Unlock-priority items first
+      if (a.isUnlockPriority && !b.isUnlockPriority) return -1;
+      if (!a.isUnlockPriority && b.isUnlockPriority) return 1;
+      return a.daysUntil - b.daysUntil;
+    })
     .filter((item, index, self) => self.findIndex(i => i.machine_id === item.machine_id) === index);
 });
 
@@ -1035,11 +1054,11 @@ const downloadMachineTemplate = async () => {
   try {
     const XLSX = await loadSheetJS();
     const headers = [
-      ['Kode Mesin', 'Nama Mesin', 'Deskripsi', 'Kondisi (%)', 'Lokasi', 'Kota (psn/sby)', 'Status', 'Email PIC', 'Interval Perawatan (Hari)', 'Tanggal Mulai Perawatan']
+      ['Kode Mesin', 'Nama Mesin', 'Deskripsi', 'Kondisi (%)', 'Lokasi', 'Kota (psn/sby)', 'Status', 'Email PIC', 'Frekuensi Maintenance']
     ];
     const rows = [
-      ['LL-BLR-01', 'Boiler Utama', 'Mesin pemanas uap utama pabrik', 95, 'Gedung A-1', 'psn', 'active', 'pic@ladanglima.com', 30, '2026-06-12'],
-      ['LL-PKG-01', 'Mesin Packaging 1', 'Mesin pengemas tepung singkong otomatis', 80, 'Gedung B-2', 'sby', 'active', 'pic@ladanglima.com', 15, '2026-06-15']
+      ['LL-BLR-01', 'Boiler Utama', 'Mesin pemanas uap utama pabrik', 95, 'Gedung A-1', 'psn', 'active', 'pic@ladanglima.com', '1x sebulan'],
+      ['LL-PKG-01', 'Mesin Packaging 1', 'Mesin pengemas tepung singkong otomatis', 80, 'Gedung B-2', 'sby', 'active', 'pic@ladanglima.com', '2x sebulan']
     ];
     
     const wb = XLSX.utils.book_new();
@@ -1054,8 +1073,7 @@ const downloadMachineTemplate = async () => {
       { wch: 20 }, // Kota
       { wch: 15 }, // Status
       { wch: 25 }, // Email PIC
-      { wch: 25 }, // Interval Perawatan (Hari)
-      { wch: 25 }  // Tanggal Mulai Perawatan
+      { wch: 25 }, // Frekuensi Maintenance
     ];
     
     XLSX.utils.book_append_sheet(wb, ws, 'Template Import Mesin');
@@ -1079,38 +1097,83 @@ const parseIndicatorCell = (cellText) => {
   return result;
 };
 
-const downloadComponentTemplateGlobal = async () => {
+const handleDownloadTemplate = (fmt) => {
+  if (fmt === 'machine') {
+    downloadMachineTemplate();
+  } else {
+    downloadComponentTemplate(fmt);
+  }
+};
+
+const downloadComponentTemplate = async (format) => {
   try {
     const XLSX = await loadSheetJS();
-    const headers = [
-      ['Kode Mesin', 'Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kesulitan (ringan/sedang/berat)', 'Kondisi Awal (%)', 'Indikator']
-    ];
-    const rows = [
-      ['LL-BLR-01', 'Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 'sedang', 100, 'Visual: Casing utuh, tidak ada keretakan.\nKelistrikan: Tegangan stabil sesuai spesifikasi.'],
-      ['LL-PKG-01', 'Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 'ringan', 90, 'Akurasi: Suhu terbaca sesuai alat ukur standar.\nKebersihan: Sensor bebas debu dan kotoran.']
-    ];
+    let headers, rows, sheetName, fileName, cols;
+
+    if (format === 'A') {
+      headers = [['Kode Mesin', 'Nama Komponen', 'Qty', 'Satuan']];
+      rows = [
+        ['LL-BLR-01', 'Piston Cylinder Boiler', 2, 'Pcs'],
+        ['LL-PKG-01', 'Thermostat Digital TC-40', 1, 'Unit'],
+      ];
+      sheetName = 'Format A - Tambah Cepat';
+      fileName = 'Format_A_Import_Komponen_Tambah_Cepat.xlsx';
+      cols = [
+        { wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 10 }
+      ];
+    } else if (format === 'C') {
+      headers = [['Kode Mesin', 'Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kesulitan (ringan/sedang/berat)', 'Kondisi Awal (%)']];
+      rows = [
+        ['LL-BLR-01', 'Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 'sedang', 100],
+        ['LL-PKG-01', 'Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 'ringan', 90],
+      ];
+      sheetName = 'Format C - Detail Tanpa Indikator';
+      fileName = 'Format_C_Import_Komponen_Detail.xlsx';
+      cols = [
+        { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 20 }
+      ];
+    } else {
+      // Format B (default)
+      headers = [['Kode Mesin', 'Kategori', 'Nama Komponen', 'Spesifikasi', 'Jumlah (Qty)', 'Satuan', 'Kesulitan (ringan/sedang/berat)', 'Kondisi Awal (%)', 'Indikator']];
+      rows = [
+        ['LL-BLR-01', 'Suku Cadang Utama', 'Piston Cylinder Boiler', 'Stainless Steel 316 100mm', 2, 'Pcs', 'sedang', 100, 'Visual: Casing utuh, tidak ada keretakan.\nKelistrikan: Tegangan stabil sesuai spesifikasi.'],
+        ['LL-PKG-01', 'Sensor & Kontrol', 'Thermostat Digital TC-40', 'Range -50C to 200C', 1, 'Unit', 'ringan', 90, 'Akurasi: Suhu terbaca sesuai alat ukur standar.\nKebersihan: Sensor bebas debu dan kotoran.'],
+      ];
+      sheetName = 'Format B - Massal Lengkap';
+      fileName = 'Format_B_Import_Komponen_Massal.xlsx';
+      cols = [
+        { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 20 }, { wch: 60 }
+      ];
+    }
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
-
-    ws['!cols'] = [
-      { wch: 15 }, // Kode Mesin
-      { wch: 20 }, // Kategori
-      { wch: 25 }, // Nama Komponen
-      { wch: 30 }, // Spesifikasi
-      { wch: 15 }, // Jumlah (Qty)
-      { wch: 15 }, // Satuan
-      { wch: 25 }, // Kesulitan
-      { wch: 20 }, // Kondisi Awal (%)
-      { wch: 60 }  // Indikator
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Import Komponen');
-    XLSX.writeFile(wb, 'Format_Import_Komponen_Massal.xlsx');
+    ws['!cols'] = cols;
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, fileName);
   } catch (err) {
     console.error('Template download failed:', err);
     showAlert('error', 'Gagal!', 'Gagal mendownload template Excel.');
   }
+};
+
+const frequencyLabelMap = {
+  '4x sebulan': 7,
+  '2x sebulan': 14,
+  '1x sebulan': 28,
+  '1x per 2 bulan': 56,
+  '1x per 3 bulan': 84,
+};
+
+const parseFrequency = (val) => {
+  if (!val && val !== 0) return null;
+  const key = val.toString().trim().toLowerCase();
+  for (const [label, days] of Object.entries(frequencyLabelMap)) {
+    if (label.toLowerCase() === key) return days;
+  }
+  const num = parseInt(val);
+  if (!isNaN(num) && num > 0) return num;
+  return null;
 };
 
 const importMachines = async (file) => {
@@ -1152,8 +1215,7 @@ const importMachines = async (file) => {
             })(),
             status: row[6]?.toString()?.trim()?.toLowerCase() || 'active',
             pic_email: row[7]?.toString()?.trim() || null,
-            maintenance_duration: parseInt(row[8]) || null,
-            maintenance_start_date: row[9] ? formatDateISO(row[9]) : null
+            maintenance_duration: parseFrequency(row[8]),
           });
         }
         
@@ -1302,19 +1364,6 @@ const onIndicatorImported = async () => {
   showIndicatorImportModal.value = false;
   await loadData();
   showAlert('success', 'Berhasil!', 'Indikator komponen berhasil diimport.');
-};
-
-const formatDateISO = (val) => {
-  if (!val) return null;
-  if (typeof val === 'number') {
-    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
-    return d.toISOString().split('T')[0];
-  }
-  const dateObj = new Date(val);
-  if (!isNaN(dateObj.getTime())) {
-    return dateObj.toISOString().split('T')[0];
-  }
-  return val.toString();
 };
 
 </script>

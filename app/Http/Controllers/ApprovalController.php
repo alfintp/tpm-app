@@ -191,6 +191,7 @@ class ApprovalController extends Controller
                 'completed_steps' => $state['completed_steps'],
                 'total_steps'     => $state['total_steps'],
                 'pending_role'    => $state['pending_role'],
+                'pending_role_display' => $state['pending_role_display'] ?? null,
                 'approvals'       => $state['approvals'],
                 'flow_steps'        => $state['flow_steps'],
                 'component_stats'   => $this->computeComponentStats($record),
@@ -258,6 +259,7 @@ class ApprovalController extends Controller
             'completed_steps' => $state['completed_steps'],
             'total_steps'     => $state['total_steps'],
             'pending_role'    => $state['pending_role'],
+            'pending_role_display' => $state['pending_role_display'] ?? null,
             'approvals'       => $state['approvals'],
             'flow_steps'        => $state['flow_steps'],
             'component_stats'   => $this->computeComponentStats($record),
@@ -447,6 +449,15 @@ class ApprovalController extends Controller
 
         $stepRole = fn ($step) => $step ? (is_array($step) ? ($step['role'] ?? null) : $step->role) : null;
 
+        // Map flow steps to include role display_name
+        $roleDisplayMap = Role::pluck('display_name', 'name')->toArray();
+        $steps = $steps->map(function ($step) use ($roleDisplayMap) {
+            $roleName = is_array($step) ? ($step['role'] ?? null) : $step->role;
+            $stepData = is_array($step) ? $step : $step->toArray();
+            $stepData['role_display'] = $roleDisplayMap[$roleName] ?? $roleName;
+            return $stepData;
+        });
+
         $rejected = $decisions->firstWhere('decision', 'rejected');
         if ($rejected) {
             return [
@@ -459,6 +470,7 @@ class ApprovalController extends Controller
                 'completed_steps' => $decisions->where('decision', 'approved')->count(),
                 'total_steps' => $totalSteps,
                 'pending_role' => null,
+                'pending_role_display' => null,
                 'approvals' => $this->mapApprovals($decisions),
                 'flow_steps' => $steps,
             ];
@@ -481,12 +493,15 @@ class ApprovalController extends Controller
                 'completed_steps' => $completedSteps,
                 'total_steps' => $totalSteps,
                 'pending_role' => null,
+                'pending_role_display' => null,
                 'approvals' => $this->mapApprovals($decisions),
                 'flow_steps' => $steps,
             ];
         }
 
-        $pendingRole = $stepRole($steps->firstWhere('step_order', $currentStep));
+        $pendingStep = $steps->firstWhere('step_order', $currentStep);
+        $pendingRole = $stepRole($pendingStep);
+        $pendingRoleDisplay = is_array($pendingStep) ? ($pendingStep['role_display'] ?? null) : null;
 
         return [
             'approval_status' => 'pending',
@@ -498,6 +513,7 @@ class ApprovalController extends Controller
             'completed_steps' => $completedSteps,
             'total_steps' => $totalSteps,
             'pending_role' => $pendingRole,
+            'pending_role_display' => $pendingRoleDisplay,
             'approvals' => $this->mapApprovals($decisions),
             'flow_steps' => $steps,
         ];

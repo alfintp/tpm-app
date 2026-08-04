@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="w-full max-w-5xl mx-auto space-y-6">
     <!-- Header -->
     <PageHeader
@@ -6,8 +6,8 @@
       :subtitle="isApproverUser ? 'Review dan approve laporan maintenance dari teknisi' : 'Status laporan maintenance yang sudah kamu kirimkan'"
     />
 
-    <!-- Admin/Manager Tabs -->
-    <div v-if="isAdmin || currentUser?.is_manager" class="border-b border-slate-200">
+    <!-- Tabs -->
+    <div class="border-b border-slate-200">
       <nav class="flex gap-6 -mb-px">
         <button
           @click="currentTab = 'list'"
@@ -17,7 +17,16 @@
           Approval Laporan
         </button>
         <button
-          v-if="isAdmin || currentUser?.is_manager"
+          v-if="myUnlockRequests.length > 0"
+          @click="currentTab = 'my-unlock'"
+          :class="currentTab === 'my-unlock' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+          class="pb-3 border-b-2 text-sm font-semibold transition-all cursor-pointer bg-transparent border-0"
+        >
+          Pengajuan Buka Kunci
+          <span v-if="myPendingUnlockCount > 0" class="ml-2 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] rounded-full">{{ myPendingUnlockCount }}</span>
+        </button>
+        <button
+          v-if="canApproveUnlock"
           @click="currentTab = 'unlock'"
           :class="currentTab === 'unlock' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
           class="pb-3 border-b-2 text-sm font-semibold transition-all cursor-pointer bg-transparent border-0"
@@ -26,6 +35,7 @@
           <span v-if="pendingUnlockCount > 0" class="ml-2 px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded-full">{{ pendingUnlockCount }}</span>
         </button>
         <button
+          v-if="isAdmin"
           @click="currentTab = 'flow'"
           :class="currentTab === 'flow' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
           class="pb-3 border-b-2 text-sm font-semibold transition-all cursor-pointer bg-transparent border-0"
@@ -33,6 +43,7 @@
           Alur Approval
         </button>
         <button
+          v-if="isAdmin"
           @click="currentTab = 'roles'"
           :class="currentTab === 'roles' ? 'border-indigo-600 text-indigo-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
           class="pb-3 border-b-2 text-sm font-semibold transition-all cursor-pointer bg-transparent border-0"
@@ -82,14 +93,26 @@
       @update-role-display-name="({ role, value }) => role.display_name = value"
       @toggle-can-approve="({ role, value }) => role.can_approve = value"
       @toggle-can-report="({ role, value }) => role.can_report = value"
+      @toggle-can-approve-unlock="({ role, value }) => role.can_approve_unlock = value"
     />
 
     <ApprovalUnlockPanel
       v-else-if="currentTab === 'unlock'"
+      v-model:current-page="unlockCurrentPage"
+      v-model:per-page="unlockPerPage"
       :items="unlockRequests"
       :loading="loadingUnlock"
       :format-date-time="formatDateTime"
       @refresh="loadUnlockRequests"
+      @go-to-machine="goToMachine"
+    />
+
+    <MyUnlockRequestsPanel
+      v-else-if="currentTab === 'my-unlock'"
+      :items="myUnlockRequests"
+      :loading="loadingMyUnlock"
+      :format-date-time="formatDateTime"
+      @refresh="loadMyUnlockRequests"
       @go-to-machine="goToMachine"
     />
 
@@ -100,11 +123,13 @@
       v-model:sort-order="sortOrder"
       v-model:current-page="currentPage"
       v-model:per-page="perPage"
+      v-model:filter-month="filterMonth"
+      v-model:city-filter="cityFilter"
       :items="items"
       :loading="loading"
       :is-approver-user="isApproverUser"
       :current-user="currentUser"
-      :filter-tabs="filterTabsWithCount"
+      :available-months="availableMonths"
       :filtered-items="filteredItems"
       :paginated-items="paginatedItems"
       :can-decide="canDecide"
@@ -171,6 +196,7 @@ import ApprovalListPanel from '../components/ApprovalListPanel.vue';
 import ApprovalFlowPanel from '../components/ApprovalFlowPanel.vue';
 import ApprovalRolesPanel from '../components/ApprovalRolesPanel.vue';
 import ApprovalUnlockPanel from '../components/ApprovalUnlockPanel.vue';
+import MyUnlockRequestsPanel from '../components/MyUnlockRequestsPanel.vue';
 import { showAlert, showConfirm } from '../composables/useAlert.js';
 
 const loading = ref(true);
@@ -178,11 +204,17 @@ const deciding = ref(false);
 const items = ref([]);
 const unlockRequests = ref([]);
 const loadingUnlock = ref(false);
+const myUnlockRequests = ref([]);
+const loadingMyUnlock = ref(false);
 const activeFilter = ref('all');
 const searchQuery = ref('');
 const sortOrder = ref('newest');
 const currentPage = ref(1);
 const perPage = ref(5);
+const unlockCurrentPage = ref(1);
+const unlockPerPage = ref(5);
+const filterMonth = ref(''); // '' = all months, 'YYYY-MM' = specific month
+const cityFilter = ref('all'); // 'all', 'sby', 'pasuruan'
 
 const currentTab = ref('list'); // 'list', 'flow', or 'roles'
 const activeReporterRole = ref('technician');
@@ -193,7 +225,7 @@ const flowStepsBackup = ref([]);
 
 const localRoles = ref([]);
 const rolesBackup = ref([]);
-const newRole = ref({ name: '', display_name: '', can_approve: true, can_report: false, is_active: true });
+const newRole = ref({ name: '', display_name: '', can_approve: true, can_report: false, can_approve_unlock: false, is_active: true });
 const roleConfigLoading = ref(false);
 const roleEditMode = ref(false);
 
@@ -211,6 +243,13 @@ const approvalColumns = [
 ];
 
 const { isAdmin, user: currentUser, authReady } = useAuth();
+
+// Default city filter to user's city
+watchEffect(() => {
+  if (currentUser.value?.city && currentUser.value.city !== 'both' && cityFilter.value === 'all') {
+    cityFilter.value = currentUser.value.city;
+  }
+});
 
 const decideModal = ref({ show: false, item: null, decision: 'approved', notes: '' });
 const detailModal = ref({ show: false, item: null });
@@ -266,8 +305,14 @@ const loadData = async () => {
   }
 };
 
+const canApproveUnlock = computed(() => {
+  if (isAdmin.value) return true;
+  const role = currentUser.value?.role;
+  return roles.value.some(r => r.name === role && r.can_approve_unlock);
+});
+
 const loadUnlockRequests = async () => {
-  if (!isAdmin.value && !currentUser.value?.is_manager) return;
+  if (!canApproveUnlock.value) return;
   loadingUnlock.value = true;
   try {
     const res = await axios.get('/api/machines/unlock-history');
@@ -280,16 +325,40 @@ const loadUnlockRequests = async () => {
 };
 
 const pendingUnlockCount = computed(() => unlockRequests.value.filter(r => r.unlock_status === 'pending').length);
+const myPendingUnlockCount = computed(() => myUnlockRequests.value.filter(r => r.unlock_status === 'pending').length);
+
+const loadMyUnlockRequests = async () => {
+  loadingMyUnlock.value = true;
+  try {
+    const res = await axios.get('/api/machines/my-unlock-requests');
+    myUnlockRequests.value = Array.isArray(res.data) ? res.data : [];
+  } catch (e) {
+    console.error('Failed to load my unlock requests:', e);
+  } finally {
+    loadingMyUnlock.value = false;
+  }
+};
 
 onMounted(() => {
   if (authReady.value) {
     loadData();
+    loadMyUnlockRequests();
+    if (canApproveUnlock.value) loadUnlockRequests();
+  }
+});
+
+watch(canApproveUnlock, (val) => {
+  if (val && unlockRequests.value.length === 0 && !loadingUnlock.value) {
     loadUnlockRequests();
   }
 });
 
 watch(authReady, (ready) => {
-  if (ready && items.value.length === 0 && !loading.value) loadData();
+  if (ready && items.value.length === 0 && !loading.value) {
+    loadData();
+    loadMyUnlockRequests();
+    if (canApproveUnlock.value) loadUnlockRequests();
+  }
 });
 
 const approvingRoleNames = computed(() => roles.value.filter(r => r.can_approve).map(r => r.name));
@@ -299,31 +368,18 @@ const isApproverUser = computed(() => {
   return role === 'admin' || approvingRoleNames.value.includes(role);
 });
 
-const myPendingItems = computed(() => {
-  const role = currentUser.value?.role;
-  if (role === 'admin') return items.value.filter(i => i.approval_status === 'pending');
-  if (!isApproverUser.value) return items.value.filter(i => i.approval_status === 'pending');
-  return items.value.filter(i => i.approval_status === 'pending' && i.pending_role === role);
-});
-const pendingCount  = computed(() => myPendingItems.value.length);
-const approvedCount = computed(() => items.value.filter(i => i.approval_status === 'approved').length);
-const rejectedCount = computed(() => items.value.filter(i => i.approval_status === 'rejected').length);
-
-const detailCanDecide = computed(() => canDecide(detailModal.value.item));
-
-const filterTabsWithCount = computed(() => [
-  { value: 'all',      label: 'Semua',    count: items.value.length },
-  { value: 'pending',  label: isApproverUser.value ? 'Menunggu Anda' : 'Menunggu', count: pendingCount.value },
-  { value: 'approved', label: 'Disetujui', count: approvedCount.value },
-  { value: 'rejected', label: 'Ditolak',  count: rejectedCount.value },
-]);
-
-const filteredItems = computed(() => {
+// Base filter: city + month + search (without status tab filter) — used for stat counts
+const baseFilteredItems = computed(() => {
   let list = items.value;
-  if (activeFilter.value === 'pending') {
-    list = myPendingItems.value;
-  } else if (activeFilter.value !== 'all') {
-    list = list.filter(i => i.approval_status === activeFilter.value);
+  if (cityFilter.value !== 'all') {
+    list = list.filter(i => i.machine_kota === cityFilter.value);
+  }
+  if (filterMonth.value) {
+    list = list.filter(i => {
+      const d = new Date(i.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return key === filterMonth.value;
+    });
   }
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase();
@@ -331,6 +387,50 @@ const filteredItems = computed(() => {
       (i.machine_name && i.machine_name.toLowerCase().includes(q)) ||
       (i.technician_name && i.technician_name.toLowerCase().includes(q))
     );
+  }
+  return list;
+});
+
+const myPendingItems = computed(() => {
+  const role = currentUser.value?.role;
+  const base = baseFilteredItems.value;
+  if (role === 'admin') return base.filter(i => i.approval_status === 'pending');
+  if (!isApproverUser.value) return base.filter(i => i.approval_status === 'pending');
+  return base.filter(i => i.approval_status === 'pending' && i.pending_role === role);
+});
+const pendingCount  = computed(() => myPendingItems.value.length);
+const approvedCount = computed(() => baseFilteredItems.value.filter(i => i.approval_status === 'approved').length);
+const rejectedCount = computed(() => baseFilteredItems.value.filter(i => i.approval_status === 'rejected').length);
+
+const detailCanDecide = computed(() => canDecide(detailModal.value.item));
+
+const availableMonths = computed(() => {
+  const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const seen = new Map();
+  items.value.forEach(i => {
+    if (!i.created_at) return;
+    const d = new Date(i.created_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (!seen.has(key)) {
+      seen.set(key, { value: key, label: `${monthNames[d.getMonth()]} ${d.getFullYear()}` });
+    }
+  });
+  return Array.from(seen.values()).sort((a, b) => b.value.localeCompare(a.value));
+});
+
+const filterTabsWithCount = computed(() => [
+  { value: 'all',      label: 'Semua',    count: baseFilteredItems.value.length },
+  { value: 'pending',  label: isApproverUser.value ? 'Menunggu Anda' : 'Menunggu', count: pendingCount.value },
+  { value: 'approved', label: 'Disetujui', count: approvedCount.value },
+  { value: 'rejected', label: 'Ditolak',  count: rejectedCount.value },
+]);
+
+const filteredItems = computed(() => {
+  let list = baseFilteredItems.value;
+  if (activeFilter.value === 'pending') {
+    list = myPendingItems.value;
+  } else if (activeFilter.value !== 'all') {
+    list = list.filter(i => i.approval_status === activeFilter.value);
   }
 
   const newestFirst = (a, b) => new Date(b.created_at ?? 0) - new Date(a.created_at ?? 0);
@@ -351,7 +451,7 @@ const paginatedItems = computed(() => {
   return filteredItems.value.slice(start, start + perPage.value);
 });
 
-watch([activeFilter, searchQuery, sortOrder, perPage], () => { currentPage.value = 1; });
+watch([activeFilter, searchQuery, sortOrder, perPage, filterMonth, cityFilter], () => { currentPage.value = 1; });
 
 const openDecide = (item, decision) => {
   decideModal.value = { show: true, item, decision };
@@ -516,7 +616,7 @@ const addNewRole = async () => {
   roleConfigLoading.value = true;
   try {
     await axios.post('/api/roles', { ...newRole.value });
-    newRole.value = { name: '', display_name: '', can_approve: true, can_report: false, is_active: true };
+    newRole.value = { name: '', display_name: '', can_approve: true, can_report: false, can_approve_unlock: false, is_active: true };
     await loadData();
     showAlert('success', 'Berhasil', 'Role baru berhasil ditambahkan.');
   } catch (e) {
@@ -541,6 +641,7 @@ const saveAllRoles = async () => {
         display_name: r.display_name,
         can_approve: r.can_approve,
         can_report: r.can_report,
+        can_approve_unlock: r.can_approve_unlock || false,
         required_difficulties: r.required_difficulties || [],
       }))
     });

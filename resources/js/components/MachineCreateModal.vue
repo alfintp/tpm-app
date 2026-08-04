@@ -41,19 +41,13 @@
             <option v-for="user in users" :key="user.id" :value="user.id">{{ user.full_name }} ({{ user.role }})</option>
           </select>
         </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Frekuensi Maintenance</label>
-            <select v-model="frequencyOption" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 cursor-pointer">
-              <option value="">Tidak ada jadwal</option>
-              <option v-for="opt in frequencyOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-            <p v-if="frequencyOption" class="text-xs text-slate-400">Interval: setiap {{ form.maintenance_duration }} hari</p>
-          </div>
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-700">Tanggal Maintenance Pertama</label>
-            <input type="date" v-model="form.maintenance_start_date" :disabled="!frequencyOption" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed">
-          </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-slate-700">Frekuensi Maintenance</label>
+          <select v-model="frequencyOption" class="w-full rounded-xl border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 cursor-pointer">
+            <option value="">Tidak ada jadwal</option>
+            <option v-for="opt in frequencyOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+          <p v-if="frequencyOption" class="text-xs text-slate-400">Interval: setiap {{ form.maintenance_duration }} hari. Tanggal pasti maintenance akan ditentukan otomatis oleh sistem secara merata setiap bulan.</p>
         </div>
       </div>
       <div class="px-8 pb-8 flex justify-end gap-3">
@@ -95,12 +89,10 @@ const form = ref({
   condition_pct: 100,
   pic_mesin_id: '',
   maintenance_duration: null,
-  maintenance_start_date: ''
 });
 
 watch(frequencyOption, (val) => {
   form.value.maintenance_duration = val ? Number(val) : null;
-  if (!val) form.value.maintenance_start_date = '';
 });
 
 const loadUsers = async () => {

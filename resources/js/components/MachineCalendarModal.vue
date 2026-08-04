@@ -27,19 +27,16 @@
             <div class="flex-1 min-w-0">
               <div class="font-semibold text-sm truncate">{{ machine.name }}</div>
               <div class="text-[11px] opacity-70 mt-0.5">{{ machine.kota === 'sby' ? 'Surabaya' : machine.kota === 'pasuruan' ? 'Pasuruan' : machine.kota }}</div>
-              <div v-if="machine.rescheduledTo" class="text-[11px] font-semibold mt-1 text-amber-600">
-                ⟶ Jadwal dipindah ke {{ formatRescheduledDate(machine.rescheduledTo) }}
               </div>
-            </div>
             <div class="shrink-0 pt-0.5">
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
                 :class="{
                   'bg-green-100 text-green-700':  machine.status === 'completed',
+                  'bg-orange-100 text-orange-700': machine.status === 'partial',
                   'bg-rose-100 text-rose-700':    machine.status === 'overdue',
                   'bg-indigo-100 text-indigo-700': machine.status === 'pending',
-                  'bg-amber-100 text-amber-700':  machine.status === 'rescheduled',
                 }">
-                {{ machine.status === 'completed' ? 'Selesai' : machine.status === 'overdue' ? 'Terlambat' : machine.status === 'rescheduled' ? 'Dipindah' : 'Terjadwal' }}
+                {{ machine.status === 'completed' ? 'Selesai' : machine.status === 'partial' ? 'Sebagian' : machine.status === 'overdue' ? 'Terlambat' : 'Belum Dicek' }}
               </span>
             </div>
           </div>
@@ -102,8 +99,12 @@
             <span class="font-semibold text-slate-700">Selesai</span>
           </div>
           <div class="flex items-center gap-1.5 sm:gap-2">
+            <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-orange-500"></span>
+            <span class="font-semibold text-slate-700">Sebagian</span>
+          </div>
+          <div class="flex items-center gap-1.5 sm:gap-2">
             <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-indigo-500"></span>
-            <span class="font-semibold text-slate-700">Terjadwal</span>
+            <span class="font-semibold text-slate-700">Belum Dicek</span>
           </div>
           <div class="flex items-center gap-1.5 sm:gap-2">
             <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-rose-500"></span>
@@ -112,10 +113,6 @@
           <div class="flex items-center gap-1.5 sm:gap-2">
             <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-pink-100 border border-pink-200"></span>
             <span class="font-semibold text-slate-700">Libur / Minggu</span>
-          </div>
-          <div class="flex items-center gap-1.5 sm:gap-2">
-            <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-400"></span>
-            <span class="font-semibold text-slate-700">Dipindah</span>
           </div>
           <span v-if="holidayLoading" class="text-[10px] text-slate-400 italic ml-1">Memuat hari libur...</span>
         </div>
@@ -381,34 +378,42 @@ const getMachinesForDate = (date, viewYear, viewMonth) => {
   const result = [];
 
   filteredMachines.value.forEach(machine => {
-    const hasRecord = (machine.records ?? []).some(record => {
+    const projections = buildProjections(machine.schedules ?? [], viewYear, viewMonth);
+
+    // Check if this date is a scheduled date (shifted working-day)
+    const shiftedMatch = projections.find(p => p.shiftedTime === targetTime);
+    if (!shiftedMatch) return;
+
+    // Find records for this date
+    const dayRecords = (machine.records ?? []).filter(record => {
       const recDate = new Date(record.maintenance_date); recDate.setHours(0, 0, 0, 0);
       return recDate.getTime() === targetTime;
     });
-    if (hasRecord) {
-      result.push({ id: machine.id, name: machine.name, kota: machine.kota, status: 'completed', rescheduledTo: null });
-      return;
-    }
-    const projections = buildProjections(machine.schedules ?? [], viewYear, viewMonth);
 
-    // Case 1: this date is a shifted (working-day) scheduled date
-    const shiftedMatch = projections.find(p => p.shiftedTime === targetTime);
-    if (shiftedMatch) {
+    const totalComponents = (machine.components ?? []).length;
+
+    if (dayRecords.length > 0 && totalComponents > 0) {
+      // Count unique checked components from records on this date
+      const checkedIds = new Set();
+      dayRecords.forEach(record => {
+        (record.actions ?? []).forEach(a => {
+          if (a.machine_component_id) checkedIds.add(a.machine_component_id);
+        });
+      });
+      const checkedCount = checkedIds.size;
+
+      if (checkedCount >= totalComponents) {
+        result.push({ id: machine.id, name: machine.name, kota: machine.kota, status: 'completed' });
+      } else if (checkedCount > 0) {
+        result.push({ id: machine.id, name: machine.name, kota: machine.kota, status: 'partial' });
+      } else {
+        result.push({ id: machine.id, name: machine.name, kota: machine.kota, status: targetTime < todayTime ? 'overdue' : 'pending' });
+      }
+    } else {
+      // No records for this date
       result.push({
         id: machine.id, name: machine.name, kota: machine.kota,
         status: targetTime < todayTime ? 'overdue' : 'pending',
-        rescheduledTo: null,
-      });
-      return;
-    }
-
-    // Case 2: this date was the ORIGINAL scheduled date but got shifted to another day
-    const originalMatch = projections.find(p => p.originalTime === targetTime && p.shiftedTime !== targetTime);
-    if (originalMatch) {
-      result.push({
-        id: machine.id, name: machine.name, kota: machine.kota,
-        status: 'rescheduled',
-        rescheduledTo: localDateStr(originalMatch.shiftedDate),
       });
     }
   });
@@ -456,20 +461,15 @@ const getCalendarDayClass = (day) => {
 
 const getMachineBadgeClass = (status) => ({
   completed:   'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100',
+  partial:     'bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100',
   overdue:     'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100',
   pending:     'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100',
-  rescheduled: 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100',
 }[status] ?? 'bg-slate-50 text-slate-700 border border-slate-200');
 
 const getMachineDotClass = (status) => ({
   completed:   'bg-green-500',
+  partial:     'bg-orange-500',
   overdue:     'bg-rose-500',
   pending:     'bg-indigo-500',
-  rescheduled: 'bg-amber-400',
 }[status] ?? 'bg-slate-400');
-
-const formatRescheduledDate = (dateStr) => {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return `${d} ${months[m - 1]} ${y}`;
-};
 </script>

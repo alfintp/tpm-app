@@ -54,6 +54,10 @@
           <input id="newRoleCanReport" :checked="newRole.can_report" @change="$emit('update:newRole', { ...newRole, can_report: $event.target.checked })" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
           <label for="newRoleCanReport" class="text-xs text-slate-600">Dapat Report</label>
         </div>
+        <div class="flex items-center gap-2">
+          <input id="newRoleCanApproveUnlock" :checked="newRole.can_approve_unlock" @change="$emit('update:newRole', { ...newRole, can_approve_unlock: $event.target.checked })" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          <label for="newRoleCanApproveUnlock" class="text-xs text-slate-600">Dapat Approve Kunci</label>
+        </div>
       </div>
       <button
         @click="$emit('addRole')"
@@ -74,6 +78,7 @@
             <th class="px-3 py-2 text-left font-semibold">Tampilan</th>
             <th class="px-3 py-2 text-center font-semibold">Approve</th>
             <th class="px-3 py-2 text-center font-semibold">Report</th>
+            <th class="px-3 py-2 text-center font-semibold">Acc Kunci</th>
             <th class="px-3 py-2 text-left font-semibold">Kategori Wajib</th>
             <th v-if="roleEditMode" class="px-3 py-2 text-right font-semibold">Aksi</th>
           </tr>
@@ -105,6 +110,9 @@
             </td>
             <td class="px-3 py-2 text-center">
               <input :checked="role.can_report" @change="$emit('toggleCanReport', { role, value: $event.target.checked })" type="checkbox" :disabled="!roleEditMode" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+            </td>
+            <td class="px-3 py-2 text-center">
+              <input :checked="role.can_approve_unlock" @change="$emit('toggleCanApproveUnlock', { role, value: $event.target.checked })" type="checkbox" :disabled="!roleEditMode" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
             </td>
             <td class="px-3 py-2">
               <div v-if="role.can_report" class="flex items-center gap-2 flex-wrap">
@@ -163,12 +171,12 @@ defineProps({
   localRoles: { type: Array, default: () => [] },
   difficultyOptions: { type: Array, default: () => [] },
   roleConfigLoading: { type: Boolean, default: false },
-  newRole: { type: Object, default: () => ({ name: '', display_name: '', can_approve: true, can_report: false, is_active: true }) },
+  newRole: { type: Object, default: () => ({ name: '', display_name: '', can_approve: true, can_report: false, can_approve_unlock: false, is_active: true }) },
   isNewRoleValid: { type: Boolean, default: false },
   isRoleNamesValid: { type: Boolean, default: false },
   isCoreSystemRole: { type: Function, default: () => false },
   isSystemRole: { type: Function, default: () => false },
 });
 
-defineEmits(['edit', 'cancel', 'save', 'addRole', 'deleteRole', 'toggleDifficulty', 'update:newRole', 'updateRoleName', 'updateRoleDisplayName', 'toggleCanApprove', 'toggleCanReport']);
+defineEmits(['edit', 'cancel', 'save', 'addRole', 'deleteRole', 'toggleDifficulty', 'update:newRole', 'updateRoleName', 'updateRoleDisplayName', 'toggleCanApprove', 'toggleCanReport', 'toggleCanApproveUnlock']);
 </script>

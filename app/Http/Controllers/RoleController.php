@@ -18,6 +18,7 @@ class RoleController extends Controller
             'can_approve' => $r->can_approve,
             'can_report' => $r->can_report,
             'is_manager' => $r->is_manager,
+            'can_approve_unlock' => $r->can_approve_unlock,
             'required_difficulties' => $r->required_difficulties ?? [],
             'is_active' => $r->is_active,
         ]));
@@ -35,6 +36,7 @@ class RoleController extends Controller
             'display_name' => 'required|string|max:100',
             'can_approve' => 'required|boolean',
             'can_report' => 'required|boolean',
+            'can_approve_unlock' => 'nullable|boolean',
             'required_difficulties' => 'nullable|array',
         ]);
 
@@ -43,6 +45,7 @@ class RoleController extends Controller
             'display_name' => $validated['display_name'],
             'can_approve' => $validated['can_approve'],
             'can_report' => $validated['can_report'],
+            'can_approve_unlock' => $validated['can_approve_unlock'] ?? false,
             'required_difficulties' => $this->sanitizeDifficulties($validated['required_difficulties'] ?? []),
             'is_active' => true,
         ]);
@@ -89,6 +92,7 @@ class RoleController extends Controller
             'roles.*.display_name' => 'required|string|max:100',
             'roles.*.can_approve' => 'required|boolean',
             'roles.*.can_report' => 'required|boolean',
+            'roles.*.can_approve_unlock' => 'nullable|boolean',
             'roles.*.required_difficulties' => 'nullable|array',
         ]);
 
@@ -135,6 +139,7 @@ class RoleController extends Controller
                     'display_name' => $roleData['display_name'],
                     'can_approve' => $roleData['can_approve'],
                     'can_report' => $roleData['can_report'],
+                    'can_approve_unlock' => $roleData['can_approve_unlock'] ?? false,
                     'required_difficulties' => $this->sanitizeDifficulties($roleData['required_difficulties'] ?? []),
                 ]);
             }

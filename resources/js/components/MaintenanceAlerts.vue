@@ -38,13 +38,17 @@
 
         <div class="flex-1 min-w-0">
           <div class="flex justify-between items-center gap-2">
-            <h4 class="text-sm font-bold text-slate-800 truncate">{{ alert.machine?.name }}</h4>
-            <span :class="getAlertBadgeClasses(alert)" class="text-xs font-semibold bg-white px-2 py-0.5 rounded-full border border-current shrink-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <h4 class="text-sm font-bold text-slate-800 truncate">{{ alert.machine?.name }}</h4>
+              <span v-if="alert.isUnlockPriority" class="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0">UNLOCKED</span>
+            </div>
+            <span :class="getAlertBadgeClasses(alert)" class="text-xs font-semibold bg-white px-2 py-0.5 rounded-full border border-current shrink-0 self-center">
               {{ alert.isFullyChecked ? 'Sudah Dicek' : getAlertTimeText(alert) }}
             </span>
           </div>
           <p class="text-xs text-slate-500 mt-0.5">
             <span class="capitalize">{{ alert.schedule_type }}</span> · Jadwal: {{ formatDate(alert.next_due_date) }}
+            <span v-if="alert.isUnlockPriority" class="text-emerald-600 font-semibold"> · Terlambat (Unlock Approved)</span>
             <span v-if="alert.machine?.pic_mesin" class="text-slate-400"> · PIC: <span class="font-semibold text-slate-600">{{ alert.machine.pic_mesin.full_name }}</span></span>
             <span v-if="alert.isFullyChecked" class="text-green-600 font-semibold">
               · ✅ {{ alert.totalComponents }} komponen sudah dicek
@@ -82,6 +86,7 @@ const isAlertOverdue = (dateStr) => {
 };
 
 const getAlertClasses = (alert) => {
+  if (alert.isUnlockPriority)   return 'bg-emerald-50 border-emerald-300 ring-1 ring-emerald-200';
   if (alert.isFullyChecked)     return 'bg-green-50 border-green-200';
   if (alert.isPartiallyChecked) return 'bg-orange-50 border-orange-200';
   if (alert.daysUntil < 0)      return 'bg-red-50 border-red-200';
@@ -90,6 +95,7 @@ const getAlertClasses = (alert) => {
 };
 
 const getAlertIconClasses = (alert) => {
+  if (alert.isUnlockPriority)   return 'bg-emerald-100 text-emerald-600';
   if (alert.isFullyChecked)     return 'bg-green-100 text-green-600';
   if (alert.isPartiallyChecked) return 'bg-orange-100 text-orange-600';
   if (alert.daysUntil < 0)      return 'bg-red-100 text-red-600';
@@ -98,6 +104,7 @@ const getAlertIconClasses = (alert) => {
 };
 
 const getAlertBadgeClasses = (alert) => {
+  if (alert.isUnlockPriority)   return 'text-emerald-600';
   if (alert.isFullyChecked)     return 'text-green-600';
   if (alert.isPartiallyChecked) return 'text-orange-600';
   if (alert.daysUntil < 0)      return 'text-red-600';
@@ -106,6 +113,7 @@ const getAlertBadgeClasses = (alert) => {
 };
 
 const getAlertTimeText = (alert) => {
+  if (alert.isUnlockPriority) return 'Buka Kunci disetujui';
   const days = alert.daysUntil;
   if (days === 0) return 'Hari Ini';
   if (days > 0 && days <= (alert.daysBeforeSetting ?? 2)) return `H-${days} · Sudah Bisa dicek`;

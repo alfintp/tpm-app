@@ -102,7 +102,7 @@
           <div class="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
             <p class="text-sm font-bold text-brand-brown truncate leading-tight">{{ user.full_name }}</p>
             <p class="text-xs text-slate-500 font-medium truncate uppercase leading-tight">
-              {{ getCityLabel(user.city, user.role) || getRoleLabel(user.role) }}
+              {{ getRoleLabel(user.role) }}<span v-if="user.city && user.city !== 'both'"> · {{ cityLabel(user.city) }}</span>
             </p>
           </div>
         </div>
@@ -190,11 +190,9 @@ function getRoleLabel(role) {
   return map[role] ?? role;
 }
 
-function getCityLabel(city, role) {
-  if (role !== 'technician') return '';
-  if (!city || city === 'both') return 'Teknisi';
-  const map = { sby: 'Teknisi Surabaya', pasuruan: 'Teknisi Pasuruan' };
-  return map[city] ?? `Teknisi ${city}`;
+function cityLabel(city) {
+  const map = { sby: 'Surabaya', pasuruan: 'Pasuruan' };
+  return map[city] ?? city;
 }
 
 function handleLogout() {

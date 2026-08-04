@@ -6,6 +6,14 @@
         <div>
           <h3 class="text-xl font-semibold text-slate-800">Riwayat Komponen</h3>
           <p class="text-sm text-slate-500 mt-1">{{ component?.name }} · <span class="text-indigo-600 font-medium">{{ component?.category }}</span></p>
+          <div v-if="component?.machine" class="flex items-center gap-1.5 mt-1.5">
+            <span class="text-xs font-semibold text-slate-700">{{ component.machine.name }}</span>
+            <span
+              v-if="component.machine.kota"
+              :class="component.machine.kota === 'sby' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'"
+              class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border"
+            >{{ component.machine.kota === 'sby' ? 'SBY' : 'PSN' }}</span>
+          </div>
         </div>
         <button @click="$emit('close')" class="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 cursor-pointer mt-1">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -60,7 +68,7 @@
                     {{ approvalStateLabel(item.record) }}
                   </span>
                   <span v-if="item.record?.approval_status === 'pending' && item.record.pending_role" class="text-[9px] text-amber-600 font-medium">
-                    Menunggu: {{ item.record.pending_role }}
+                    Menunggu: {{ item.record.pending_role_display || item.record.pending_role }}
                   </span>
                   <div v-if="item.record?.approval_notes && item.record.approval_status === 'rejected'" class="mt-1 bg-rose-50 border border-rose-100 rounded-lg px-2 py-1.5 max-w-[180px]">
                     <p class="text-[9px] font-semibold text-rose-600">Alasan:</p>
@@ -95,7 +103,7 @@
                     class="text-[10px] px-2 py-0.5 rounded border font-medium capitalize"
                     :class="approvalDecisionClass(ap.decision)"
                   >
-                    {{ ap.step_order }}. {{ roleLabel(ap.role) }} — {{ ap.decision === 'approved' ? 'Setuju' : ap.decision === 'rejected' ? 'Tolak' : 'Menunggu' }} <span class="opacity-75">({{ ap.approver }})</span>
+                    {{ ap.step_order }}. {{ ap.role_display || roleLabel(ap.role) }} — {{ ap.decision === 'approved' ? 'Setuju' : ap.decision === 'rejected' ? 'Tolak' : 'Menunggu' }} <span class="opacity-75">({{ ap.approver }})</span>
                   </span>
                 </div>
                 <button

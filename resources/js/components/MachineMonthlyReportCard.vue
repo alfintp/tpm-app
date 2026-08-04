@@ -26,7 +26,10 @@
           :key="box.key"
           @click="openStat(box.key)"
           class="bg-white rounded-xl border p-3 text-center shadow-sm cursor-pointer select-none transition-all hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-1"
-          :class="box.ringClass"
+          :class="[
+            box.ringClass,
+            statFilter === box.key && box.key !== 'replacements' ? 'ring-2 ring-offset-0 scale-[1.02] shadow-md' : ''
+          ]"
         >
           <p class="text-[10px] font-bold uppercase tracking-wider h-8 flex items-center justify-center text-center leading-tight px-1" :class="box.labelClass">{{ box.label }}</p>
           <p class="text-lg font-bold mt-1" :class="box.valueClass">{{ box.value }}</p>
@@ -44,6 +47,10 @@
     />
 
     <div class="p-0">
+      <div v-if="statFilter !== 'total'" class="px-5 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <p class="text-xs text-slate-500">Filter aktif: <span class="font-bold text-slate-700">{{ activeFilterLabel }}</span></p>
+        <button @click="statFilter = 'total'" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer">Reset filter</button>
+      </div>
       <div v-if="filteredRecords.length === 0" class="text-center py-10 text-slate-400 text-sm bg-slate-50/30">
         Tidak ada laporan untuk bulan ini.
       </div>
@@ -74,6 +81,7 @@ const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padS
 const selectedMonth = ref(currentMonth);
 const currentPage = ref(1);
 const perPage = 2;
+const statFilter = ref('total'); // 'total', 'approved', 'pending', 'rejected', 'onTime', 'late', 'unscheduled'
 const statModal = ref({ show: false, title: '', mode: 'records', records: [], replacements: [] });
 
 const monthOptions = computed(() => {
@@ -93,10 +101,23 @@ const selectedMonthLabel = computed(() => {
   return option ? option.label : selectedMonth.value;
 });
 
-const filteredRecords = computed(() => {
+const monthRecords = computed(() => {
   return props.records
     .filter(r => r.maintenance_date && r.maintenance_date.startsWith(selectedMonth.value))
     .sort((a, b) => new Date(b.maintenance_date) - new Date(a.maintenance_date) || new Date(b.created_at) - new Date(a.created_at));
+});
+
+const filteredRecords = computed(() => {
+  const list = monthRecords.value;
+  const f = statFilter.value;
+  if (f === 'total') return list;
+  if (f === 'approved') return list.filter(r => getStatus(r) === 'approved');
+  if (f === 'pending') return list.filter(r => getStatus(r) === 'pending');
+  if (f === 'rejected') return list.filter(r => getStatus(r) === 'rejected');
+  if (f === 'onTime') return list.filter(r => !r.is_late && !r.is_unscheduled);
+  if (f === 'late') return list.filter(r => r.is_late && !r.is_unscheduled);
+  if (f === 'unscheduled') return list.filter(r => r.is_unscheduled);
+  return list;
 });
 
 const paginatedRecords = computed(() => {
@@ -104,12 +125,12 @@ const paginatedRecords = computed(() => {
   return filteredRecords.value.slice(start, start + perPage);
 });
 
-watch(selectedMonth, () => {
+watch([selectedMonth, statFilter], () => {
   currentPage.value = 1;
 });
 
 const stats = computed(() => {
-  const list = filteredRecords.value;
+  const list = monthRecords.value;
   const total = list.length;
   const approved = list.filter(r => getStatus(r) === 'approved').length;
   const pending  = list.filter(r => getStatus(r) === 'pending').length;
@@ -129,7 +150,7 @@ const getStatus = (record) => {
 
 const replacementItems = computed(() => {
   const items = [];
-  for (const record of filteredRecords.value) {
+  for (const record of monthRecords.value) {
     for (const action of record.actions ?? []) {
       if (action.action_type === 'replace') {
         items.push({
@@ -165,43 +186,21 @@ const recordToModal = (record, statusOverride) => ({
 });
 
 const openStat = (key) => {
-  const titleBase = selectedMonthLabel.value;
   if (key === 'replacements') {
     statModal.value = {
       show: true,
-      title: `Ganti Komponen - ${titleBase}`,
+      title: `Ganti Komponen - ${selectedMonthLabel.value}`,
       mode: 'replacements',
       records: [],
       replacements: replacementItems.value,
     };
     return;
   }
-
-  let records = [];
-  let title = '';
-  if (key === 'total') {
-    records = filteredRecords.value.map(r => recordToModal(r));
-    title = `Semua Laporan - ${titleBase}`;
-  } else if (key === 'approved') {
-    records = filteredRecords.value.filter(r => getStatus(r) === 'approved').map(r => recordToModal(r, 'approved'));
-    title = `Laporan Disetujui - ${titleBase}`;
-  } else if (key === 'pending') {
-    records = filteredRecords.value.filter(r => getStatus(r) === 'pending').map(r => recordToModal(r, 'pending'));
-    title = `Laporan Menunggu - ${titleBase}`;
-  } else if (key === 'rejected') {
-    records = filteredRecords.value.filter(r => getStatus(r) === 'rejected').map(r => recordToModal(r, 'rejected'));
-    title = `Laporan Ditolak - ${titleBase}`;
-  } else if (key === 'onTime') {
-    records = filteredRecords.value.filter(r => !r.is_late && !r.is_unscheduled).map(r => recordToModal(r, 'onTime'));
-    title = `Laporan Tepat Waktu - ${titleBase}`;
-  } else if (key === 'late') {
-    records = filteredRecords.value.filter(r => r.is_late && !r.is_unscheduled).map(r => recordToModal(r, 'late'));
-    title = `Laporan Terlambat - ${titleBase}`;
-  } else if (key === 'unscheduled') {
-    records = filteredRecords.value.filter(r => r.is_unscheduled).map(r => recordToModal(r, 'unscheduled'));
-    title = `Laporan Luar Jadwal - ${titleBase}`;
-  }
-
-  statModal.value = { show: true, title, mode: 'records', records, replacements: [] };
+  statFilter.value = key;
 };
+
+const activeFilterLabel = computed(() => {
+  const box = statBoxes.value.find(b => b.key === statFilter.value);
+  return box ? box.label : 'Semua';
+});
 </script>

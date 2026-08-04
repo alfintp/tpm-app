@@ -12,22 +12,10 @@ use Illuminate\Support\Facades\Http;
  * Generates canonical maintenance due dates ("occurrences") for each machine's active
  * schedule, one calendar month at a time, independently per city (sby / pasuruan).
  *
- * Rules implemented:
- * - Each machine's position in this month's assignment cycle comes from its Excel
- *   import row order (machines.import_order), reset separately per city.
- * - 1x/month schedules (interval_days >= 21): day-of-month cycles with row order
- *   (row 1 -> day 1, row 2 -> day 2, ... wraps back to day 1 after the last day
- *   of the month).
- * - 2x/month schedules (interval_days between 10 and 20, e.g. 14): always land on
- *   the same week-pair every month — odd row order -> weeks 1 & 3, even row order
- *   -> weeks 2 & 4 — so the cadence never drifts.
- * - <10 day schedules (e.g. weekly): occur once every week (weeks 1-4) on a fixed
- *   weekday derived from row order.
- * - If an ideal date falls on a Sunday/national holiday, or a day is already at
- *   capacity, the occurrence is pushed forward to the next available working day
- *   so no single day (e.g. the day right after a holiday) gets overloaded —
- *   pushing the date later only ever gives a machine MORE time before it's
- *   considered late, never less.
+ * Core principle: machines are distributed evenly across WORKING DAYS ONLY.
+ * Sundays and national holidays never get assignments — machines that would
+ * have fallen on those days are wrapped to the next available working day in
+ * the round-robin cycle, keeping every working day's load as balanced as possible.
  */
 class ScheduleOccurrenceGenerator
 {
@@ -60,6 +48,16 @@ class ScheduleOccurrenceGenerator
     }
 
     /**
+     * Delete ALL occurrences and regenerate from scratch for current + next month.
+     * Use after changing the algorithm or when a full re-balance is needed.
+     */
+    public function regenerateAll(): void
+    {
+        ScheduleOccurrence::query()->delete();
+        $this->generateUpcoming();
+    }
+
+    /**
      * Delete future (today onward) occurrences for a single schedule and
      * regenerate its current + next month occurrences. Used when a schedule's
      * interval or active state changes so stale assignments don't linger.
@@ -71,11 +69,22 @@ class ScheduleOccurrenceGenerator
             return;
         }
 
-        ScheduleOccurrence::where('schedule_id', $schedule->id)
-            ->whereDate('due_date', '>=', Carbon::today())
-            ->delete();
+        // Delete all occurrences for this machine's city for current + next month
+        // so the round-robin can rebalance properly.
+        $now = Carbon::now();
+        $this->deleteCityMonth($machine->kota, $now->year, $now->month);
+        $next = $now->copy()->addMonthNoOverflow();
+        $this->deleteCityMonth($machine->kota, $next->year, $next->month);
 
         $this->generateUpcomingForCity($machine->kota);
+    }
+
+    protected function deleteCityMonth(string $kota, int $year, int $month): void
+    {
+        ScheduleOccurrence::whereHas('machine', fn ($q) => $q->where('kota', $kota))
+            ->where('period_year', $year)
+            ->where('period_month', $month)
+            ->delete();
     }
 
     protected function generateForMonth(int $year, int $month): void
@@ -111,70 +120,49 @@ class ScheduleOccurrenceGenerator
             return;
         }
 
-        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
         $holidays = $this->getHolidaySet($year);
 
-        $isWorkingDay = function (Carbon $date) use ($holidays) {
-            return !$date->isSunday() && !isset($holidays[$date->toDateString()]);
-        };
+        // Build the list of all working days in this month (Mon-Sat, no holidays).
+        $workingDays = [];
+        $date = Carbon::create($year, $month, 1);
+        $daysInMonth = $date->daysInMonth;
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $day = Carbon::create($year, $month, $d);
+            if (!$day->isSunday() && !isset($holidays[$day->toDateString()])) {
+                $workingDays[] = $day;
+            }
+        }
 
-        // Build each pending schedule's ideal (unshifted) due date(s) for the month.
-        $ideal = [];
+        if (empty($workingDays)) {
+            return;
+        }
+
+        // Split working days into first half (weeks 1-2) and second half (weeks 3-4+)
+        // for 2x/month schedules.  The split point is the middle working day.
+        $midPoint = intdiv(count($workingDays), 2);
+
         $fallbackOrder = 0;
         foreach ($pending as $schedule) {
             $order = $schedule->machine->import_order ?? (100000 + ++$fallbackOrder);
             $interval = (int) $schedule->interval_days;
+            $dueDates = $this->idealDatesForSchedule(
+                $order, $interval, $workingDays, $midPoint
+            );
 
-            foreach ($this->idealDatesForSchedule($order, $interval, $year, $month, $daysInMonth) as $date) {
-                $ideal[] = ['schedule' => $schedule, 'date' => $date];
+            foreach ($dueDates as $date) {
+                ScheduleOccurrence::create([
+                    'schedule_id' => $schedule->id,
+                    'machine_id'  => $schedule->machine_id,
+                    'period_year' => $year,
+                    'period_month' => $month,
+                    'due_date'    => $date->toDateString(),
+                    'original_date' => $date->toDateString(),
+                    'is_shifted'  => false,
+                ]);
             }
         }
 
-        // Process chronologically so earlier-in-month occurrences get first pick of days.
-        usort($ideal, fn ($a, $b) => $a['date']->timestamp <=> $b['date']->timestamp);
-
-        $workingDaysCount = 0;
-        for ($d = 1; $d <= $daysInMonth; $d++) {
-            if ($isWorkingDay(Carbon::create($year, $month, $d))) {
-                $workingDaysCount++;
-            }
-        }
-        $workingDaysCount = max(1, $workingDaysCount);
-        // Small buffer above the perfectly even average so a couple of days can
-        // absorb overflow without every holiday clustering onto a single day.
-        $threshold = (int) ceil(count($ideal) / $workingDaysCount) + 1;
-
-        $dayCounts = [];
-        foreach ($ideal as $item) {
-            $date = $item['date']->copy();
-            $original = $date->copy();
-
-            $safety = 0;
-            while ($safety++ < 45) {
-                $key = $date->toDateString();
-                $withinCapacity = ($dayCounts[$key] ?? 0) < $threshold;
-                if ($isWorkingDay($date) && $withinCapacity) {
-                    break;
-                }
-                $date->addDay();
-            }
-
-            $key = $date->toDateString();
-            $dayCounts[$key] = ($dayCounts[$key] ?? 0) + 1;
-
-            ScheduleOccurrence::create([
-                'schedule_id' => $item['schedule']->id,
-                'machine_id' => $item['schedule']->machine_id,
-                'period_year' => $year,
-                'period_month' => $month,
-                'due_date' => $date->toDateString(),
-                'original_date' => $original->toDateString(),
-                'is_shifted' => !$date->isSameDay($original),
-            ]);
-        }
-
-        // Keep the schedule's next_due_date roughly in sync (earliest occurrence
-        // generated this run) for any legacy code path that still reads it directly.
+        // Keep the schedule's next_due_date in sync with the earliest occurrence.
         foreach ($pending as $schedule) {
             $earliest = ScheduleOccurrence::where('schedule_id', $schedule->id)
                 ->where('period_year', $year)
@@ -191,41 +179,47 @@ class ScheduleOccurrenceGenerator
     }
 
     /**
+     * Assign due date(s) for a schedule based on import order, using only working days.
+     *
+     * @param Carbon[] $workingDays  all working days in the month (sorted ascending)
+     * @param int      $midPoint     index splitting first half / second half
      * @return Carbon[]
      */
-    protected function idealDatesForSchedule(int $order, int $interval, int $year, int $month, int $daysInMonth): array
+    protected function idealDatesForSchedule(int $order, int $interval, array $workingDays, int $midPoint): array
     {
-        // 1x/month: cycle day-of-month by row order, wrapping around the month length.
+        $count = count($workingDays);
+
+        // 1x/month (interval >= 21): round-robin across all working days.
+        // Row 1 -> working day 1, row 2 -> working day 2, ..., wraps around.
         if ($interval >= 21) {
-            $day = (($order - 1) % $daysInMonth) + 1;
-            return [Carbon::create($year, $month, $day)];
+            $idx = ($order - 1) % $count;
+            return [$workingDays[$idx]];
         }
 
-        // 2x/month: fixed week-pair by row-order parity, fixed weekday by row order,
-        // so the cadence (e.g. always week 1 & 3) never drifts month to month.
+        // 2x/month (interval 10-20): one date in the first half, one in the second half.
+        // Odd row order -> first half slot + second half slot (consistent week-pair).
+        // Even row order -> offset by 1 in each half so machines don't all land on the same day.
         if ($interval >= 10) {
-            $weekPair = ($order % 2 === 1) ? [1, 3] : [2, 4];
-            $weekdayOffset = ($order - 1) % 6; // 0..5 -> Monday..Saturday
-            return array_map(
-                fn ($week) => $this->dateForWeek($year, $month, $daysInMonth, $week, $weekdayOffset),
-                $weekPair
-            );
+            $firstHalf = array_slice($workingDays, 0, $midPoint);
+            $secondHalf = array_slice($workingDays, $midPoint);
+
+            if (empty($firstHalf)) $firstHalf = [$workingDays[0]];
+            if (empty($secondHalf)) $secondHalf = [end($workingDays)];
+
+            $idx1 = ($order - 1) % count($firstHalf);
+            $idx2 = ($order - 1) % count($secondHalf);
+
+            return [$firstHalf[$idx1], $secondHalf[$idx2]];
         }
 
-        // <10 days (e.g. weekly): occur every week on a fixed weekday from row order.
-        $weekdayOffset = ($order - 1) % 6;
+        // <10 days (e.g. weekly): 4 occurrences spread evenly across the working days.
+        $quarter = max(1, intdiv($count, 4));
         $dates = [];
-        for ($week = 1; $week <= 4; $week++) {
-            $dates[] = $this->dateForWeek($year, $month, $daysInMonth, $week, $weekdayOffset);
+        for ($i = 0; $i < 4; $i++) {
+            $idx = min(($i * $quarter + ($order - 1)) % $count, $count - 1);
+            $dates[] = $workingDays[$idx];
         }
         return $dates;
-    }
-
-    protected function dateForWeek(int $year, int $month, int $daysInMonth, int $week, int $weekdayOffset): Carbon
-    {
-        $weekStart = ($week - 1) * 7 + 1;
-        $day = min($weekStart + $weekdayOffset, $daysInMonth);
-        return Carbon::create($year, $month, $day);
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Models\Machine;
 use App\Models\MachineComponent;
 use App\Models\ComponentIndicator;
 use App\Models\ActivityLog;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -485,11 +486,22 @@ class MachineComponentController extends Controller
 
         $stepRole = fn ($step) => $step ? (is_array($step) ? ($step['role'] ?? null) : $step->role) : null;
 
-        $approvalTrail = $decisions->map(function ($approval) use ($steps, $stepRole) {
+        // Map flow steps to include role display_name
+        $roleDisplayMap = Role::pluck('display_name', 'name')->toArray();
+        $steps = $steps->map(function ($step) use ($roleDisplayMap) {
+            $roleName = is_array($step) ? ($step['role'] ?? null) : $step->role;
+            $stepData = is_array($step) ? $step : $step->toArray();
+            $stepData['role_display'] = $roleDisplayMap[$roleName] ?? $roleName;
+            return $stepData;
+        });
+
+        $approvalTrail = $decisions->map(function ($approval) use ($steps, $stepRole, $roleDisplayMap) {
             $step = $steps->firstWhere('step_order', $approval->step_order);
+            $roleName = $stepRole($step) ?? $approval->approver?->role;
             return [
                 'step_order' => $approval->step_order,
-                'role' => $stepRole($step) ?? $approval->approver?->role,
+                'role' => $roleName,
+                'role_display' => $roleDisplayMap[$roleName] ?? $roleName,
                 'decision' => $approval->decision,
                 'approver' => $approval->approver?->full_name ?? '-',
                 'notes' => $approval->notes,
@@ -505,6 +517,7 @@ class MachineComponentController extends Controller
                 'approved_by' => $rejected->approver?->full_name,
                 'decided_at' => $rejected->decided_at,
                 'pending_role' => null,
+                'pending_role_display' => null,
                 'current_step' => $rejected->step_order,
                 'completed_steps' => $decisions->where('decision', 'approved')->count(),
                 'total_steps' => $totalSteps,
@@ -522,6 +535,7 @@ class MachineComponentController extends Controller
                 'approved_by' => $last?->approver?->full_name,
                 'decided_at' => $last?->decided_at,
                 'pending_role' => null,
+                'pending_role_display' => null,
                 'current_step' => $totalSteps,
                 'completed_steps' => $approvedCount,
                 'total_steps' => $totalSteps,
@@ -531,7 +545,9 @@ class MachineComponentController extends Controller
         }
 
         $currentStep = $approvedCount + 1;
-        $pendingRole = $stepRole($steps->firstWhere('step_order', $currentStep));
+        $pendingStep = $steps->firstWhere('step_order', $currentStep);
+        $pendingRole = $stepRole($pendingStep);
+        $pendingRoleDisplay = is_array($pendingStep) ? ($pendingStep['role_display'] ?? null) : null;
 
         return [
             'approval_status' => 'pending',
@@ -539,6 +555,7 @@ class MachineComponentController extends Controller
             'approved_by' => null,
             'decided_at' => null,
             'pending_role' => $pendingRole,
+            'pending_role_display' => $pendingRoleDisplay,
             'current_step' => $currentStep,
             'completed_steps' => $approvedCount,
             'total_steps' => $totalSteps,

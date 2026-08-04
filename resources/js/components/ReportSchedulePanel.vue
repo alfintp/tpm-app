@@ -48,19 +48,32 @@
       </div>
 
       <!-- Unlock Request Banner -->
-      <div v-if="selectedPeriod?.isLocked && !isUnscheduled && machine" class="mt-4 p-4 bg-amber-50 rounded-2xl border border-amber-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div v-if="selectedPeriod?.isLocked && !isUnscheduled && machine" class="mt-4 p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+        :class="selectedPeriod.diffDays > 0
+          ? 'bg-blue-50 border-blue-100'
+          : 'bg-red-50 border-red-100'">
         <div class="flex items-center gap-3">
-          <div class="p-2 bg-amber-100 text-amber-600 rounded-xl">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          <div class="p-2 rounded-xl"
+            :class="selectedPeriod.diffDays > 0
+              ? 'bg-blue-100 text-blue-600'
+              : 'bg-red-100 text-red-600'">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
           <div>
-            <p class="text-sm font-bold text-amber-900">Jadwal ini terkunci</p>
-            <p class="text-xs text-amber-700">Jadwal maintenance sudah terlewat atau belum masuk jendela pengerjaan.</p>
-            <p v-if="machine.unlock_status === 'pending'" class="text-[10px] font-bold text-amber-600 mt-0.5 italic">* Pengajuan sedang menunggu persetujuan Factory Manager.</p>
+            <p class="text-sm font-bold"
+              :class="selectedPeriod.diffDays > 0 ? 'text-blue-900' : 'text-red-900'">
+              {{ selectedPeriod.diffDays > 0 ? 'Belum waktunya pengecekan' : 'Jadwal terlewat' }}
+            </p>
+            <p class="text-xs"
+              :class="selectedPeriod.diffDays > 0 ? 'text-blue-700' : 'text-red-700'">
+              {{ selectedPeriod.diffDays > 0
+                ? `Jadwal maintenance: ${selectedPeriod.dateStr} (${selectedPeriod.diffDays} hari lagi). Pengecekan bisa dilakukan ${daysBefore} hari sebelum jadwal.`
+                : `Terlambat ${Math.abs(selectedPeriod.diffDays)} hari dari jadwal (${selectedPeriod.dateStr})` }}
+            </p>
           </div>
         </div>
         <button
-          v-if="machine.unlock_status !== 'pending'"
+          v-if="selectedPeriod.diffDays < 0 && machine.unlock_status !== 'pending' && machine.unlock_status !== 'approved'"
           @click="emit('request-unlock')"
           class="w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center gap-2"
         >
@@ -80,6 +93,7 @@ const props = defineProps({
   selectedPeriod: { type: Object, default: null },
   isUnscheduled: { type: Boolean, default: false },
   machine: { type: Object, default: null },
+  daysBefore: { type: Number, default: 2 },
 });
 
 const emit = defineEmits(['select-period', 'select-unscheduled', 'request-unlock']);

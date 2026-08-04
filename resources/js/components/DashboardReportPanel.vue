@@ -22,16 +22,20 @@
 
     <!-- Top stats -->
     <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-      <button
+      <div
         v-for="box in statBoxes"
         :key="box.key"
         @click="openStat(box.key)"
-        class="bg-white rounded-xl border p-4 text-center shadow-sm cursor-pointer select-none transition-all hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-1"
-        :class="box.ringClass"
+        class="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 cursor-pointer transition-all hover:shadow-md active:scale-95 relative overflow-hidden group"
+        :class="[activeStatFilter === box.key ? 'ring-2 ring-offset-2 ' + box.ringColor : 'hover:border-slate-200']"
       >
-        <p class="text-[10px] font-bold uppercase tracking-wider h-8 flex items-center justify-center text-center leading-tight px-1" :class="box.labelClass">{{ box.label }}</p>
-        <p class="text-xl font-bold mt-1" :class="box.valueClass">{{ box.value }}</p>
-      </button>
+        <p class="text-[10px] font-bold uppercase tracking-wider mb-1 truncate" :class="box.labelClass">{{ box.label }}</p>
+        <p class="text-xl font-bold" :class="box.valueClass">{{ box.value }}</p>
+        <div
+          class="absolute bottom-0 left-0 h-1 transition-all duration-300"
+          :class="[box.barBg, activeStatFilter === box.key ? 'w-full' : 'w-0 group-hover:w-full']"
+        ></div>
+      </div>
     </div>
 
     <ReportStatModal
@@ -50,113 +54,7 @@
     />
 
     <!-- Charts + extra info -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      <!-- Approval status donut -->
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Status Approval</h4>
-        <div class="flex items-center gap-5">
-          <div class="relative w-28 h-28 shrink-0">
-            <svg viewBox="0 0 100 100" class="w-full h-full" style="transform: rotate(-90deg)">
-              <circle cx="50" cy="50" r="42" fill="transparent" stroke="#f1f5f9" stroke-width="10"/>
-              <circle v-for="(arc, i) in statusArcs" :key="i"
-                cx="50" cy="50" r="42" fill="transparent"
-                :stroke="arc.color" stroke-width="10"
-                stroke-dasharray="264"
-                :stroke-dashoffset="arc.offset"
-                stroke-linecap="butt"
-              />
-            </svg>
-            <div class="absolute inset-0 flex items-center justify-center">
-              <span class="text-sm font-bold text-slate-700">{{ stats.total }}</span>
-            </div>
-          </div>
-          <div class="flex-1 space-y-2">
-            <div class="flex items-center justify-between text-xs">
-              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span>Disetujui</span>
-              <span class="font-bold text-slate-700">{{ stats.approved }}</span>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span>Menunggu</span>
-              <span class="font-bold text-slate-700">{{ stats.pending }}</span>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span>Ditolak</span>
-              <span class="font-bold text-slate-700">{{ stats.rejected }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Timeliness bar -->
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Ketepatan Waktu</h4>
-        <div class="space-y-4">
-          <div>
-            <div class="flex items-center justify-between text-xs mb-1.5">
-              <span class="font-medium text-slate-600">Tepat Waktu</span>
-              <span class="font-bold text-emerald-700">{{ stats.onTime }}</span>
-            </div>
-            <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-              <div class="h-full bg-emerald-500 rounded-full transition-all" :style="{ width: timelinessPct.onTime + '%' }"></div>
-            </div>
-          </div>
-          <div>
-            <div class="flex items-center justify-between text-xs mb-1.5">
-              <span class="font-medium text-slate-600">Terlambat</span>
-              <span class="font-bold text-rose-700">{{ stats.late }}</span>
-            </div>
-            <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-              <div class="h-full bg-rose-500 rounded-full transition-all" :style="{ width: timelinessPct.late + '%' }"></div>
-            </div>
-          </div>
-          <div>
-            <div class="flex items-center justify-between text-xs mb-1.5">
-              <span class="font-medium text-slate-600">Luar Jadwal</span>
-              <span class="font-bold text-indigo-700">{{ stats.unscheduled }}</span>
-            </div>
-            <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-              <div class="h-full bg-indigo-500 rounded-full transition-all" :style="{ width: timelinessPct.unscheduled + '%' }"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Component checks -->
-      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Pengecekan Komponen</h4>
-        <div class="flex items-center gap-5">
-          <div class="relative w-28 h-28 shrink-0">
-            <svg viewBox="0 0 100 100" class="w-full h-full" style="transform: rotate(-90deg)">
-              <circle cx="50" cy="50" r="42" fill="transparent" stroke="#f1f5f9" stroke-width="10"/>
-              <circle cx="50" cy="50" r="42" fill="transparent" stroke="#10b981" stroke-width="10"
-                stroke-dasharray="264" :stroke-dashoffset="264 - componentCheckPct * 264" stroke-linecap="round"/>
-            </svg>
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span class="text-lg font-bold text-emerald-600">{{ componentCheckPct }}%</span>
-              <span class="text-[9px] text-slate-400">komponen</span>
-            </div>
-          </div>
-          <div class="flex-1 space-y-2">
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-600">Mesin dicek penuh</span>
-              <span class="font-bold text-emerald-700">{{ fullyCheckedMachineCount }}</span>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-600">Dicek sebagian</span>
-              <span class="font-bold text-amber-700">{{ partialCheckedMachineCount }}</span>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-600">Tidak dicek</span>
-              <span class="font-bold text-slate-500">{{ uncheckedMachineCount }}</span>
-            </div>
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-600">Ganti komponen</span>
-              <span class="font-bold text-orange-700">{{ stats.replacements }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    
 
     <!-- Machine table -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -449,12 +347,16 @@ const dashboardReplacementItems = computed(() => {
   for (const { machine, record } of recordsInMonth.value) {
     for (const action of record.actions ?? []) {
       if (action.action_type === 'replace') {
+        // Find component name from action.component or machine.components
+        const compName = action.component?.name ??
+          machine.components?.find(c => c.id === action.machine_component_id)?.name ??
+          '-';
         items.push({
           machine_name: machine.name ?? '-',
           date: record.maintenance_date,
-          component: action.component?.name ?? '-',
-          technician: record.technician?.full_name ?? '-',
-          notes: record.notes ?? '',
+          component: compName,
+          technician: record.technician?.full_name ?? record.technician?.name ?? '-',
+          notes: record.notes ?? action.notes ?? '',
         });
       }
     }
@@ -466,18 +368,25 @@ const machineSummary = computed(() => {
   const byMachine = {};
   for (const { machine, record } of recordsInMonth.value) {
     if (!byMachine[machine.id]) {
-      byMachine[machine.id] = { records: [], latest: null };
+      byMachine[machine.id] = { records: [], latest: null, latestCompleted: null };
     }
     const entry = byMachine[machine.id];
     entry.records.push(record);
     if (!entry.latest || new Date(record.maintenance_date) > new Date(entry.latest.maintenance_date)) {
       entry.latest = record;
     }
+    // Track latest completed & approved record for timeliness
+    if (record.status === 'completed' && getStatus(record) !== 'rejected') {
+      if (!entry.latestCompleted || new Date(record.maintenance_date) > new Date(entry.latestCompleted.maintenance_date)) {
+        entry.latestCompleted = record;
+      }
+    }
   }
 
   return props.machines.map(machine => {
     const entry = byMachine[machine.id];
     const latest = entry?.latest ?? null;
+    const latestCompleted = entry?.latestCompleted ?? null;
     const totalComponents = machine.components?.length ?? 0;
     const checkedIds = new Set();
     let replacements = 0;
@@ -498,37 +407,62 @@ const machineSummary = computed(() => {
     if (totalComponents && checked === totalComponents) checkState = 'full';
     else if (checked > 0) checkState = 'partial';
 
+    // Timeliness: only categorize when all components are checked (full progress)
+    // Check ALL completed & non-rejected records — if any is late, machine is late
+    let isOnTime = false;
+    let isLate = false;
+    let isUnscheduled = false;
+
+    if (entry && checkState === 'full') {
+      const completedRecords = entry.records.filter(r =>
+        r.status === 'completed' && getStatus(r) !== 'rejected' && !r.is_unscheduled
+      );
+      if (completedRecords.length > 0) {
+        const hasLate = completedRecords.some(r => r.is_late);
+        isLate = hasLate;
+        isOnTime = !hasLate;
+      }
+      // Check for unscheduled records separately
+      const unscheduledRecords = entry.records.filter(r =>
+        r.status === 'completed' && getStatus(r) !== 'rejected' && r.is_unscheduled
+      );
+      isUnscheduled = unscheduledRecords.length > 0;
+    }
+
     return {
       machine,
       latest,
+      latestCompleted,
       checkState,
-      isOnTime: !!latest && !latest.is_late && !latest.is_unscheduled,
-      isLate: !!latest && latest.is_late && !latest.is_unscheduled,
-      isUnscheduled: !!latest && latest.is_unscheduled,
+      isOnTime,
+      isLate,
+      isUnscheduled,
       hasReplacement: replacements > 0,
+      replacementCount: replacements,
     };
   });
 });
 
 const statBoxes = computed(() => {
   const total = machineSummary.value.length;
+  const withProgress = machineSummary.value.filter(s => s.checkState === 'full' || s.checkState === 'partial').length;
   const full = machineSummary.value.filter(s => s.checkState === 'full').length;
   const partial = machineSummary.value.filter(s => s.checkState === 'partial').length;
   const none = machineSummary.value.filter(s => s.checkState === 'none').length;
   const onTime = machineSummary.value.filter(s => s.isOnTime).length;
   const late = machineSummary.value.filter(s => s.isLate).length;
   const unscheduled = machineSummary.value.filter(s => s.isUnscheduled).length;
-  const replacement = machineSummary.value.filter(s => s.hasReplacement).length;
+  const replacementCount = machineSummary.value.reduce((sum, s) => sum + s.replacementCount, 0);
 
   return [
-    { key: 'totalMachines', label: 'Total Mesin', value: total, labelClass: 'text-slate-500', valueClass: 'text-slate-700', ringClass: 'border-slate-200 hover:border-slate-300 focus:ring-slate-200' },
-    { key: 'fullyChecked', label: 'Mesin Dicek Semua', value: full, labelClass: 'text-emerald-600', valueClass: 'text-emerald-700', ringClass: 'border-emerald-100 hover:border-emerald-200 focus:ring-emerald-200' },
-    { key: 'partialChecked', label: 'Mesin Dicek Sebagian', value: partial, labelClass: 'text-amber-600', valueClass: 'text-amber-700', ringClass: 'border-amber-100 hover:border-amber-200 focus:ring-amber-200' },
-    { key: 'notChecked', label: 'Mesin Tidak Dicek', value: none, labelClass: 'text-rose-600', valueClass: 'text-rose-700', ringClass: 'border-rose-100 hover:border-rose-200 focus:ring-rose-200' },
-    { key: 'onTime', label: 'Tepat Waktu', value: onTime, labelClass: 'text-emerald-600', valueClass: 'text-emerald-700', ringClass: 'border-emerald-100 hover:border-emerald-200 focus:ring-emerald-200' },
-    { key: 'late', label: 'Terlambat', value: late, labelClass: 'text-rose-600', valueClass: 'text-rose-700', ringClass: 'border-rose-100 hover:border-rose-200 focus:ring-rose-200' },
-    { key: 'unscheduled', label: 'Diluar Jadwal', value: unscheduled, labelClass: 'text-indigo-600', valueClass: 'text-indigo-700', ringClass: 'border-indigo-100 hover:border-indigo-200 focus:ring-indigo-200' },
-    { key: 'replacement', label: 'Ganti Komponen', value: replacement, labelClass: 'text-orange-600', valueClass: 'text-orange-700', ringClass: 'border-orange-100 hover:border-orange-200 focus:ring-orange-200' },
+    { key: 'totalMachines', label: 'Mesin', value: `${withProgress} / ${total}`, labelClass: 'text-slate-500', valueClass: 'text-slate-700', ringColor: 'ring-slate-400', barBg: 'bg-slate-400' },
+    { key: 'fullyChecked', label: 'Dicek Semua', value: full, labelClass: 'text-emerald-600', valueClass: 'text-emerald-700', ringColor: 'ring-emerald-500', barBg: 'bg-emerald-500' },
+    { key: 'partialChecked', label: 'Dicek Sebagian', value: partial, labelClass: 'text-amber-600', valueClass: 'text-amber-700', ringColor: 'ring-amber-500', barBg: 'bg-amber-500' },
+    { key: 'notChecked', label: 'Tidak Dicek', value: none, labelClass: 'text-rose-600', valueClass: 'text-rose-700', ringColor: 'ring-rose-500', barBg: 'bg-rose-500' },
+    { key: 'onTime', label: 'Tepat Waktu', value: onTime, labelClass: 'text-emerald-600', valueClass: 'text-emerald-700', ringColor: 'ring-emerald-500', barBg: 'bg-emerald-500' },
+    { key: 'late', label: 'Terlambat', value: late, labelClass: 'text-rose-600', valueClass: 'text-rose-700', ringColor: 'ring-rose-500', barBg: 'bg-rose-500' },
+    { key: 'unscheduled', label: 'Diluar Jadwal', value: unscheduled, labelClass: 'text-indigo-600', valueClass: 'text-indigo-700', ringColor: 'ring-indigo-500', barBg: 'bg-indigo-500' },
+    { key: 'replacement', label: 'Ganti Komponen', value: replacementCount, labelClass: 'text-orange-600', valueClass: 'text-orange-700', ringColor: 'ring-orange-500', barBg: 'bg-orange-500' },
   ];
 });
 
@@ -555,46 +489,29 @@ const makeModalItem = ({ machine, latest }) => {
   };
 };
 
-const openStat = (key) => {
-  const titleBase = selectedMonthLabel.value;
+const activeStatFilter = ref(null);
+
+const toggleStatFilter = (key) => {
   if (key === 'replacement') {
-    statModal.value = {
-      show: true,
-      title: `Ganti Komponen - ${titleBase}`,
-      mode: 'replacements',
-      records: [],
-      replacements: dashboardReplacementItems.value,
-    };
+    openReplacementModal();
     return;
   }
+  activeStatFilter.value = activeStatFilter.value === key ? null : key;
+};
 
-  let list = [];
-  let title = '';
-  if (key === 'totalMachines') {
-    list = machineSummary.value;
-    title = `Semua Mesin - ${titleBase}`;
-  } else if (key === 'fullyChecked') {
-    list = machineSummary.value.filter(s => s.checkState === 'full');
-    title = `Mesin Dicek Semua - ${titleBase}`;
-  } else if (key === 'partialChecked') {
-    list = machineSummary.value.filter(s => s.checkState === 'partial');
-    title = `Mesin Dicek Sebagian - ${titleBase}`;
-  } else if (key === 'notChecked') {
-    list = machineSummary.value.filter(s => s.checkState === 'none');
-    title = `Mesin Tidak Dicek - ${titleBase}`;
-  } else if (key === 'onTime') {
-    list = machineSummary.value.filter(s => s.isOnTime);
-    title = `Laporan Tepat Waktu - ${titleBase}`;
-  } else if (key === 'late') {
-    list = machineSummary.value.filter(s => s.isLate);
-    title = `Laporan Terlambat - ${titleBase}`;
-  } else if (key === 'unscheduled') {
-    list = machineSummary.value.filter(s => s.isUnscheduled);
-    title = `Laporan Diluar Jadwal - ${titleBase}`;
-  }
+const openReplacementModal = () => {
+  const titleBase = selectedMonthLabel.value;
+  statModal.value = {
+    show: true,
+    title: `Ganti Komponen - ${titleBase}`,
+    mode: 'replacements',
+    records: [],
+    replacements: dashboardReplacementItems.value,
+  };
+};
 
-  const records = list.map(makeModalItem);
-  statModal.value = { show: true, title, mode: 'records', records, replacements: [] };
+const openStat = (key) => {
+  toggleStatFilter(key);
 };
 
 const fullyCheckedMachineCount = computed(() => machineRows.value.filter(r => r.checkState === 'full').length);
@@ -681,8 +598,28 @@ const machineRows = computed(() => {
     };
   });
 
+  // Apply stat box filter
+  let filteredRows = rows;
+  if (activeStatFilter.value) {
+    const key = activeStatFilter.value;
+    const summaryMap = {};
+    machineSummary.value.forEach(s => { summaryMap[s.machine.id] = s; });
+    filteredRows = rows.filter(row => {
+      const s = summaryMap[row.machine.id];
+      if (!s) return false;
+      if (key === 'totalMachines') return true;
+      if (key === 'fullyChecked') return s.checkState === 'full';
+      if (key === 'partialChecked') return s.checkState === 'partial';
+      if (key === 'notChecked') return s.checkState === 'none';
+      if (key === 'onTime') return s.isOnTime;
+      if (key === 'late') return s.isLate;
+      if (key === 'unscheduled') return s.isUnscheduled;
+      return true;
+    });
+  }
+
   if (activeIssueFilters.value.length > 0) {
-    return rows.filter(row => {
+    return filteredRows.filter(row => {
       for (const key of activeIssueFilters.value) {
         if (key === 'late' && row.late) return true;
         if (key === 'unscheduled' && row.unscheduled) return true;
@@ -694,7 +631,7 @@ const machineRows = computed(() => {
     });
   }
 
-  return rows.sort((a, b) => {
+  return filteredRows.sort((a, b) => {
     const issueWeight = r => r.issues.length;
     if (issueWeight(b) !== issueWeight(a)) return issueWeight(b) - issueWeight(a);
     return a.machine.name.localeCompare(b.machine.name);
@@ -706,7 +643,7 @@ const paginatedMachineRows = computed(() => {
   return machineRows.value.slice(start, start + perPage.value);
 });
 
-watch([selectedMonth, activeIssueFilters, perPage], () => {
+watch([selectedMonth, activeIssueFilters, activeStatFilter, perPage], () => {
   currentPage.value = 1;
 });
 </script>

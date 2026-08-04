@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/machines/import', [MachineController::class, 'bulkStore']);
     Route::get('/machines/check-kode', [MachineController::class, 'checkKode']);
     Route::get('/machines/unlock-history', [MachineController::class, 'unlockHistory']);
+    Route::get('/machines/my-unlock-requests', [MachineController::class, 'myUnlockRequests']);
     Route::post('/machines/{id}/request-unlock', [MachineController::class, 'requestUnlock']);
     Route::post('/machines/{id}/approve-unlock', [MachineController::class, 'approveUnlock']);
     Route::get('/machines/{id}', [MachineController::class, 'show']);

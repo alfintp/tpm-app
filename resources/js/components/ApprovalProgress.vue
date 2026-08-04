@@ -32,7 +32,7 @@
           <span v-else>{{ step.step_order }}</span>
         </div>
         <span class="text-[10px] font-semibold uppercase tracking-wide text-center" :class="stepLabelClass(step.step_order)">
-          {{ step.role }}
+          {{ step.role_display || step.role }}
         </span>
       </div>
     </div>
@@ -40,6 +40,7 @@
     <p class="text-xs text-slate-500 text-center">
       <span v-if="status === 'approved'" class="text-green-600 font-semibold">Laporan sudah disetujui sepenuhnya.</span>
       <span v-else-if="status === 'rejected'" class="text-red-600 font-semibold">Laporan ditolak pada tahap {{ currentStep }}.</span>
+      <span v-else-if="pendingRoleDisplay">Menunggu approval dari <span class="font-bold text-indigo-600">{{ pendingRoleDisplay }}</span>.</span>
       <span v-else-if="pendingRole">Menunggu approval dari <span class="font-bold text-indigo-600">{{ roleLabel(pendingRole) }}</span>.</span>
       <span v-else>Menunggu konfigurasi alur approval.</span>
     </p>
@@ -56,6 +57,7 @@ const props = defineProps({
   totalSteps: { type: Number, default: 0 },
   status: { type: String, default: 'pending' },
   pendingRole: { type: String, default: null },
+  pendingRoleDisplay: { type: String, default: null },
 });
 
 const isStepRejected = (step) => props.status === 'rejected' && step === props.currentStep;

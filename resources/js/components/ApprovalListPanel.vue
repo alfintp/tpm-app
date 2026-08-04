@@ -1,10 +1,28 @@
 <template>
   <div class="space-y-6">
-    <!-- Stats (Approver only) -->
+    <!-- Stats as toggle filters (Approver only) -->
     <div v-if="isApproverUser" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <StatCard :value="approvedCount" label="Disetujui"         color="green" />
-      <StatCard :value="rejectedCount" label="Ditolak"           color="red" />
-      <StatCard :value="items.length"  label="Total Report"      color="slate" />
+      <div
+        v-for="stat in approvalStats"
+        :key="stat.id"
+        @click="$emit('update:activeFilter', activeFilter === stat.id ? 'all' : stat.id)"
+        class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-pointer transition-all hover:shadow-md active:scale-95 relative overflow-hidden group"
+        :class="[activeFilter === stat.id ? 'ring-2 ring-offset-2 ' + stat.ringColor : 'hover:border-slate-200']"
+      >
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{{ stat.label }}</p>
+            <p class="text-2xl font-black" :class="stat.valueColor">{{ stat.count }}</p>
+          </div>
+          <div :class="stat.bgClass" class="p-2 rounded-xl text-white">
+            <component :is="stat.icon" class="w-5 h-5" />
+          </div>
+        </div>
+        <div
+          class="absolute bottom-0 left-0 h-1 transition-all duration-300"
+          :class="[stat.bgClass, activeFilter === stat.id ? 'w-full' : 'w-0 group-hover:w-full']"
+        ></div>
+      </div>
     </div>
 
     <!-- Search & Filter -->
@@ -15,7 +33,25 @@
         placeholder="Cari mesin, teknisi..."
       />
       <div class="flex flex-wrap items-center justify-end gap-3">
-        <FilterTabs :model-value="activeFilter" @update:model-value="$emit('update:activeFilter', $event)" :tabs="filterTabs" />
+        <select
+          :value="cityFilter"
+          @change="$emit('update:cityFilter', $event.target.value)"
+          class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-brown/50 cursor-pointer"
+          aria-label="Filter berdasarkan kota"
+        >
+          <option value="all">Semua Kota</option>
+          <option value="sby">Surabaya</option>
+          <option value="pasuruan">Pasuruan</option>
+        </select>
+        <select
+          :value="filterMonth"
+          @change="$emit('update:filterMonth', $event.target.value)"
+          class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-brown/50 cursor-pointer"
+          aria-label="Filter berdasarkan bulan"
+        >
+          <option value="">Semua Bulan</option>
+          <option v-for="m in availableMonths" :key="m.value" :value="m.value">{{ m.label }}</option>
+        </select>
         <select
           :value="sortOrder"
           @change="$emit('update:sortOrder', $event.target.value)"
@@ -120,6 +156,7 @@
             :total-steps="row.total_steps || 0"
             :status="row.approval_status"
             :pending-role="row.pending_role"
+            :pending-role-display="row.pending_role_display"
           />
           <p v-if="row.approval_status === 'approved' && row.approved_by" class="text-[10px] text-slate-400">oleh {{ row.approved_by }} • {{ formatDateTime(row.decided_at) }}</p>
           <p v-if="row.approval_status === 'rejected' && row.approved_by" class="text-[10px] text-red-400">oleh {{ row.approved_by }} • {{ formatDateTime(row.decided_at) }}</p>
@@ -171,15 +208,15 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import SearchInput from './SearchInput.vue';
-import FilterTabs from './FilterTabs.vue';
 import DataTable from './DataTable.vue';
 import TablePagination from './TablePagination.vue';
-import StatCard from './StatCard.vue';
 import Button from '../../views/components/ui/button/Button.vue';
 import ApprovalProgress from './ApprovalProgress.vue';
+import { CheckCircle2, XCircle, FileText, Clock } from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
   items: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   isApproverUser: { type: Boolean, default: false },
@@ -187,7 +224,9 @@ defineProps({
   searchQuery: { type: String, default: '' },
   activeFilter: { type: String, default: 'all' },
   sortOrder: { type: String, default: 'newest' },
-  filterTabs: { type: Array, default: () => [] },
+  filterMonth: { type: String, default: '' },
+  cityFilter: { type: String, default: 'all' },
+  availableMonths: { type: Array, default: () => [] },
   currentPage: { type: Number, default: 1 },
   perPage: { type: Number, default: 10 },
   filteredItems: { type: Array, default: () => [] },
@@ -210,5 +249,44 @@ defineProps({
   rejectedCount: { type: Number, default: 0 },
 });
 
-defineEmits(['update:searchQuery', 'update:activeFilter', 'update:sortOrder', 'update:currentPage', 'update:perPage', 'openDetails', 'openNotes', 'openDecide']);
+defineEmits(['update:searchQuery', 'update:activeFilter', 'update:sortOrder', 'update:currentPage', 'update:perPage', 'update:filterMonth', 'update:cityFilter', 'openDetails', 'openNotes', 'openDecide']);
+
+const approvalStats = computed(() => [
+  {
+    id: 'all',
+    label: 'Total Report',
+    count: props.filteredItems.length,
+    icon: FileText,
+    bgClass: 'bg-slate-500',
+    ringColor: 'ring-slate-500',
+    valueColor: 'text-slate-800',
+  },
+  {
+    id: 'pending',
+    label: 'Menunggu',
+    count: props.pendingCount,
+    icon: Clock,
+    bgClass: 'bg-amber-500',
+    ringColor: 'ring-amber-500',
+    valueColor: 'text-amber-600',
+  },
+  {
+    id: 'approved',
+    label: 'Disetujui',
+    count: props.approvedCount,
+    icon: CheckCircle2,
+    bgClass: 'bg-emerald-500',
+    ringColor: 'ring-emerald-500',
+    valueColor: 'text-emerald-600',
+  },
+  {
+    id: 'rejected',
+    label: 'Ditolak',
+    count: props.rejectedCount,
+    icon: XCircle,
+    bgClass: 'bg-red-500',
+    ringColor: 'ring-red-500',
+    valueColor: 'text-red-600',
+  },
+]);
 </script>

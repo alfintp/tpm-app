@@ -15,7 +15,7 @@ class MachineController extends Controller
     {
         $authUser = auth('sanctum')->user();
 
-        $query = Machine::with(['schedules.occurrences', 'components.indicators', 'picMesin', 'records.actions.indicatorValues']);
+        $query = Machine::with(['schedules.occurrences', 'components.indicators', 'picMesin', 'records.actions.indicatorValues', 'records.actions.component', 'records.latestApproval', 'records.technician']);
 
         // Filter machines by user's assigned city (unless city is 'both')
         if ($authUser && isset($authUser->city) && $authUser->city !== 'both') {
@@ -53,7 +53,9 @@ class MachineController extends Controller
             'records.approvals.approver',
             'records.latestApproval',
             'records.machine',
-            'picMesin'
+            'picMesin',
+            'unlockRequester',
+            'unlockApprover',
         ])->findOrFail($id);
 
         if (!$this->canAccessMachineCity($machine->kota)) {
@@ -67,7 +69,7 @@ class MachineController extends Controller
     {
         // Convert empty strings to null
         $input = $request->all();
-        foreach (['pic_mesin_id', 'maintenance_duration', 'maintenance_start_date'] as $field) {
+        foreach (['pic_mesin_id', 'maintenance_duration'] as $field) {
             if (isset($input[$field]) && $input[$field] === '') {
                 $input[$field] = null;
             }
@@ -84,22 +86,30 @@ class MachineController extends Controller
             'is_locked' => 'nullable|boolean',
             'pic_mesin_id' => 'nullable|uuid|exists:users,id',
             'maintenance_duration' => 'nullable|integer|min:1',
-            'maintenance_start_date' => 'nullable|date',
         ])->validate();
+
+        // Append to the end of the import order for this machine's city so the
+        // round-robin schedule generator distributes it fairly among working days.
+        $maxOrder = (int) Machine::where('kota', $validated['kota'])->max('import_order');
+        $validated['import_order'] = $maxOrder + 1;
 
         $machine = Machine::create($validated);
 
         ActivityLog::log('Tambah Mesin', "Menambahkan mesin baru: {$machine->name} di lokasi: " . ($machine->location ?? '-'));
 
-        // Automatically create maintenance schedule if duration and start date are provided
-        if (!empty($validated['maintenance_duration']) && !empty($validated['maintenance_start_date'])) {
+        // Automatically create maintenance schedule if a frequency is provided.
+        // The actual due date is computed by ScheduleOccurrenceGenerator from
+        // import_order + interval_days, so next_due_date here is just a placeholder.
+        if (!empty($validated['maintenance_duration'])) {
             MaintenanceSchedule::create([
                 'machine_id' => $machine->id,
                 'schedule_type' => 'preventive',
                 'interval_days' => $validated['maintenance_duration'],
-                'next_due_date' => $validated['maintenance_start_date'],
-                'status' => 'pending',
+                'next_due_date' => now()->toDateString(),
+                'is_active' => true,
             ]);
+
+            app(\App\Services\ScheduleOccurrenceGenerator::class)->generateUpcomingForCity($machine->kota);
         }
 
         return response()->json($machine, 201);
@@ -122,7 +132,6 @@ class MachineController extends Controller
             'machines.*.status' => 'required|in:active,inactive,maintenance',
             'machines.*.pic_email' => 'nullable|string|email',
             'machines.*.maintenance_duration' => 'nullable|integer|min:1',
-            'machines.*.maintenance_start_date' => 'nullable|date',
         ]);
 
         $kodes = collect($request->machines)->pluck('kode')->toArray();
@@ -176,17 +185,18 @@ class MachineController extends Controller
                     'status' => $item['status'],
                     'pic_mesin_id' => $picId,
                     'maintenance_duration' => $item['maintenance_duration'] ?? null,
-                    'maintenance_start_date' => $item['maintenance_start_date'] ?? null,
                 ]);
 
-                // Automatically create maintenance schedule if duration and start date are provided
-                if (!empty($item['maintenance_duration']) && !empty($item['maintenance_start_date'])) {
+                // Automatically create maintenance schedule if a frequency is provided.
+                // The actual due date is computed by ScheduleOccurrenceGenerator from
+                // import_order + interval_days, so next_due_date here is just a placeholder.
+                if (!empty($item['maintenance_duration'])) {
                     MaintenanceSchedule::create([
                         'machine_id' => $machine->id,
                         'schedule_type' => 'preventive',
                         'interval_days' => $item['maintenance_duration'],
-                        'next_due_date' => $item['maintenance_start_date'],
-                        'status' => 'pending',
+                        'next_due_date' => now()->toDateString(),
+                        'is_active' => true,
                     ]);
                 }
                 $createdCount++;
@@ -216,7 +226,7 @@ class MachineController extends Controller
 
         // Convert empty strings to null
         $input = $request->all();
-        foreach (['pic_mesin_id', 'maintenance_duration', 'maintenance_start_date'] as $field) {
+        foreach (['pic_mesin_id', 'maintenance_duration'] as $field) {
             if (isset($input[$field]) && $input[$field] === '') {
                 $input[$field] = null;
             }
@@ -233,38 +243,42 @@ class MachineController extends Controller
             'is_locked' => 'nullable|boolean',
             'pic_mesin_id' => 'nullable|uuid|exists:users,id',
             'maintenance_duration' => 'nullable|integer|min:1',
-            'maintenance_start_date' => 'nullable|date',
         ])->validate();
 
         $machine->update($validated);
 
         ActivityLog::log('Edit Mesin', "Memperbarui data mesin: {$machine->name}");
 
-        // Automatically update/create/delete maintenance schedule if duration and start date are modified
-        if (!empty($validated['maintenance_duration']) && !empty($validated['maintenance_start_date'])) {
-            $schedule = MaintenanceSchedule::where('machine_id', $machine->id)
-                ->where('schedule_type', 'preventive')
-                ->first();
+        // Automatically update/create/delete maintenance schedule if the frequency is modified.
+        // The actual due date is (re)computed by ScheduleOccurrenceGenerator from
+        // import_order + interval_days, so next_due_date here is just a placeholder.
+        if (array_key_exists('maintenance_duration', $validated)) {
+            if (!empty($validated['maintenance_duration'])) {
+                $schedule = MaintenanceSchedule::where('machine_id', $machine->id)
+                    ->where('schedule_type', 'preventive')
+                    ->first();
 
-            if ($schedule) {
-                $schedule->update([
-                    'interval_days' => $validated['maintenance_duration'],
-                    'next_due_date' => $validated['maintenance_start_date'],
-                ]);
+                if ($schedule) {
+                    $schedule->update([
+                        'interval_days' => $validated['maintenance_duration'],
+                    ]);
+                } else {
+                    $schedule = MaintenanceSchedule::create([
+                        'machine_id' => $machine->id,
+                        'schedule_type' => 'preventive',
+                        'interval_days' => $validated['maintenance_duration'],
+                        'next_due_date' => now()->toDateString(),
+                        'is_active' => true,
+                    ]);
+                }
+
+                app(\App\Services\ScheduleOccurrenceGenerator::class)->regenerateForSchedule($schedule);
             } else {
-                MaintenanceSchedule::create([
-                    'machine_id' => $machine->id,
-                    'schedule_type' => 'preventive',
-                    'interval_days' => $validated['maintenance_duration'],
-                    'next_due_date' => $validated['maintenance_start_date'],
-                    'status' => 'pending',
-                ]);
+                // Explicitly set to null/empty — remove the preventive schedule
+                MaintenanceSchedule::where('machine_id', $machine->id)
+                    ->where('schedule_type', 'preventive')
+                    ->delete();
             }
-        } else if (array_key_exists('maintenance_duration', $validated) || array_key_exists('maintenance_start_date', $validated)) {
-            // If explicitly set to null/empty, we can remove the preventive schedule
-            MaintenanceSchedule::where('machine_id', $machine->id)
-                ->where('schedule_type', 'preventive')
-                ->delete();
         }
 
         return response()->json($machine);
@@ -320,6 +334,7 @@ class MachineController extends Controller
         $periodInfo = $validated['requested_period'] ? " untuk jadwal: {$validated['requested_period']}" : "";
         ActivityLog::log('Pengajuan Unlock', "Mengajukan buka kunci untuk mesin: {$machine->name}{$periodInfo} dengan alasan: {$validated['reason']}");
 
+        $machine->load('unlockRequester');
         return response()->json([
             'message' => 'Pengajuan buka kunci berhasil dikirim. Menunggu persetujuan Factory Manager.',
             'machine' => $machine
@@ -329,7 +344,8 @@ class MachineController extends Controller
     public function approveUnlock(Request $request, $id)
     {
         $user = $request->user();
-        if ($user->role !== 'admin' && !$user->is_manager) {
+        $canApproveUnlock = $user->role === 'admin' || \App\Models\Role::where('name', $user->role)->value('can_approve_unlock');
+        if (!$canApproveUnlock) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
@@ -337,12 +353,16 @@ class MachineController extends Controller
         
         $validated = $request->validate([
             'decision' => 'required|in:approved,rejected',
+            'notes' => $request->input('decision') === 'rejected' ? 'required|string|max:500' : 'nullable|string|max:500',
         ]);
 
         if ($validated['decision'] === 'approved') {
             $machine->update([
                 'unlock_status' => 'approved',
-                'unlock_expires_at' => now()->addHours(24), // Unlock valid for 24 hours
+                'unlock_expires_at' => now()->endOfMonth(),
+                'unlock_approved_by_id' => $user->id,
+                'unlock_approved_at' => now(),
+                'unlock_approval_notes' => $validated['notes'] ?? null,
                 'is_locked' => false,
             ]);
             $action = 'Menyetujui';
@@ -350,6 +370,9 @@ class MachineController extends Controller
             $machine->update([
                 'unlock_status' => 'rejected',
                 'unlock_expires_at' => null,
+                'unlock_approved_by_id' => $user->id,
+                'unlock_approved_at' => now(),
+                'unlock_approval_notes' => $validated['notes'] ?? null,
             ]);
             $action = 'Menolak';
         }
@@ -365,11 +388,53 @@ class MachineController extends Controller
     public function unlockHistory(Request $request)
     {
         $user = $request->user();
-        if ($user->role !== 'admin' && !$user->is_manager) {
+        $canApproveUnlock = $user->role === 'admin' || \App\Models\Role::where('name', $user->role)->value('can_approve_unlock');
+        if (!$canApproveUnlock) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $machines = Machine::with('unlockRequester')
+        $query = Machine::with(['unlockRequester', 'unlockApprover'])
+            ->whereNotIn('unlock_status', ['none'])
+            ->whereNotNull('last_unlock_request_at');
+
+        // Filter by user's city unless city is 'both'
+        if (isset($user->city) && $user->city !== 'both') {
+            $query->where('kota', $user->city);
+        }
+
+        $machines = $query->orderByDesc('last_unlock_request_at')
+            ->get()
+            ->map(function ($m) {
+                return [
+                    'id'                       => $m->id,
+                    'name'                     => $m->name,
+                    'kode'                     => $m->kode,
+                    'location'                 => $m->location,
+                    'kota'                     => $m->kota,
+                    'unlock_status'            => $m->unlock_status,
+                    'unlock_status_label'      => $m->unlock_status_label,
+                    'unlock_reason'            => $m->unlock_reason,
+                    'unlock_requested_period'  => $m->unlock_requested_period,
+                    'last_unlock_request_at'   => $m->last_unlock_request_at,
+                    'unlock_expires_at'        => $m->unlock_expires_at,
+                    'unlock_requested_by_id'   => $m->unlock_requested_by_id,
+                    'requester_name'           => $m->unlockRequester?->full_name ?? '-',
+                    'requester_role'           => $m->unlockRequester?->role ?? '-',
+                    'unlock_approved_at'       => $m->unlock_approved_at,
+                    'unlock_approval_notes'    => $m->unlock_approval_notes,
+                    'approver_name'            => $m->unlockApprover?->full_name ?? '-',
+                ];
+            });
+
+        return response()->json($machines);
+    }
+
+    public function myUnlockRequests(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        $machines = Machine::with(['unlockRequester', 'unlockApprover'])
+            ->where('unlock_requested_by_id', $userId)
             ->whereNotIn('unlock_status', ['none'])
             ->whereNotNull('last_unlock_request_at')
             ->orderByDesc('last_unlock_request_at')
@@ -387,9 +452,9 @@ class MachineController extends Controller
                     'unlock_requested_period'  => $m->unlock_requested_period,
                     'last_unlock_request_at'   => $m->last_unlock_request_at,
                     'unlock_expires_at'        => $m->unlock_expires_at,
-                    'unlock_requested_by_id'   => $m->unlock_requested_by_id,
-                    'requester_name'           => $m->unlockRequester?->name ?? '-',
-                    'requester_role'           => $m->unlockRequester?->role ?? '-',
+                    'unlock_approved_at'       => $m->unlock_approved_at,
+                    'unlock_approval_notes'    => $m->unlock_approval_notes,
+                    'approver_name'            => $m->unlockApprover?->full_name ?? '-',
                 ];
             });
 

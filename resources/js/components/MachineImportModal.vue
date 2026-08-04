@@ -28,22 +28,51 @@
       </div>
 
       <div class="space-y-4">
-        <!-- Format note for component import -->
-        <div v-if="type === 'component'" class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 space-y-2">
+        <!-- Format note for machine import -->
+        <div v-if="type === 'machine'" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-800 space-y-2">
           <div>
-            <p class="font-semibold mb-1">Format Excel untuk Import Komponen</p>
-            <p class="text-xs">Sesuaikan dengan template yang Anda unduh. Dua format didukung:</p>
+            <p class="font-semibold mb-1">Format Excel untuk Import Mesin</p>
+            <p class="text-xs">Sesuaikan dengan template yang Anda unduh. Kolom yang harus diisi:</p>
           </div>
           <div class="text-xs space-y-1">
-            <p><strong>Format A — detail mesin (tanpa Kode Mesin):</strong></p>
-            <p class="text-slate-600">Kategori · Nama Komponen · Spesifikasi · Jumlah (Qty) · Satuan · Kondisi Awal (%) · Kesulitan (ringan/sedang/berat) · Indikator</p>
-          </div>
-          <div class="text-xs space-y-1">
-            <p><strong>Format B — massal (dengan Kode Mesin):</strong></p>
-            <p class="text-slate-600">Kode Mesin · Kategori · Nama Komponen · Spesifikasi · Jumlah (Qty) · Satuan · Kesulitan (ringan/sedang/berat) · Kondisi Awal (%) · Indikator</p>
+            <p class="text-slate-600">Kode Mesin · Nama Mesin · Deskripsi · Kondisi (%) · Lokasi · Kota (psn/sby) · Status (active/inactive/maintenance) · Email PIC · Frekuensi Maintenance</p>
           </div>
           <div class="text-xs">
-            <p class="mb-1"><strong>Kolom Indikator</strong> diisi teks multi-baris dengan format <code class="bg-amber-100 px-1 rounded">Nama: Keterangan</code> (satu indikator per baris).</p>
+            <p class="mb-1"><strong>Frekuensi Maintenance</strong> diisi dengan salah satu pilihan berikut:</p>
+            <ul class="list-disc list-inside text-slate-600 mt-0.5 space-y-0.5">
+              <li><code class="bg-emerald-100 px-1 rounded">4x sebulan</code> — maintenance setiap minggu</li>
+              <li><code class="bg-emerald-100 px-1 rounded">2x sebulan</code> — maintenance 2 minggu sekali</li>
+              <li><code class="bg-emerald-100 px-1 rounded">1x sebulan</code> — maintenance bulanan</li>
+              <li><code class="bg-emerald-100 px-1 rounded">1x per 2 bulan</code> — maintenance 2 bulan sekali</li>
+              <li><code class="bg-emerald-100 px-1 rounded">1x per 3 bulan</code> — maintenance 3 bulan sekali</li>
+              <li>Kosongkan jika tidak ingin membuat jadwal maintenance</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Format note for component import -->
+        <div v-if="type === 'component'" class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 space-y-3">
+          <div>
+            <p class="font-semibold mb-1">Format Excel untuk Import Komponen</p>
+            <p class="text-xs">Pilih salah satu format sesuai kebutuhan Anda:</p>
+          </div>
+          <div class="text-xs space-y-1">
+            <p><strong>Format A — Tambah Cepat:</strong></p>
+            <p class="text-slate-600">Cocok untuk menambah 1 atau beberapa komponen ke mesin yang sudah ada. Hanya butuh data minimal.</p>
+            <p class="text-slate-600">Kolom: Kode Mesin · Nama Komponen · Qty · Satuan</p>
+          </div>
+          <div class="text-xs space-y-1">
+            <p><strong>Format B — Massal Lengkap:</strong></p>
+            <p class="text-slate-600">Untuk import massal komponen banyak mesin sekaligus dengan semua field termasuk indikator.</p>
+            <p class="text-slate-600">Kolom: Kode Mesin · Kategori · Nama Komponen · Spesifikasi · Jumlah (Qty) · Satuan · Kesulitan (ringan/sedang/berat) · Kondisi Awal (%) · Indikator</p>
+          </div>
+          <div class="text-xs space-y-1">
+            <p><strong>Format C — Detail Tanpa Indikator:</strong></p>
+            <p class="text-slate-600">Untuk import massal dengan detail lengkap tapi tanpa kolom Indikator (lebih cepat dari Format B).</p>
+            <p class="text-slate-600">Kolom: Kode Mesin · Kategori · Nama Komponen · Spesifikasi · Jumlah (Qty) · Satuan · Kesulitan (ringan/sedang/berat) · Kondisi Awal (%)</p>
+          </div>
+          <div class="text-xs">
+            <p class="mb-1"><strong>Kolom Indikator</strong> (hanya Format B) diisi teks multi-baris dengan format <code class="bg-amber-100 px-1 rounded">Nama: Keterangan</code> (satu indikator per baris).</p>
             <p class="text-slate-600">Contoh isian kolom Indikator:</p>
             <ul class="list-disc list-inside text-slate-600 mt-0.5 space-y-0.5">
               <li><code class="bg-amber-100 px-1 rounded">Visual: Casing utuh, tidak ada keretakan.</code></li>
@@ -53,13 +82,15 @@
         </div>
 
         <!-- Step 1: Download Template -->
-        <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center justify-between gap-4">
+        <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl space-y-3">
           <div>
             <p class="text-xs font-bold text-slate-700">1. Unduh Format Template</p>
             <p class="text-[11px] text-slate-400 mt-0.5">Gunakan template resmi agar susunan kolom sesuai dengan sistem</p>
           </div>
+          <!-- Single download for machine import -->
           <button
-            @click="$emit('download-template')"
+            v-if="type === 'machine'"
+            @click="$emit('download-template', 'machine')"
             class="flex items-center gap-1.5 bg-white border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,6 +98,36 @@
             </svg>
             Format Excel
           </button>
+          <!-- Three download options for component import -->
+          <div v-else class="flex flex-wrap gap-2">
+            <button
+              @click="$emit('download-template', 'A')"
+              class="flex items-center gap-1.5 bg-white border border-teal-200 hover:border-teal-300 hover:bg-teal-50 text-teal-700 text-xs font-bold px-3 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Format A
+            </button>
+            <button
+              @click="$emit('download-template', 'B')"
+              class="flex items-center gap-1.5 bg-white border border-teal-200 hover:border-teal-300 hover:bg-teal-50 text-teal-700 text-xs font-bold px-3 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Format B
+            </button>
+            <button
+              @click="$emit('download-template', 'C')"
+              class="flex items-center gap-1.5 bg-white border border-teal-200 hover:border-teal-300 hover:bg-teal-50 text-teal-700 text-xs font-bold px-3 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Format C
+            </button>
+          </div>
         </div>
 
         <!-- Step 2: Choose File -->

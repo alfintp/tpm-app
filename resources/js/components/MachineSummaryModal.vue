@@ -54,32 +54,13 @@
               </div>
             </div>
 
-            <!-- Latest report -->
-            <div v-if="latestRecord" class="bg-white rounded-xl border border-slate-200 p-4">
-              <h4 class="text-xs font-bold uppercase text-slate-400 mb-3">Laporan Terbaru</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p class="text-slate-400 text-xs">Tanggal</p>
-                  <p class="font-semibold text-slate-700">{{ formatDate(latestRecord.maintenance_date) }}</p>
-                </div>
-                <div>
-                  <p class="text-slate-400 text-xs">Teknisi</p>
-                  <p class="font-semibold text-slate-700">{{ latestRecord.technician?.full_name ?? '-' }}</p>
-                </div>
-                <div>
-                  <p class="text-slate-400 text-xs">Status Approval</p>
-                  <p class="font-semibold" :class="statusClass(latestRecord)">{{ statusLabel(latestRecord) }}</p>
-                </div>
-              </div>
-              <div v-if="latestRecord.notes" class="mt-3 text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                {{ latestRecord.notes }}
-              </div>
-            </div>
-
-            <!-- Components condition -->
+            <!-- Components condition (collapsible) -->
             <div v-if="components.length" class="bg-white rounded-xl border border-slate-200 p-4">
-              <h4 class="text-xs font-bold uppercase text-slate-400 mb-3">Kondisi Komponen</h4>
-              <div class="space-y-3">
+              <button @click="showComponents = !showComponents" class="w-full flex items-center justify-between mb-3 cursor-pointer">
+                <h4 class="text-xs font-bold uppercase text-slate-400">Kondisi Komponen</h4>
+                <svg class="w-4 h-4 text-slate-400 transition-transform" :class="showComponents ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div v-show="showComponents" class="space-y-3">
                 <div v-for="component in components" :key="component.id" class="flex items-center gap-3">
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
@@ -88,6 +69,7 @@
                         {{ difficultyLabel(component.difficulty) }}
                       </span>
                     </div>
+                    <p v-if="component.specification" class="text-[10px] text-slate-400 truncate mt-0.5">{{ component.specification }}</p>
                     <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-1.5">
                       <div
                         class="h-full rounded-full"
@@ -116,32 +98,81 @@
                     <span class="font-semibold text-sm text-slate-700">{{ item.component?.name ?? '-' }}</span>
                     <span class="text-xs text-slate-400">{{ formatDate(item.record.maintenance_date) }}</span>
                   </div>
-                  <span class="text-xs font-semibold text-slate-500">{{ item.record.technician?.full_name ?? '-' }}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-500">{{ item.record.technician?.full_name ?? '-' }}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Recent reports -->
+            <!-- Recent reports (collapsible per report) -->
             <div v-if="records.length" class="bg-white rounded-xl border border-slate-200 p-4">
               <h4 class="text-xs font-bold uppercase text-slate-400 mb-3">Riwayat Laporan</h4>
               <div class="space-y-2">
                 <div
                   v-for="record in recentRecords"
                   :key="record.id"
-                  class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 border-b border-slate-50 last:border-0"
+                  class="border-b border-slate-50 last:border-0"
                 >
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="font-semibold text-sm text-slate-700">{{ formatDate(record.maintenance_date) }}</span>
-                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border" :class="statusBadgeClass(record)">{{ statusLabel(record) }}</span>
-                    <span v-if="record.is_late" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-100">Terlambat</span>
-                    <span v-if="record.is_unscheduled" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">Luar Jadwal</span>
-                  </div>
-                  <div class="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span>{{ actionCount(record, 'replace') }} ganti</span>
-                    <span>•</span>
-                    <span>{{ actionCount(record, 'inspect') }} inspeksi</span>
-                    <span>•</span>
-                    <span>{{ record.technician?.full_name ?? '-' }}</span>
+                  <button
+                    @click="toggleReport(record.id)"
+                    class="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 cursor-pointer text-left hover:bg-slate-50/50 rounded-lg px-2 -mx-2 transition-colors"
+                  >
+                    <div class="flex flex-wrap items-center gap-2">
+                      <svg class="w-3.5 h-3.5 text-slate-400 transition-transform shrink-0" :class="expandedReports.has(record.id) ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                      <span class="font-semibold text-sm text-slate-700">{{ formatDate(record.maintenance_date) }}</span>
+                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border" :class="statusBadgeClass(record)">{{ statusLabel(record) }}</span>
+                      <span v-if="record.is_late" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-100">Terlambat</span>
+                      <span v-if="record.is_unscheduled" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">Luar Jadwal</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-xs text-slate-500">
+                      <span>{{ actionCount(record, 'replace') }} ganti</span>
+                      <span>•</span>
+                      <span>{{ actionCount(record, 'inspect') }} inspeksi</span>
+                      <span>•</span>
+                      <span>{{ record.technician?.full_name ?? '-' }}</span>
+                    </div>
+                  </button>
+                  <!-- Expanded report detail -->
+                  <div v-if="expandedReports.has(record.id)" class="pb-3 px-2 space-y-2">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-50 rounded-lg p-3 border border-slate-100">
+                      <div>
+                        <p class="text-slate-400 text-[10px] font-bold uppercase">Teknisi</p>
+                        <p class="font-semibold text-slate-700">{{ record.technician?.full_name ?? '-' }}</p>
+                      </div>
+                      <div>
+                        <p class="text-slate-400 text-[10px] font-bold uppercase">Status</p>
+                        <p class="font-semibold" :class="statusClass(record)">{{ statusLabel(record) }}</p>
+                      </div>
+                      <div>
+                        <p class="text-slate-400 text-[10px] font-bold uppercase">Kondisi</p>
+                        <p class="font-semibold text-slate-700">{{ record.condition_before_pct ?? '-' }}% → {{ record.condition_after_pct ?? '-' }}%</p>
+                      </div>
+                      <div>
+                        <p class="text-slate-400 text-[10px] font-bold uppercase">Durasi</p>
+                        <p class="font-semibold text-slate-700">{{ record.duration_minutes ? record.duration_minutes + ' min' : '-' }}</p>
+                      </div>
+                    </div>
+                    <div v-if="record.notes" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 italic">
+                      "{{ record.notes }}"
+                    </div>
+                    <div v-if="recordActions(record).length" class="space-y-1.5">
+                      <p class="text-[10px] font-bold uppercase text-slate-400">Komponen Dicek:</p>
+                      <div v-for="action in recordActions(record)" :key="action.id" class="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
+                        <div class="flex flex-col min-w-0">
+                          <span class="font-medium text-slate-700">{{ action.component?.name ?? componentMap[action.machine_component_id]?.name ?? '-' }}</span>
+                          <span v-if="action.component?.specification ?? componentMap[action.machine_component_id]?.specification" class="text-[10px] text-slate-400 truncate">{{ action.component?.specification ?? componentMap[action.machine_component_id]?.specification }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" :class="action.action_type === 'replace' ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-blue-50 text-blue-700 border border-blue-100'">
+                            {{ action.action_type === 'replace' ? 'Ganti' : 'Inspeksi' }}
+                          </span>
+                          <span v-if="action.condition_before_pct != null || action.condition_after_pct != null" class="text-slate-500 font-semibold">
+                            {{ action.condition_before_pct ?? '-' }}% → {{ action.condition_after_pct ?? '-' }}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -158,7 +189,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed, reactive } from 'vue';
 import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -167,10 +198,20 @@ const props = defineProps({
 });
 const emit = defineEmits(['close']);
 
+const showComponents = ref(true);
+const expandedReports = reactive(new Set());
+
+const toggleReport = (id) => {
+  if (expandedReports.has(id)) expandedReports.delete(id);
+  else expandedReports.add(id);
+};
+
 const records = computed(() => [...(props.machine.records ?? [])].sort((a, b) => new Date(b.maintenance_date) - new Date(a.maintenance_date)));
 const components = computed(() => props.machine.components ?? []);
 const latestRecord = computed(() => records.value[0] ?? null);
 const recentRecords = computed(() => records.value.slice(0, 10));
+
+const recordActions = (record) => (record.actions ?? []).filter(a => a.action_type === 'inspect' || a.action_type === 'replace');
 
 const componentMap = computed(() => {
   const map = {};

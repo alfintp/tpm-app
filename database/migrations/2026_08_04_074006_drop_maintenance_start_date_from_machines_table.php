@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('machines', function (Blueprint $table) {
-            //
+            $table->dropColumn('maintenance_start_date');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('machines', function (Blueprint $table) {
-            //
+            $table->date('maintenance_start_date')->nullable()->after('maintenance_duration');
         });
     }
 };

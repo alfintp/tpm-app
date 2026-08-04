@@ -25,7 +25,7 @@ class MaintenanceScheduleController extends Controller
 
         // Base query: occurrences due within H-1..tomorrow OR occurrences further ahead
         // that have no approved record yet for that period in the current month.
-        $occurrences = ScheduleOccurrence::with(['schedule', 'machine.records.latestApproval', 'machine.components'])
+        $occurrences = ScheduleOccurrence::with(['schedule', 'machine.records.latestApproval', 'machine.components', 'machine.unlockRequester', 'machine.unlockApprover'])
             ->whereHas('schedule', fn ($q) => $q->where('is_active', true))
             ->where(function ($query) use ($tomorrow, $monthStart, $monthEnd) {
                 $query->where('due_date', '<=', $tomorrow)
@@ -44,14 +44,26 @@ class MaintenanceScheduleController extends Controller
 
         // Shape the response like the schedules this endpoint used to return (machine_id,
         // next_due_date, schedule_type, id) so existing frontend consumers keep working.
+        // Priority: machines with approved unlock appear first, then by due_date ascending.
         $result = $occurrences->map(function (ScheduleOccurrence $occ) {
+            $machine = $occ->machine;
+            $isUnlockPriority = $machine
+                && $machine->unlock_status === 'approved'
+                && ($machine->unlock_approved_at
+                    ? $machine->unlock_approved_at->format('Y-m') === Carbon::today()->format('Y-m')
+                    : ($machine->unlock_expires_at && $machine->unlock_expires_at->isFuture()));
+
             return [
                 'id' => $occ->schedule_id,
                 'machine_id' => $occ->machine_id,
                 'schedule_type' => $occ->schedule?->schedule_type,
                 'next_due_date' => $occ->due_date,
-                'machine' => $occ->machine,
+                'machine' => $machine,
+                'is_unlock_priority' => $isUnlockPriority,
             ];
+        })->sortBy(function ($item) {
+            // Sort by unlock priority first (0 before 1), then by due_date
+            return [$item['is_unlock_priority'] ? 0 : 1, $item['next_due_date']];
         })->values();
 
         return response()->json($result);

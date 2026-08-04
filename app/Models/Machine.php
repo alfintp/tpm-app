@@ -26,9 +26,11 @@ class Machine extends Model
         'unlock_requested_by_id',
         'unlock_status',
         'unlock_expires_at',
+        'unlock_approved_by_id',
+        'unlock_approved_at',
+        'unlock_approval_notes',
         'pic_mesin_id',
         'maintenance_duration',
-        'maintenance_start_date',
     ];
 
     protected $casts = [
@@ -36,6 +38,7 @@ class Machine extends Model
         'is_locked' => 'boolean',
         'last_unlock_request_at' => 'datetime',
         'unlock_expires_at' => 'datetime',
+        'unlock_approved_at' => 'datetime',
     ];
 
     protected $appends = ['unlock_status_label'];
@@ -100,9 +103,18 @@ class Machine extends Model
      */
     public function isOpenForMaintenance()
     {
-        // Check for manual unlock approval first
-        if ($this->unlock_status === 'approved' && $this->unlock_expires_at && $this->unlock_expires_at->isFuture()) {
-            return true;
+        // Check for manual unlock approval — valid for the entire month of approval
+        if ($this->unlock_status === 'approved') {
+            if ($this->unlock_approved_at) {
+                $approvedMonth = $this->unlock_approved_at->format('Y-m');
+                $currentMonth = \Carbon\Carbon::today()->format('Y-m');
+                if ($approvedMonth === $currentMonth) {
+                    return true;
+                }
+            } elseif ($this->unlock_expires_at && $this->unlock_expires_at->isFuture()) {
+                // Fallback for old approvals without unlock_approved_at
+                return true;
+            }
         }
 
         $window = \App\Models\MaintenanceWindowSetting::current();
@@ -179,5 +191,10 @@ class Machine extends Model
     public function unlockRequester()
     {
         return $this->belongsTo(User::class, 'unlock_requested_by_id');
+    }
+
+    public function unlockApprover()
+    {
+        return $this->belongsTo(User::class, 'unlock_approved_by_id');
     }
 }

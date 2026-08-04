@@ -188,11 +188,18 @@
 
       <!-- Kolom: Mesin -->
       <template #cell-machine_name="{ row }">
-        <div 
+        <div
           class="cursor-pointer hover:text-indigo-600 transition-colors"
           @click="goToMachine(row.machine_id)"
         >
-          <p class="font-semibold text-slate-700 text-sm line-clamp-1">{{ row.machine?.name }}</p>
+          <div class="flex items-center gap-1.5">
+            <p class="font-semibold text-slate-700 text-sm line-clamp-1">{{ row.machine?.name }}</p>
+            <span
+              v-if="row.machine?.kota"
+              :class="row.machine.kota === 'sby' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'"
+              class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0"
+            >{{ row.machine.kota === 'sby' ? 'SBY' : 'PSN' }}</span>
+          </div>
           <p class="text-[10px] text-slate-400 uppercase tracking-wider">{{ row.machine?.location }}</p>
         </div>
       </template>

@@ -16,6 +16,7 @@ class Role extends Model
         'can_approve',
         'can_report',
         'is_manager',
+        'can_approve_unlock',
         'required_difficulties',
         'is_active',
     ];
@@ -24,6 +25,7 @@ class Role extends Model
         'can_approve' => 'boolean',
         'can_report'  => 'boolean',
         'is_manager'  => 'boolean',
+        'can_approve_unlock' => 'boolean',
         'is_active'   => 'boolean',
         'required_difficulties' => 'array',
     ];

@@ -257,23 +257,34 @@ const canReport = computed(() => {
   return !!role?.can_report;
 });
 
-// Build checkedComponentIds per period (uses machine.records directly for historical periods).
-const checkedIdsInPeriod = (periodStart, periodDue) => {
+// Build checkedComponentIds per period using the same source as Report.vue:
+// match by schedule_id + scheduled_period_date (not date-range on maintenance_date).
+const dateKey = (date) => {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const checkedIdsInPeriod = (period) => {
   const ids = new Set();
+  const periodDate = dateKey(period.due);
   for (const record of machine.value?.records ?? []) {
     if (record.status !== 'completed') continue;
+    if (record.is_unscheduled) continue;
     const approvalStatus = record.latest_approval?.decision ?? 'pending';
     if (approvalStatus === 'rejected') continue;
-    const recDate = new Date(record.maintenance_date);
-    recDate.setHours(0, 0, 0, 0);
-    if (recDate < periodStart || recDate > periodDue) continue;
+    if (String(record.schedule_id) !== String(period.scheduleId)) continue;
+    if (String(record.scheduled_period_date).slice(0, 10) !== periodDate) continue;
     for (const action of record.actions ?? []) {
       if (action.machine_component_id) ids.add(action.machine_component_id);
     }
   }
   // Also include currently pending (checked but unsaved) rows for the current period
   const today = new Date(); today.setHours(0,0,0,0);
-  if (periodStart <= today && today <= periodDue) {
+  const isCurrent = currentPeriod.value && currentPeriod.value.due.getTime() === period.due.getTime();
+  if (isCurrent) {
     for (const row of componentRows.value) {
       if (row.checkedToday) ids.add(row.id);
     }
@@ -296,7 +307,7 @@ const componentCoverageStats = computed(() => {
   const result = [];
   periods.forEach((period, idx) => {
     const periodLabel = periods.length > 1 ? `Week ${idx + 1}` : null;
-    const checkedIds = checkedIdsInPeriod(period.start, period.due);
+    const checkedIds = checkedIdsInPeriod(period);
     buckets.forEach(bucket => {
       const applicable = allComponents.filter(c => bucket.difficulties.includes(c.difficulty ?? null));
       const total = applicable.length;

@@ -81,6 +81,7 @@
                   </span>
                   <div class="min-w-0">
                     <span class="font-bold text-sm text-slate-800">{{ comp.name }}</span>
+                    <p v-if="comp.specification" class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{{ comp.specification }}</p>
                     <div class="flex flex-wrap items-center gap-1 mt-0.5">
                       <span v-if="comp.category" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 font-semibold">{{ comp.category }}</span>
                       <span v-if="comp.difficulty" :class="getDifficultyBadgeClass(comp.difficulty)" class="text-[10px] px-1.5 py-0.5 rounded font-semibold capitalize">{{ comp.difficulty }}</span>
