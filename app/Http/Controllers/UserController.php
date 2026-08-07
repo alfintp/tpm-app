@@ -16,7 +16,9 @@ class UserController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $query = User::orderBy('full_name');
+        $query = User::select(['id', 'full_name', 'email', 'role', 'city', 'created_at', 'updated_at'])
+            ->with('roleRelation:id,name,is_manager,can_approve')
+            ->orderBy('full_name');
 
         // Manager cannot see admin users
         if ($request->user()->is_manager) {
@@ -190,7 +192,8 @@ class UserController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $logs = ActivityLog::with(['user'])
+        $logs = ActivityLog::with(['user:id,full_name,email,role'])
+            ->select(['id', 'user_id', 'user_fullname', 'activity', 'details', 'ip_address', 'created_at'])
             ->orderBy('created_at', 'desc')
             ->get();
 

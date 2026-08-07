@@ -21,7 +21,13 @@ class MachineComponentController extends Controller
 
     public function allComponents(Request $request)
     {
-        $query = MachineComponent::has('machine')->with(['machine', 'indicators']);
+        $query = MachineComponent::has('machine')
+            ->with(['machine:id,name,kota,location'])
+            ->select([
+                'id', 'machine_id', 'category', 'name', 'specification',
+                'qty', 'unit', 'difficulty', 'last_replaced_at', 'last_condition_pct',
+                DB::raw('(SELECT COUNT(*) FROM component_indicators WHERE component_indicators.machine_component_id = machine_components.id) as indicators_count'),
+            ]);
 
         if ($request->has('difficulty') && $request->difficulty !== 'all') {
             if ($request->difficulty === 'none') {

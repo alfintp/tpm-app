@@ -17,6 +17,8 @@ class MaintenanceAction extends Model
         'condition_before_pct',
         'condition_after_pct',
         'description',
+        'stock_id',
+        'stock_qty_used',
     ];
 
     public function record()
@@ -27,6 +29,11 @@ class MaintenanceAction extends Model
     public function component()
     {
         return $this->belongsTo(MachineComponent::class, 'machine_component_id');
+    }
+
+    public function stock()
+    {
+        return $this->belongsTo(Stock::class, 'stock_id');
     }
 
     public function indicatorValues()

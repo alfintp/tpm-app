@@ -13,7 +13,9 @@ class MaintenanceScheduleController extends Controller
 {
     public function index()
     {
-        $schedules = MaintenanceSchedule::with('machine')->get();
+        $schedules = MaintenanceSchedule::select(['id', 'machine_id', 'schedule_type', 'interval_days', 'next_due_date', 'is_active'])
+            ->orderBy('machine_id')
+            ->get();
         return response()->json($schedules);
     }
     
@@ -25,7 +27,7 @@ class MaintenanceScheduleController extends Controller
 
         // Base query: occurrences due within H-1..tomorrow OR occurrences further ahead
         // that have no approved record yet for that period in the current month.
-        $occurrences = ScheduleOccurrence::with(['schedule', 'machine.records.latestApproval', 'machine.components', 'machine.unlockRequester', 'machine.unlockApprover'])
+        $occurrences = ScheduleOccurrence::with(['schedule:id,schedule_type', 'machine:id,unlock_status,unlock_approved_at,unlock_expires_at'])
             ->whereHas('schedule', fn ($q) => $q->where('is_active', true))
             ->where(function ($query) use ($tomorrow, $monthStart, $monthEnd) {
                 $query->where('due_date', '<=', $tomorrow)
@@ -46,6 +48,7 @@ class MaintenanceScheduleController extends Controller
         // next_due_date, schedule_type, id) so existing frontend consumers keep working.
         // Priority: machines with approved unlock appear first, then by due_date ascending.
         $result = $occurrences->map(function (ScheduleOccurrence $occ) {
+            // Check unlock priority via a lightweight query instead of loading full machine
             $machine = $occ->machine;
             $isUnlockPriority = $machine
                 && $machine->unlock_status === 'approved'
@@ -58,7 +61,6 @@ class MaintenanceScheduleController extends Controller
                 'machine_id' => $occ->machine_id,
                 'schedule_type' => $occ->schedule?->schedule_type,
                 'next_due_date' => $occ->due_date,
-                'machine' => $machine,
                 'is_unlock_priority' => $isUnlockPriority,
             ];
         })->sortBy(function ($item) {

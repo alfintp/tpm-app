@@ -84,7 +84,7 @@ class ApprovalController extends Controller
                         foreach ($records as $record) {
                             $role = $record->technician?->role ?? 'technician';
                             $snapshot = $snapshotsByReporter[$role]
-                                ?? ($snapshotsByReporter['technician'] ?? []);
+                                ?? ($snapshotsByReporter['default'] ?? []);
                             if (!empty($snapshot)) {
                                 $record->update(['approval_flow_snapshot' => $snapshot]);
                             }
@@ -130,15 +130,16 @@ class ApprovalController extends Controller
         $flowSteps = ApprovalFlowStep::active()->ordered()->get();
         $approvingRoles = Role::active()->canApprove()->pluck('name')->toArray();
         $isApprover = $role === 'admin' || in_array($role, $approvingRoles);
+        $roleDisplayMap = Role::pluck('display_name', 'name')->toArray();
 
         $baseQuery = MaintenanceRecord::with([
-            'machine.components',
-            'machine.schedules',
-            'schedule',
-            'technician',
-            'actions.component',
-            'actions.indicatorValues.indicator',
-            'approvals.approver',
+            'machine:id,name,location,kota',
+            'schedule:id,schedule_type,interval_days',
+            'technician:id,full_name,role',
+            'actions:id,record_id,machine_component_id,action_type,condition_before_pct,condition_after_pct,description',
+            'actions.component:id,name,specification,difficulty',
+            'approvals:id,record_id,approver_id,step_order,decision,notes,decided_at',
+            'approvals.approver:id,full_name',
         ])
         ->where('status', 'completed')
         ->orderByDesc('maintenance_date');
@@ -147,8 +148,8 @@ class ApprovalController extends Controller
             $baseQuery->when($userId, fn($q) => $q->where('technician_id', $userId));
         }
 
-        $records = $baseQuery->get()->map(function ($record) use ($flowSteps) {
-            $state = $this->recordApprovalState($record, $flowSteps);
+        $records = $baseQuery->get()->map(function ($record) use ($flowSteps, $roleDisplayMap) {
+            $state = $this->recordApprovalState($record, $flowSteps, $roleDisplayMap);
             return [
                 'record_id'       => $record->id,
                 'machine_name'    => $record->machine?->name,
@@ -176,11 +177,6 @@ class ApprovalController extends Controller
                     'condition_before'   => $a->condition_before_pct,
                     'condition_after'    => $a->condition_after_pct,
                     'description'        => $a->description,
-                    'indicator_values'   => $a->indicatorValues->map(fn($iv) => [
-                        'indicator_name'        => $iv->indicator?->name,
-                        'indicator_description' => $iv->indicator?->description,
-                        'value'                 => (bool) $iv->value,
-                    ])->values(),
                 ]),
                 'approval_status' => $state['approval_status'],
                 'approval_id'     => $state['approval_id'],
@@ -194,8 +190,6 @@ class ApprovalController extends Controller
                 'pending_role_display' => $state['pending_role_display'] ?? null,
                 'approvals'       => $state['approvals'],
                 'flow_steps'        => $state['flow_steps'],
-                'component_stats'   => $this->computeComponentStats($record),
-                'monthly_progress'  => $this->computeMonthlyProgress($record),
             ];
         });
 
@@ -289,15 +283,15 @@ class ApprovalController extends Controller
 
         $record = MaintenanceRecord::with(['actions', 'machine', 'approvals'])->findOrFail($recordId);
 
-        $reporterRole = $record->technician?->role ?? 'technician';
+        $reporterRole = $record->technician?->role ?? 'default';
         $flowSteps = ApprovalFlowStep::active()
             ->where('reporter_role', $reporterRole)
             ->ordered()
             ->get();
 
-        if ($flowSteps->isEmpty() && $reporterRole !== 'technician') {
+        if ($flowSteps->isEmpty() && $reporterRole !== 'default') {
             $flowSteps = ApprovalFlowStep::active()
-                ->where('reporter_role', 'technician')
+                ->where('reporter_role', 'default')
                 ->ordered()
                 ->get();
         }
@@ -414,9 +408,9 @@ class ApprovalController extends Controller
         }
     }
 
-    private function recordApprovalState(MaintenanceRecord $record, $flowSteps)
+    private function recordApprovalState(MaintenanceRecord $record, $flowSteps, ?array $roleDisplayMap = null)
     {
-        $reporterRole = $record->technician?->role ?? 'technician';
+        $reporterRole = $record->technician?->role ?? 'default';
 
         // Prefer the snapshot taken at report creation; fallback to current active flow
         $snapshot = $record->approval_flow_snapshot;
@@ -425,9 +419,9 @@ class ApprovalController extends Controller
                 ->filter(fn ($s) => ($s['reporter_role'] ?? null) === $reporterRole)
                 ->sortBy('step_order')
                 ->values();
-            if ($steps->isEmpty() && $reporterRole !== 'technician') {
+            if ($steps->isEmpty() && $reporterRole !== 'default') {
                 $steps = collect($snapshot)
-                    ->filter(fn ($s) => ($s['reporter_role'] ?? null) === 'technician')
+                    ->filter(fn ($s) => ($s['reporter_role'] ?? null) === 'default')
                     ->sortBy('step_order')
                     ->values();
             }
@@ -437,8 +431,8 @@ class ApprovalController extends Controller
             $steps = $flowSteps->filter(fn ($s) => $s->reporter_role === $reporterRole)
                 ->sortBy('step_order')
                 ->values();
-            if ($steps->isEmpty() && $reporterRole !== 'technician') {
-                $steps = $flowSteps->filter(fn ($s) => $s->reporter_role === 'technician')
+            if ($steps->isEmpty() && $reporterRole !== 'default') {
+                $steps = $flowSteps->filter(fn ($s) => $s->reporter_role === 'default')
                     ->sortBy('step_order')
                     ->values();
             }
@@ -450,7 +444,9 @@ class ApprovalController extends Controller
         $stepRole = fn ($step) => $step ? (is_array($step) ? ($step['role'] ?? null) : $step->role) : null;
 
         // Map flow steps to include role display_name
-        $roleDisplayMap = Role::pluck('display_name', 'name')->toArray();
+        if ($roleDisplayMap === null) {
+            $roleDisplayMap = Role::pluck('display_name', 'name')->toArray();
+        }
         $steps = $steps->map(function ($step) use ($roleDisplayMap) {
             $roleName = is_array($step) ? ($step['role'] ?? null) : $step->role;
             $stepData = is_array($step) ? $step : $step->toArray();

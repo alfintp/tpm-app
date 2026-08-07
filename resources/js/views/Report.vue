@@ -109,12 +109,13 @@
         :is-comp-done="isCompDone"
         :cond-class="condClass"
         :get-difficulty-badge-class="getDifficultyBadgeClass"
+        :stock-list="stockList"
       />
 
     </template>
 
     <button
-      v-if="machine && (!selectedPeriod?.isLocked || isUnscheduled || isAdmin)"
+      v-if="machine && (!selectedPeriod?.isLocked || isUnscheduled)"
       @click="triggerSaveReport"
       :disabled="submitting || !hasCheckedComponents"
       class="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-4 py-3 sm:px-5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-sm font-bold rounded-2xl shadow-lg transition-all cursor-pointer"
@@ -201,7 +202,7 @@ const clearMachine = () => {
 const loadMachinesList = async () => {
   machinesLoading.value = true;
   try {
-    const res = await axios.get('/api/machines');
+    const res = await axios.get('/api/machines?lite=true');
     machinesList.value = res.data?.data ?? res.data ?? [];
   } catch (err) {
     console.error('Failed to load machines list:', err);
@@ -377,12 +378,11 @@ const schedulePeriods = computed(() => {
 
     // Period Locking Logic:
     // A period is LOCKED if:
-    // 1. Not an admin
-    // 2. AND NOT within the admin-configured window (H-x to H+y)
-    // 3. AND progress is 0% OR 100% (not currently being worked on)
-    // 4. AND Machine unlock_status is not 'approved'
+    // 1. NOT within the admin-configured window (H-x to H+y)
+    // 2. AND progress is 0% OR 100% (not currently being worked on)
+    // 3. AND Machine unlock_status is not 'approved'
     let isLocked = false;
-    if (!isAdmin.value) {
+    {
       const isWindowOpen = diffDays >= -maintenanceWindow.value.days_after && diffDays <= maintenanceWindow.value.days_before;
       const isPartiallyDone = progressPct > 0 && progressPct < 100;
       const isManuallyUnlocked = machine.value?.unlock_status === 'approved' &&
@@ -477,7 +477,12 @@ const initializeComponents = () => {
       hasError: false,
       isLocked: false,
       lockStatus: '',
-      is_component_replacement: false
+      is_component_replacement: false,
+      stock_id: '',
+      stock_qty_used: 1,
+      hasStockError: false,
+      _stockSearch: '',
+      _stockDropdown: false,
     };
   });
 
@@ -505,6 +510,11 @@ const resetComponentProgress = () => {
     comp.isLocked = false;
     comp.lockStatus = '';
     comp.is_component_replacement = false;
+    comp.stock_id = '';
+    comp.stock_qty_used = 1;
+    comp.hasStockError = false;
+    comp._stockSearch = '';
+    comp._stockDropdown = false;
   });
 };
 
@@ -532,6 +542,8 @@ const applyPeriodProgress = (period) => {
       component.conditionPct = action.condition_after_pct ?? component.conditionPct;
       component.description = action.description ?? component.description;
       component.is_component_replacement = action.action_type === 'replace';
+      component.stock_id = action.stock_id ?? '';
+      component.stock_qty_used = action.stock_qty_used ?? 1;
       (action.indicator_values ?? []).forEach(value => {
         component.indicatorValues[value.component_indicator_id] = Boolean(value.value);
       });
@@ -539,7 +551,7 @@ const applyPeriodProgress = (period) => {
   });
 
   // If the whole period is locked (outside H-2 to H-0 and no progress), lock all remaining components
-  if (period.isLocked && !isAdmin.value) {
+  if (period.isLocked) {
     componentsList.value.forEach(comp => {
       if (!comp.isLocked) {
         comp.isLocked = true;
@@ -570,11 +582,20 @@ const loadMachineData = async (id) => {
 
 // ── Indicator / manual actions ─────────────────────────────────────────────
 const setIndicator = (comp, indId, value) => {
-  comp.indicatorValues[indId] = value;
+  // Toggle: if clicking the already-active value, clear to null
+  if (comp.indicatorValues[indId] === value) {
+    comp.indicatorValues[indId] = null;
+  } else {
+    comp.indicatorValues[indId] = value;
+  }
   comp.inProgress = true;
   comp.hasError = false;
+  const total = comp.indicators.length;
   const passes = comp.indicators.filter(i => comp.indicatorValues[i.id] === true).length;
-  comp.conditionPct = Math.round((passes / comp.indicators.length) * 100);
+  const filled = comp.indicators.filter(i => comp.indicatorValues[i.id] !== null).length;
+  comp.conditionPct = total > 0 ? Math.round((passes / total) * 100) : 0;
+  // If all indicators cleared, remove in-progress status
+  if (filled === 0) comp.inProgress = false;
 };
 
 const applyPreset = (comp, value) => {
@@ -722,6 +743,30 @@ const triggerSaveReport = () => {
     return;
   }
 
+  // Validate: components marked for replacement must have stock selected
+  let hasStockError = false;
+  let firstStockErrorId = null;
+  for (const comp of componentsList.value) {
+    if (comp.isLocked) continue;
+    if (comp.is_component_replacement) {
+      if (!comp.stock_id || !comp.stock_qty_used || comp.stock_qty_used < 1) {
+        comp.hasStockError = true;
+        hasStockError = true;
+        if (!firstStockErrorId) firstStockErrorId = comp.id;
+      } else {
+        comp.hasStockError = false;
+      }
+    } else {
+      comp.hasStockError = false;
+    }
+  }
+
+  if (hasStockError) {
+    if (firstStockErrorId) scrollToComponent(firstStockErrorId);
+    showAlert('warning', 'Stok Pengganti Belum Diisi', 'Komponen yang ditandai "Ganti" wajib memilih stok pengganti dan mengisi qty yang dipakai.');
+    return;
+  }
+
   showSaveModal.value = true;
 };
 
@@ -747,6 +792,10 @@ const submitReport = async () => {
         condition_after_pct: row.conditionPct,
         description: row.description || null,
       };
+      if (row.is_component_replacement && row.stock_id) {
+        action.stock_id = row.stock_id;
+        action.stock_qty_used = row.stock_qty_used || 1;
+      }
       if (row.indicators.length > 0) {
         action.indicator_values = row.indicators.map(ind => ({
           component_indicator_id: ind.id,
@@ -786,6 +835,9 @@ const submitReport = async () => {
   }
 };
 
+// ── Stock list for component replacement ───────────────────────────────────
+const stockList = ref([]);
+
 // ── Mount ──────────────────────────────────────────────────────────────────
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload);
@@ -798,6 +850,9 @@ onMounted(async () => {
       router.visit(event.detail.visit.url);
     });
   });
+
+  // Load stocks in parallel (non-blocking)
+  axios.get('/api/stocks').then(res => { stockList.value = res.data; }).catch(() => {});
 
   await loadMachinesList();
   await fetchRoles();

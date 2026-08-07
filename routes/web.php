@@ -62,6 +62,16 @@ Route::get('/components', function () {
     return Inertia::render('Components');
 });
 
+// Halaman Stock menggunakan Inertia
+Route::get('/stock', function () {
+    return Inertia::render('Stock');
+});
+
+// Halaman Notifikasi (admin) menggunakan Inertia
+Route::get('/notifications', function () {
+    return Inertia::render('Notifications');
+});
+
 // Menggunakan view lama agar fungsi-fungsi SPA lama berjalan normal dahulu
 Route::get('/{any}', function () {
     return view('dashboard');

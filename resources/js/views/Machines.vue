@@ -496,14 +496,12 @@ const showMaintenanceWindowModal = ref(false);
 
 const loadData = async () => {
   try {
-    const [machinesRes, schedulesRes, notifRes, settingsRes] = await Promise.all([
+    const [machinesRes, notifRes, settingsRes] = await Promise.all([
       axios.get('/api/machines'),
-      axios.get('/api/schedules'),
       axios.get('/api/schedules/notifications'),
       axios.get('/api/settings/maintenance-window')
     ]);
     machines.value = machinesRes.data;
-    schedules.value = schedulesRes.data;
     notifications.value = notifRes.data;
     alertDaysBefore.value = settingsRes.data.alert_days_before ?? 7;
     daysBeforeSetting.value = settingsRes.data.days_before ?? 2;
@@ -568,7 +566,7 @@ const formatDate = (d) => {
 };
 
 const getMachineProgress = (machine) => {
-  const total = machine.components ? machine.components.length : 0;
+  const total = machine.components_count ?? machine.components?.length ?? 0;
   if (total === 0) return { count: 0, total: 0, isPartiallyChecked: false };
 
   const today = new Date();
@@ -603,11 +601,7 @@ const getMachineProgress = (machine) => {
       .flatMap(record => (record.actions || []).map(action => String(action.machine_component_id)))
   );
 
-  let count = 0;
-  machine.components.forEach(c => {
-    if (completedComponentIds.has(String(c.id))) count++;
-  });
-
+  const count = Math.min(completedComponentIds.size, total);
   const isPartiallyChecked = count > 0 && count < total;
   return { count, total, isPartiallyChecked };
 };
@@ -696,12 +690,14 @@ const machineStatusStats = computed(() => {
       });
     });
 
-    const totalComponents = machine.components ? machine.components.length : 0;
+    const totalComponents = machine.components_count ?? machine.components?.length ?? 0;
     let checkedCount = 0;
     if (machine.components) {
       machine.components.forEach(c => {
         if (checkedComponentIds.has(c.id)) checkedCount++;
       });
+    } else {
+      checkedCount = Math.min(checkedComponentIds.size, totalComponents);
     }
 
     const isFullyChecked = totalComponents > 0 && checkedCount === totalComponents;
@@ -851,12 +847,14 @@ const maintenanceAlerts = computed(() => {
       });
     });
 
-    const totalComponents = machine.components ? machine.components.length : 0;
+    const totalComponents = machine.components_count ?? machine.components?.length ?? 0;
     let checkedCount = 0;
     if (machine.components) {
       machine.components.forEach(c => {
         if (checkedComponentIds.has(c.id)) checkedCount++;
       });
+    } else {
+      checkedCount = Math.min(checkedComponentIds.size, totalComponents);
     }
 
     const uncheckedCount = totalComponents - checkedCount;
@@ -916,9 +914,10 @@ const filtered = computed(() => {
       });
       const checkedIds = new Set();
       periodRecords.forEach(r => (r.actions || []).forEach(a => { if (a.machine_component_id) checkedIds.add(a.machine_component_id); }));
-      const total = machine.components ? machine.components.length : 0;
+      const total = machine.components_count ?? machine.components?.length ?? 0;
       let count = 0;
       if (machine.components) machine.components.forEach(c => { if (checkedIds.has(c.id)) count++; });
+      else count = Math.min(checkedIds.size, total);
 
       const isFullyChecked = total > 0 && count === total;
       const isPartiallyChecked = count > 0 && count < total;

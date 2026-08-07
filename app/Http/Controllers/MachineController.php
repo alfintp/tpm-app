@@ -8,21 +8,78 @@ use App\Models\User;
 use App\Models\MaintenanceSchedule;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MachineController extends Controller
 {
     public function index(Request $request)
     {
         $authUser = auth('sanctum')->user();
+        $lite = $request->boolean('lite', false);
 
-        $query = Machine::with(['schedules.occurrences', 'components.indicators', 'picMesin', 'records.actions.indicatorValues', 'records.actions.component', 'records.latestApproval', 'records.technician']);
+        if ($lite) {
+            $query = Machine::with([
+                'schedules:id,machine_id,schedule_type,interval_days,next_due_date,is_active',
+                'schedules.occurrences:id,schedule_id,period_year,period_month,due_date,original_date,is_shifted',
+            ])->withCount('components as components_count')
+                ->select(['id', 'kode', 'name', 'kota', 'location', 'condition_pct', 'status', 'pic_mesin_id']);
+        } else {
+            $query = Machine::with([
+                'schedules:id,machine_id,schedule_type,interval_days,next_due_date,is_active',
+                'schedules.occurrences:id,schedule_id,period_year,period_month,due_date,original_date,is_shifted',
+                'picMesin:id,full_name,email',
+            ])->select([
+                'id', 'kode', 'name', 'condition_pct', 'location', 'kota', 'import_order',
+                'status', 'is_locked', 'pic_mesin_id', 'maintenance_duration',
+                'unlock_status', 'unlock_approved_at', 'unlock_expires_at',
+                DB::raw('(SELECT COUNT(*) FROM machine_components WHERE machine_components.machine_id = machines.id) as components_count'),
+            ]);
+        }
 
         // Filter machines by user's assigned city (unless city is 'both')
         if ($authUser && isset($authUser->city) && $authUser->city !== 'both') {
             $query->where('kota', $authUser->city);
         }
 
-        return response()->json($query->get());
+        if ($lite) {
+            $machines = $query->get();
+            $machineIds = $machines->pluck('id');
+            $records = \App\Models\MaintenanceRecord::whereIn('machine_id', $machineIds)
+                ->where('status', 'completed')
+                ->select(['id', 'machine_id', 'schedule_id', 'technician_id', 'maintenance_date', 'scheduled_period_date', 'is_unscheduled', 'is_late', 'notes', 'status'])
+                ->with([
+                    'actions:id,record_id,machine_component_id,action_type,condition_before_pct,condition_after_pct,description',
+                ])
+                ->get()
+                ->groupBy('machine_id');
+            $machines->each(function ($machine) use ($records) {
+                $machine->setRelation('records', $records->get($machine->id, collect()));
+            });
+            return response()->json($machines);
+        }
+
+        $machines = $query->get();
+
+        $machineIds = $machines->pluck('id');
+        $records = \App\Models\MaintenanceRecord::whereIn('machine_id', $machineIds)
+            ->where('status', 'completed')
+            ->select(['id', 'machine_id', 'schedule_id', 'technician_id', 'maintenance_date', 'scheduled_period_date', 'is_unscheduled', 'is_late', 'notes', 'status'])
+            ->with([
+                'actions:id,record_id,machine_component_id,action_type,condition_before_pct,condition_after_pct,description',
+                'actions.component:id,name,specification,difficulty,last_condition_pct',
+                'actions.indicatorValues:id,maintenance_action_id,component_indicator_id,value',
+                'actions.indicatorValues.indicator:id,name,description',
+                'latestApproval:id,record_id,decision',
+                'technician:id,full_name',
+            ])
+            ->get()
+            ->groupBy('machine_id');
+
+        $machines->each(function ($machine) use ($records) {
+            $machine->setRelation('records', $records->get($machine->id, collect()));
+        });
+
+        return response()->json($machines);
     }
 
     /**

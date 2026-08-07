@@ -323,7 +323,7 @@ const timelinessPct = computed(() => {
 const componentCheckSummary = computed(() => {
   let totalComponents = 0, checkedComponents = 0;
   for (const machine of props.machines) {
-    const compCount = machine.components?.length ?? 0;
+    const compCount = machine.components_count ?? machine.components?.length ?? 0;
     if (!compCount) continue;
     const checkedIds = new Set();
     for (const record of machine.records ?? []) {
@@ -347,7 +347,6 @@ const dashboardReplacementItems = computed(() => {
   for (const { machine, record } of recordsInMonth.value) {
     for (const action of record.actions ?? []) {
       if (action.action_type === 'replace') {
-        // Find component name from action.component or machine.components
         const compName = action.component?.name ??
           machine.components?.find(c => c.id === action.machine_component_id)?.name ??
           '-';
@@ -387,14 +386,14 @@ const machineSummary = computed(() => {
     const entry = byMachine[machine.id];
     const latest = entry?.latest ?? null;
     const latestCompleted = entry?.latestCompleted ?? null;
-    const totalComponents = machine.components?.length ?? 0;
+    const totalComponents = machine.components_count ?? machine.components?.length ?? 0;
     const checkedIds = new Set();
     let replacements = 0;
 
     if (entry) {
       for (const record of entry.records) {
         replacements += (record.actions ?? []).filter(a => a.action_type === 'replace').length;
-        if (record.status === 'completed' && getStatus(record) !== 'rejected') {
+        if (record.status === 'completed' && getStatus(record) !== 'rejected' && !record.is_unscheduled) {
           for (const action of record.actions ?? []) {
             if (action.machine_component_id) checkedIds.add(action.machine_component_id);
           }
@@ -413,20 +412,24 @@ const machineSummary = computed(() => {
     let isLate = false;
     let isUnscheduled = false;
 
-    if (entry && checkState === 'full') {
-      const completedRecords = entry.records.filter(r =>
-        r.status === 'completed' && getStatus(r) !== 'rejected' && !r.is_unscheduled
-      );
-      if (completedRecords.length > 0) {
-        const hasLate = completedRecords.some(r => r.is_late);
-        isLate = hasLate;
-        isOnTime = !hasLate;
-      }
-      // Check for unscheduled records separately
+    if (entry) {
+      // Unscheduled is independent of checkState
       const unscheduledRecords = entry.records.filter(r =>
         r.status === 'completed' && getStatus(r) !== 'rejected' && r.is_unscheduled
       );
       isUnscheduled = unscheduledRecords.length > 0;
+
+      // Timeliness only for scheduled records when fully checked
+      if (checkState === 'full') {
+        const completedRecords = entry.records.filter(r =>
+          r.status === 'completed' && getStatus(r) !== 'rejected' && !r.is_unscheduled
+        );
+        if (completedRecords.length > 0) {
+          const hasLate = completedRecords.some(r => r.is_late);
+          isLate = hasLate;
+          isOnTime = !hasLate;
+        }
+      }
     }
 
     return {
@@ -563,7 +566,7 @@ const machineRows = computed(() => {
   }
 
   const rows = Object.values(map).map(row => {
-    const totalComponents = row.machine.components?.length ?? 0;
+    const totalComponents = row.machine.components_count ?? row.machine.components?.length ?? 0;
     const checked = Math.min(row.checkedIds.size, totalComponents);
     const pct = totalComponents ? Math.round((checked / totalComponents) * 100) : 0;
     let checkState = 'none';

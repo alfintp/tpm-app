@@ -63,12 +63,16 @@
       :active-reporter-display-name="activeReporterDisplayName"
       :is-flow-config-valid="isFlowConfigValid"
       :saving-flow-config="savingFlowConfig"
+      :has-custom-flow="hasCustomFlow(activeReporterRole)"
+      :is-default="activeReporterRole === 'default'"
       @edit="flowEditMode = true"
       @cancel="cancelFlowEdit"
       @save="saveFlowConfig"
       @add-step="addStepForReporter(activeReporterRole)"
       @remove-step="(idx) => removeStepForReporter(activeReporterRole, idx)"
       @initialize-default="initializeWithDefaultSteps(activeReporterRole)"
+      @customize="customizeFlow(activeReporterRole)"
+      @reset-to-default="resetToDefault(activeReporterRole)"
       @update-step-role="({ index, value }) => getFlowStepsForReporter(activeReporterRole)[index].role = value"
     />
 
@@ -217,7 +221,7 @@ const filterMonth = ref(''); // '' = all months, 'YYYY-MM' = specific month
 const cityFilter = ref('all'); // 'all', 'sby', 'pasuruan'
 
 const currentTab = ref('list'); // 'list', 'flow', or 'roles'
-const activeReporterRole = ref('technician');
+const activeReporterRole = ref('default');
 const localFlowSteps = ref([]);
 const savingFlowConfig = ref(false);
 const flowEditMode = ref(false);
@@ -266,8 +270,14 @@ const getInspectCount = (actions) => {
   return actions.filter(a => a.action_type !== 'replace').length;
 };
 
-const openDetails = (item) => {
+const openDetails = async (item) => {
   detailModal.value = { show: true, item };
+  try {
+    const res = await axios.get(`/api/approvals/${item.record_id}`);
+    detailModal.value = { show: true, item: { ...item, ...res.data } };
+  } catch (e) {
+    console.error('Failed to load detail:', e);
+  }
 };
 
 const openNotes = (item) => {
@@ -487,15 +497,21 @@ const canDecide = (item) => {
 
 const reporterRoles = computed(() => {
   const list = roles.value.filter(r => r.is_active && r.can_report);
-  if (!list.some(r => r.name === 'technician')) {
-    const tech = roles.value.find(r => r.name === 'technician');
-    if (tech) list.unshift(tech);
-  }
   return list;
 });
 
+const defaultFlowSteps = computed(() => localFlowSteps.value.filter(s => s.reporter_role === 'default'));
+
+const hasCustomFlow = (reporterRole) => {
+  if (reporterRole === 'default') return true;
+  return localFlowSteps.value.some(s => s.reporter_role === reporterRole);
+};
+
 const getFlowStepsForReporter = (reporterRole) => {
-  return localFlowSteps.value.filter(s => s.reporter_role === reporterRole);
+  const steps = localFlowSteps.value.filter(s => s.reporter_role === reporterRole);
+  if (steps.length > 0 || reporterRole === 'default') return steps;
+  // Fallback to default
+  return localFlowSteps.value.filter(s => s.reporter_role === 'default');
 };
 
 const addStepForReporter = (reporterRole) => {
@@ -540,7 +556,27 @@ const initializeWithDefaultSteps = (reporterRole) => {
   });
 };
 
+const customizeFlow = (reporterRole) => {
+  // Copy default flow steps as a starting point for this role's custom flow
+  const defaultSteps = localFlowSteps.value.filter(s => s.reporter_role === 'default');
+  defaultSteps.forEach((s, i) => {
+    localFlowSteps.value.push({
+      reporter_role: reporterRole,
+      role: s.role,
+      step_order: i + 1,
+      is_active: true
+    });
+  });
+  flowEditMode.value = true;
+};
+
+const resetToDefault = (reporterRole) => {
+  // Remove all custom steps for this role so it falls back to default
+  localFlowSteps.value = localFlowSteps.value.filter(s => s.reporter_role !== reporterRole);
+};
+
 const activeReporterDisplayName = computed(() => {
+  if (activeReporterRole.value === 'default') return 'Default';
   const role = roles.value.find(r => r.name === activeReporterRole.value);
   return role ? (role.display_name || role.name) : activeReporterRole.value;
 });

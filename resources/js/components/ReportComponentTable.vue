@@ -140,6 +140,90 @@
                     class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-400 text-slate-700 placeholder-slate-400 resize-none"
                   ></textarea>
                 </div>
+
+                <!-- Stock selector (muncul saat Ganti komponen aktif) -->
+                <div v-if="comp.is_component_replacement && !comp.isLocked" class="mt-2.5 pl-3 border-l-2 border-amber-200 space-y-1.5">
+                  <!-- Row 1: Stock dropdown + Qty stepper (2 fields in 1 row) -->
+                  <div class="flex items-start gap-2">
+                    <!-- Stock search input with dropdown -->
+                    <div class="flex-1 relative">
+                      <label class="text-[10px] font-bold text-slate-500 block mb-0.5">Stok Pengganti</label>
+                      <div class="relative">
+                        <input
+                          :value="comp.stock_id ? getStockDisplay(comp.stock_id) : comp._stockSearch"
+                          @focus="comp._stockDropdown = true; if (!comp.stock_id) comp._stockSearch = ''"
+                          @blur="handleStockBlur(comp)"
+                          @input="handleStockInput(comp, $event.target.value)"
+                          type="text"
+                          :placeholder="comp.stock_id ? '' : 'Cari stok...'"
+                          :disabled="comp.isLocked"
+                          class="w-full rounded-lg border px-2.5 py-2 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-400 pr-7"
+                          :class="comp.hasStockError ? 'border-red-300 bg-red-50/40' : 'border-slate-200 bg-white'"
+                        />
+                        <button
+                          v-if="comp.stock_id"
+                          @click="clearStock(comp)"
+                          class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 cursor-pointer transition-colors"
+                          title="Hapus pilihan"
+                        >✕</button>
+                        <!-- Dropdown -->
+                        <div
+                          v-if="comp._stockDropdown && !comp.stock_id && filteredStocks(comp).length > 0"
+                          class="absolute z-20 mt-1 w-full max-h-44 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg"
+                        >
+                          <button
+                            v-for="s in filteredStocks(comp)"
+                            :key="s.id"
+                            @mousedown.prevent="selectStock(comp, s)"
+                            :disabled="s.quantity <= 0"
+                            class="w-full text-left px-2.5 py-1.5 text-xs hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border-b border-slate-50 last:border-0"
+                          >
+                            <span class="font-bold text-slate-700">{{ s.code }}</span> - {{ s.name }}
+                            <span class="text-slate-400"> ({{ s.quantity }} {{ s.unit }}{{ s.quantity <= 0 ? ' - Habis' : s.quantity <= s.limit_qty ? ' - Menipis' : '' }})</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Qty stepper with +/- buttons -->
+                    <div class="shrink-0 w-28">
+                      <label class="text-[10px] font-bold text-slate-500 block mb-0.5">Qty Pakai</label>
+                      <div class="flex items-center gap-0.5">
+                        <button
+                          @click="decrementQty(comp)"
+                          :disabled="!comp.stock_id || comp.stock_qty_used <= 1 || comp.isLocked"
+                          class="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors font-bold text-sm"
+                        >−</button>
+                        <input
+                          v-model.number="comp.stock_qty_used"
+                          type="number"
+                          min="1"
+                          :max="comp.stock_id ? getStockQty(comp.stock_id) : 999"
+                          :disabled="!comp.stock_id || comp.isLocked"
+                          class="w-10 text-center rounded-lg border border-slate-200 px-1 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-400 disabled:bg-slate-100 disabled:text-slate-400"
+                        />
+                        <button
+                          @click="incrementQty(comp)"
+                          :disabled="!comp.stock_id || (comp.stock_id && comp.stock_qty_used >= getStockQty(comp.stock_id)) || comp.isLocked"
+                          class="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors font-bold text-sm"
+                        >+</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Row 2: Info & warnings -->
+                  <div v-if="comp.stock_id" class="flex items-center gap-2 flex-wrap">
+                    <p class="text-[10px] text-slate-500">
+                      Stok tersedia: <span class="font-bold" :class="getStockQty(comp.stock_id) <= 0 ? 'text-red-500' : getStockQty(comp.stock_id) <= getStockLimit(comp.stock_id) ? 'text-orange-500' : 'text-slate-700'">{{ getStockQty(comp.stock_id) }} {{ getStockUnit(comp.stock_id) }}</span>
+                    </p>
+                    <span v-if="getStockQty(comp.stock_id) <= getStockLimit(comp.stock_id)" class="text-[10px] text-orange-600 font-semibold">
+                      ⚠ Menipis!
+                    </span>
+                  </div>
+                  <p v-if="comp.hasStockError" class="text-[10px] text-red-500 font-semibold">
+                    Wajib pilih stok pengganti dan isi qty.
+                  </p>
+                </div>
               </td>
             </tr>
 
@@ -244,7 +328,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
   components: { type: Array, default: () => [] },
   search: { type: String, default: '' },
   difficultyFilter: { type: String, default: 'semua' },
@@ -254,7 +340,72 @@ defineProps({
   isCompDone: { type: Function, required: true },
   condClass: { type: Function, required: true },
   getDifficultyBadgeClass: { type: Function, required: true },
+  stockList: { type: Array, default: () => [] },
 });
+
+const availableStocks = computed(() => props.stockList.filter(s => s.is_active !== false));
+
+const getStockUnit = (id) => {
+  const s = props.stockList.find(x => x.id === id);
+  return s ? s.unit : '';
+};
+
+const getStockQty = (id) => {
+  const s = props.stockList.find(x => x.id === id);
+  return s ? s.quantity : 0;
+};
+
+const getStockLimit = (id) => {
+  const s = props.stockList.find(x => x.id === id);
+  return s ? s.limit_qty : 0;
+};
+
+const getStockDisplay = (id) => {
+  const s = props.stockList.find(x => x.id === id);
+  return s ? `${s.code} - ${s.name}` : '';
+};
+
+const filteredStocks = (comp) => {
+  const q = (comp._stockSearch || '').toLowerCase();
+  if (!q) return availableStocks.value;
+  return availableStocks.value.filter(s =>
+    s.code.toLowerCase().includes(q) ||
+    s.name.toLowerCase().includes(q) ||
+    (s.category || '').toLowerCase().includes(q)
+  );
+};
+
+const handleStockInput = (comp, value) => {
+  comp._stockSearch = value;
+  comp._stockDropdown = true;
+};
+
+const handleStockBlur = (comp) => {
+  setTimeout(() => { comp._stockDropdown = false; }, 200);
+};
+
+const selectStock = (comp, s) => {
+  comp.stock_id = s.id;
+  comp._stockDropdown = false;
+  comp._stockSearch = '';
+  comp.hasStockError = false;
+  if (!comp.stock_qty_used || comp.stock_qty_used < 1) comp.stock_qty_used = 1;
+};
+
+const clearStock = (comp) => {
+  comp.stock_id = '';
+  comp._stockSearch = '';
+  comp.stock_qty_used = 1;
+};
+
+const incrementQty = (comp) => {
+  const max = comp.stock_id ? getStockQty(comp.stock_id) : 999;
+  if (comp.stock_qty_used < max) comp.stock_qty_used = (comp.stock_qty_used || 1) + 1;
+};
+
+const decrementQty = (comp) => {
+  if (comp.stock_qty_used > 1) comp.stock_qty_used = (comp.stock_qty_used || 1) - 1;
+};
 
 defineEmits(['update:search']);
 </script>

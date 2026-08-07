@@ -1,0 +1,39 @@
+{
+  "cookies": [
+    {
+      "name": "XSRF-TOKEN",
+      "value": "eyJpdiI6IkROZjBHblhCU0xscjlDU2xvY3J1bVE9PSIsInZhbHVlIjoiYVZja0dEWDlYSks1RHE1VWFSREFLdlErZGErVWMyaW94bzlqNFgrdHU5bGxyczE5WmZWN2R2bUpwU1lrcHZVODlJNFFEMFJQallzUVQrNWNSVGdmN1RFb0JJdnZQZ0wxam5RUEF3SkxOV1RCWEpOUEt4SjhzWUZUbkUvVWRaeU8iLCJtYWMiOiJiOTQ1YTYyNTlmMDk4MTE1NGZkNGNiNWU0NjQ2Zjc0ZjM5YzZjN2I4ZDk1YWMyODQ1OWY0ODI4NzhkZmJhNDg0IiwidGFnIjoiIn0%3D",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1785907748.300948,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "laravel_session",
+      "value": "eyJpdiI6ImRYMlBVUHVqWkRKcGdkMzJQOHM3ZXc9PSIsInZhbHVlIjoiQ0N4c0h1NDhHOWpZWmU1d29mTDluczBvMDUyTi9mdzZjamRUdWd6endjY3JGR3k5VVhheGM3QXZnbTc2aFdNQ2JIMUJKaGphMFBJU3ZiMk9qYkQ1TVh6cEI3K1NIZW9uaTJkNEpmNngyNXpaczcvY1g2ek4rMmZlMHRVRnRKZXEiLCJtYWMiOiI0MzE1YTIzNDljY2I3YTYyNWFmNzNlNTQ5MDViMzc4MGQ4NGNjYTZlYzRiNGQ1NjhkN2E4OTk0NDZjNjRiOGVkIiwidGFnIjoiIn0%3D",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1785907748.301225,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:8000",
+      "localStorage": [
+        {
+          "name": "auth_token",
+          "value": "126|zUcdMrKM7bpAmq9V8o660KnueI77p4WxfvYj787dd7602af7"
+        },
+        {
+          "name": "user_profile",
+          "value": "{\"id\":\"a1fe878e-cabc-4f7f-82db-c0e79e031833\",\"full_name\":\"Administrator\",\"email\":\"admin@tpm.com\",\"email_verified_at\":null,\"role\":\"admin\",\"city\":\"both\",\"created_at\":\"2026-06-11T02:41:20.000000Z\",\"updated_at\":\"2026-07-06T04:54:39.000000Z\",\"is_manager\":false,\"can_approve\":true,\"role_relation\":{\"id\":\"a1ef1013-881d-4be9-83bd-7cb626871270\",\"name\":\"admin\",\"display_name\":\"Administrator\",\"can_approve\":true,\"can_report\":true,\"is_manager\":false,\"can_approve_unlock\":true,\"required_difficulties\":[\"ringan\"],\"is_active\":true,\"created_at\":\"2026-06-25T03:33:23.000000Z\",\"updated_at\":\"2026-08-03T04:10:47.000000Z\"}}"
+        }
+      ]
+    }
+  ]
+}

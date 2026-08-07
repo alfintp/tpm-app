@@ -16,7 +16,7 @@
       <!-- Header: Logo -->
       <SidebarHeader class="border-b border-sidebar-border px-3 py-3 mx-auto">
         <Link href="/" class="flex items-center gap-2 cursor-pointer overflow-hidden">
-          <img :src="'/images/logo-ladang-lima.png'" alt="Logo" class="h-8 w-8 shrink-0 rounded-md object-contain">
+          <img :src="'/images/logo-ladang-lima-64.png'" alt="Logo" class="h-8 w-8 shrink-0 rounded-md object-contain">
           <span class="font-bold text-brand-brown text-sm truncate group-data-[collapsible=icon]:hidden">TPM Ladang Lima</span>
         </Link>
       </SidebarHeader>
@@ -47,8 +47,17 @@
               <SidebarMenuItem>
                 <SidebarMenuButton as-child :is-active="isUrl('/components')" tooltip="Components">
                   <Link href="/components">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     <span>Components</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton as-child :is-active="isUrl('/stock')" tooltip="Stock">
+                  <Link href="/stock">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>
+                    <span>Stock</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -76,6 +85,15 @@
                   <Link href="/users">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     <span>Users</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem v-if="isAdmin">
+                <SidebarMenuButton as-child :is-active="isUrl('/notifications')" tooltip="Notifikasi">
+                  <Link href="/notifications">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <span>Notifikasi</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -119,9 +137,10 @@
     <!-- Main content area -->
     <SidebarInset class="bg-slate-50 overflow-hidden flex flex-col h-svh">
       <div class="flex-1 overflow-y-auto relative">
-        <!-- Floating sidebar toggle — visible only when sidebar is collapsed or on mobile -->
-        <div class="sticky top-0 z-40 flex items-center gap-2 px-3 py-2 pointer-events-none">
+        <!-- Floating sidebar toggle + notification bell -->
+        <div class="sticky top-0 z-40 flex items-center justify-between gap-2 px-3 py-2 pointer-events-none">
           <SidebarTrigger class="pointer-events-auto text-brand-brown hover:bg-brand-cream border border-sidebar-border shadow-md bg-white cursor-pointer" />
+          <NotificationBell class="pointer-events-auto" />
         </div>
         <div class="px-6 md:px-8 pb-8 -mt-2">
           <slot />
@@ -156,6 +175,7 @@ import {
   SidebarTrigger,
 } from '../views/components/ui/sidebar/index.ts';
 import SidebarMobileCloser from './components/SidebarMobileCloser.vue';
+import NotificationBell from './components/NotificationBell.vue';
 
 const page = usePage();
 const { user, isAdmin, isManagerOrAdmin, isAuthenticated, authReady, initializeAuth } = useAuth();

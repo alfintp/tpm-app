@@ -19,6 +19,19 @@
       <!-- Sidebar: Reporter Roles -->
       <div class="space-y-2">
         <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Role Pembuat Laporan</label>
+        <!-- Default virtual role -->
+        <button
+          @click="$emit('update:activeReporterRole', 'default')"
+          :class="activeReporterRole === 'default' 
+            ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold' 
+            : 'bg-slate-50 border-slate-100 hover:bg-slate-100 text-slate-600'"
+          class="w-full text-left px-4 py-3 rounded-xl border text-sm font-semibold transition-all cursor-pointer flex items-center justify-between"
+        >
+          <span>Default</span>
+          <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-extrabold">
+            {{ flowStepsForReporter.length }} Tahap
+          </span>
+        </button>
         <button
           v-for="role in reporterRoles"
           :key="role.name"
@@ -29,19 +42,68 @@
           class="w-full text-left px-4 py-3 rounded-xl border text-sm font-semibold transition-all cursor-pointer flex items-center justify-between"
         >
           <span>{{ role.display_name || role.name }}</span>
-          <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-extrabold">
-            {{ flowStepsForReporter.length }} Tahap
+          <span v-if="hasCustomFlow" class="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-extrabold">
+            Custom
+          </span>
+          <span v-else class="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-500 font-extrabold">
+            Default
           </span>
         </button>
       </div>
 
       <!-- Content: Flow Steps of the selected reporter role -->
       <div class="md:col-span-3 space-y-6">
-        <h4 class="text-sm font-bold text-slate-700">Alur Approval untuk role: <span class="text-indigo-600 capitalize font-extrabold">{{ activeReporterDisplayName }}</span></h4>
+        <div class="flex items-center justify-between">
+          <h4 class="text-sm font-bold text-slate-700">Alur Approval untuk role: <span class="text-indigo-600 capitalize font-extrabold">{{ activeReporterDisplayName }}</span></h4>
+          <span v-if="!isDefault && !hasCustomFlow" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+            Menggunakan Default
+          </span>
+          <span v-else-if="!isDefault && hasCustomFlow" class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+            Custom
+          </span>
+        </div>
 
-        <div v-if="flowStepsForReporter.length === 0" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-500">
+        <!-- Role uses default flow (not customized) -->
+        <div v-if="!isDefault && !hasCustomFlow && flowStepsForReporter.length > 0" class="space-y-4">
+          <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
+            <p class="text-sm text-blue-700 font-semibold">Role ini menggunakan alur Default.</p>
+            <p class="text-xs text-blue-500 mt-1">Klik "Buat Alur Custom" untuk membuat alur yang berbeda.</p>
+            <button
+              v-if="!flowEditMode"
+              @click="$emit('customize')"
+              class="mt-3 px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            >
+              Buat Alur Custom
+            </button>
+          </div>
+          <!-- Show the default steps read-only -->
+          <div
+            v-for="(step, index) in flowStepsForReporter"
+            :key="index"
+            class="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-xs opacity-70"
+          >
+            <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-bold shrink-0">
+              {{ index + 1 }}
+            </div>
+            <div class="flex-1">
+              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role Approver</label>
+              <select
+                :value="step.role"
+                disabled
+                class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 bg-slate-100 cursor-not-allowed opacity-70 mt-1"
+              >
+                <option v-for="r in approvableRoles" :key="r.name" :value="r.name">
+                  {{ r.display_name || r.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- No steps at all -->
+        <div v-else-if="flowStepsForReporter.length === 0" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-500">
           <p class="text-sm">Belum ada alur approval yang diatur untuk role ini.</p>
-          <p class="text-xs text-slate-400 mt-1">Laporan dari role ini akan menggunakan alur fallback dari role <strong>technician</strong>.</p>
+          <p v-if="!isDefault" class="text-xs text-slate-400 mt-1">Role ini akan menggunakan alur <strong>Default</strong> jika tidak dikustomisasi.</p>
           <button
             v-if="flowEditMode"
             @click="$emit('initializeDefault')"
@@ -51,6 +113,7 @@
           </button>
         </div>
 
+        <!-- Has custom or default steps -->
         <div v-else class="space-y-4">
           <div
             v-for="(step, index) in flowStepsForReporter"
@@ -95,6 +158,17 @@
           </button>
         </div>
 
+        <!-- Reset to Default button (edit mode, custom flow) -->
+        <div v-if="flowEditMode && !isDefault && hasCustomFlow" class="flex items-center justify-start pt-2">
+          <button
+            @click="$emit('resetToDefault')"
+            class="px-4 py-2 bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Reset ke Default
+          </button>
+        </div>
+
         <!-- Bottom Action buttons (edit mode only) -->
         <div v-if="flowEditMode" class="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
           <button
@@ -122,12 +196,14 @@ defineProps({
   flowEditMode: { type: Boolean, default: false },
   reporterRoles: { type: Array, default: () => [] },
   approvableRoles: { type: Array, default: () => [] },
-  activeReporterRole: { type: String, default: 'technician' },
+  activeReporterRole: { type: String, default: 'default' },
   flowStepsForReporter: { type: Array, default: () => [] },
   activeReporterDisplayName: { type: String, default: '' },
   isFlowConfigValid: { type: Boolean, default: false },
   savingFlowConfig: { type: Boolean, default: false },
+  hasCustomFlow: { type: Boolean, default: false },
+  isDefault: { type: Boolean, default: false },
 });
 
-defineEmits(['edit', 'cancel', 'save', 'addStep', 'removeStep', 'initializeDefault', 'update:activeReporterRole', 'updateStepRole']);
+defineEmits(['edit', 'cancel', 'save', 'addStep', 'removeStep', 'initializeDefault', 'update:activeReporterRole', 'updateStepRole', 'customize', 'resetToDefault']);
 </script>

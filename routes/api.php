@@ -11,6 +11,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\StockController;
+use App\Http\Controllers\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -97,6 +99,29 @@ Route::middleware('auth:sanctum')->group(function () {
     // Maintenance report window settings (admin-configurable H-x to H+y)
     Route::get('/settings/maintenance-window', [SettingsController::class, 'getMaintenanceWindow']);
     Route::put('/settings/maintenance-window', [SettingsController::class, 'updateMaintenanceWindow']);
+
+    // Stock Routes (static paths before {id} wildcard)
+    Route::get('/stocks', [StockController::class, 'index']);
+    Route::get('/stocks/low', [StockController::class, 'lowStock']);
+    Route::get('/stocks/usages', [StockController::class, 'usages']);
+    Route::post('/stocks', [StockController::class, 'store']);
+    Route::post('/stocks/import', [StockController::class, 'import']);
+    Route::put('/stocks/bulk-limit', [StockController::class, 'bulkLimit']);
+    Route::put('/stocks/{id}', [StockController::class, 'update']);
+    Route::delete('/stocks/{id}', [StockController::class, 'destroy']);
+    Route::post('/stocks/{id}/restock', [StockController::class, 'restock']);
+    Route::get('/stocks/{id}/usages', [StockController::class, 'usageHistory']);
+
+    // Notification Routes (user-facing)
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
+    // Notification Admin Routes (admin only)
+    Route::get('/notifications/admin/list', [NotificationController::class, 'list']);
+    Route::post('/notifications/admin', [NotificationController::class, 'store']);
+    Route::put('/notifications/admin/{id}', [NotificationController::class, 'update']);
+    Route::delete('/notifications/admin/{id}', [NotificationController::class, 'destroy']);
 
     // Holiday proxy — fetches Indonesian national holidays server-side (avoids browser CORS)
     Route::get('/holidays', function (Request $request) {

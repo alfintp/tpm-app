@@ -23,4 +23,16 @@ export default defineConfig({
             '@': path.resolve(__dirname, './resources/js'),
         },
     },
+    build: {
+        chunkSizeWarningLimit: 500,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vue-vendor': ['vue', 'vue-router', '@inertiajs/vue3'],
+                    'ui-vendor': ['reka-ui', '@vueuse/core', 'lucide-vue-next'],
+                    'table-vendor': ['@tanstack/vue-table'],
+                },
+            },
+        },
+    },
 });

@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gradient-to-br from-slate-100 to-brand-cream/30 flex flex-col items-center justify-center px-4">
     <!-- Logo & Title above card -->
     <div class="flex flex-col items-center mb-6">
-      <img :src="'/images/logo-ladang-lima.png'" alt="Logo Ladang Lima" class="h-16 w-auto mb-3 drop-shadow-sm">
+      <img :src="'/images/logo-ladang-lima-64.png'" alt="Logo Ladang Lima" class="h-16 w-auto mb-3 drop-shadow-sm">
       <h1 class="text-2xl font-extrabold text-brand-brown tracking-tight">TPM System</h1>
     </div>
 

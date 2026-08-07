@@ -73,7 +73,7 @@
           <span v-if="machine.kota" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-brand-cream text-brand-brown">{{ machine.kota === 'sby' ? 'Surabaya' : 'Pasuruan' }}</span>
           <span v-if="machine.location" class="text-xs text-slate-400">{{ machine.location }}</span>
           <span class="text-xs text-slate-400">·</span>
-          <span class="text-xs font-semibold text-slate-500">{{ machine.components?.length || 0 }} komponen</span>
+          <span class="text-xs font-semibold text-slate-500">{{ machine.components_count ?? machine.components?.length ?? 0 }} komponen</span>
         </div>
       </div>
     </div>
@@ -107,8 +107,9 @@ const vClickOutside = {
 
 const filteredMachines = computed(() => {
   const q = props.search.trim().toLowerCase();
-  if (!q) return props.machines;
-  return props.machines.filter(m => m.name.toLowerCase().includes(q));
+  const list = q ? props.machines.filter(m => m.name.toLowerCase().includes(q)) : props.machines;
+  // Sort by urgency: terlambat (0) > belum dicek (1) > hari ini (2) > besok (3) > ... > sudah dicek (5)
+  return [...list].sort((a, b) => scheduleStatus(a).priority - scheduleStatus(b).priority);
 });
 
 const filteredGroups = computed(() => {
@@ -132,7 +133,7 @@ const scheduleStatus = (m) => {
   const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
   const records = m.records ?? [];
-  const totalComponents = (m.components ?? []).length;
+  const totalComponents = m.components_count ?? (m.components ?? []).length;
   const completedThisMonth = records.filter(r => {
     if (!r.maintenance_date) return false;
     const d = new Date(r.maintenance_date);
@@ -142,23 +143,23 @@ const scheduleStatus = (m) => {
     const checked = new Set((r.actions ?? []).map(a => a.machine_component_id).filter(Boolean)).size;
     return totalComponents > 0 && checked >= totalComponents;
   });
-  if (allCheckedThisMonth) return { label: 'Sudah dicek', badgeClass: 'bg-emerald-100 text-emerald-700', rowClass: '' };
+  if (allCheckedThisMonth) return { label: 'Sudah dicek', badgeClass: 'bg-emerald-100 text-emerald-700', rowClass: '', priority: 5 };
   const partialThisMonth = completedThisMonth.some(r => {
     const checked = new Set((r.actions ?? []).map(a => a.machine_component_id).filter(Boolean)).size;
     return totalComponents > 0 && checked > 0 && checked < totalComponents;
   });
-  if (partialThisMonth) return { label: 'Belum dicek', badgeClass: 'bg-red-100 text-red-700', rowClass: 'bg-red-50/30' };
+  if (partialThisMonth) return { label: 'Belum dicek', badgeClass: 'bg-red-100 text-red-700', rowClass: 'bg-red-50/30', priority: 1 };
 
   const period = getCurrentPeriod(m.schedules ?? []);
-  if (!period) return { label: null, badgeClass: '', rowClass: '' };
+  if (!period) return { label: null, badgeClass: '', rowClass: '', priority: 9 };
 
   const diffDays = period.diffDays;
 
-  if (diffDays < 0) return { label: `Terlambat ${Math.abs(diffDays)}h`, badgeClass: 'bg-red-100 text-red-700', rowClass: 'bg-red-50/30' };
-  if (diffDays === 0) return { label: 'Hari ini', badgeClass: 'bg-emerald-100 text-emerald-700', rowClass: 'bg-emerald-50/20' };
-  if (diffDays === 1) return { label: 'Besok', badgeClass: 'bg-amber-100 text-amber-700', rowClass: '' };
-  if (diffDays <= 7) return { label: `${diffDays} hari lagi`, badgeClass: 'bg-blue-100 text-blue-600', rowClass: '' };
-  return { label: `${diffDays}h lagi`, badgeClass: 'bg-slate-100 text-slate-500', rowClass: '' };
+  if (diffDays < 0) return { label: `Terlambat ${Math.abs(diffDays)}h`, badgeClass: 'bg-red-100 text-red-700', rowClass: 'bg-red-50/30', priority: 7 };
+  if (diffDays === 0) return { label: 'Hari ini', badgeClass: 'bg-emerald-100 text-emerald-700', rowClass: 'bg-emerald-50/20', priority: 2 };
+  if (diffDays === 1) return { label: 'Besok', badgeClass: 'bg-amber-100 text-amber-700', rowClass: '', priority: 3 };
+  if (diffDays <= 7) return { label: `${diffDays} hari lagi`, badgeClass: 'bg-blue-100 text-blue-600', rowClass: '', priority: 4 };
+  return { label: `${diffDays}h lagi`, badgeClass: 'bg-slate-100 text-slate-500', rowClass: '', priority: 6 };
 };
 
 const closeCombobox = () => { open.value = false; };

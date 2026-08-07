@@ -218,8 +218,13 @@ const maintenanceAlerts = computed(() => {
     const checkedIds = new Set();
     todayRecords.forEach(r => (r.actions || []).forEach(a => a.machine_component_id && checkedIds.add(a.machine_component_id)));
 
-    const totalComponents = machine.components?.length ?? 0;
-    const checkedCount    = (machine.components || []).filter(c => checkedIds.has(c.id)).length;
+    const totalComponents = machine.components_count ?? machine.components?.length ?? 0;
+    let checkedCount = 0;
+    if (machine.components) {
+      checkedCount = (machine.components || []).filter(c => checkedIds.has(c.id)).length;
+    } else {
+      checkedCount = Math.min(checkedIds.size, totalComponents);
+    }
     const uncheckedCount  = totalComponents - checkedCount;
     const isFullyChecked  = totalComponents > 0 && checkedCount === totalComponents;
     const isPartiallyChecked = checkedCount > 0 && checkedCount < totalComponents;

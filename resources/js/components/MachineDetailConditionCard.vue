@@ -44,50 +44,36 @@
       </div>
 
       <!-- Right: Coverage Stats -->
-      <div v-if="coverageStatsByPeriod && coverageStatsByPeriod.length" class="flex-1 min-w-[200px] p-6 flex flex-col">
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Progres Laporan Bulan Ini</p>
+      <div v-if="coverageStatsByPeriod && coverageStatsByPeriod.length" class="flex-1 min-w-[180px] p-5 flex flex-col">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">Progres Laporan Bulan Ini</p>
         <div class="flex flex-wrap gap-2">
           <template v-for="(periodStats, periodIdx) in coverageStatsByPeriod" :key="periodIdx">
             <div
               v-if="periodStats.length > 0"
-              class="rounded-xl border shadow-sm overflow-hidden min-w-[140px]"
+              class="rounded-lg border shadow-sm overflow-hidden min-w-[120px]"
               :class="getPeriodCardClass(periodIdx)"
             >
-              <div class="px-3 py-1.5 border-b border-slate-100/50 flex items-center justify-between gap-2">
-                <span class="text-[10px] font-bold uppercase tracking-wide" :class="getPeriodCardTextClass(periodIdx)">
-                  {{ getPeriodCardLabel(periodIdx) }}
-                </span>
-                <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded" :class="getPeriodScheduleBadgeClass(periodIdx)">
-                  {{ getPeriodScheduleLabel(periodIdx) }}
-                </span>
-              </div>
-              <div class="px-3 py-1.5 border-b border-slate-100/50 bg-white/50">
-                <div class="flex items-center gap-1.5">
+              <div class="px-2.5 py-1.5 border-b border-slate-100/50">
+                <div class="flex items-center gap-1">
                   <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                     :class="getPeriodScheduleIconClass(periodIdx)"
                   ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                  <span class="text-[10px] font-semibold" :class="getPeriodScheduleTextClass(periodIdx)">
+                  <span class="text-xs font-bold" :class="getPeriodScheduleTextClass(periodIdx)">
                     {{ getPeriodScheduleDate(periodIdx) }}
                   </span>
-                  <span class="text-[9px] font-bold ml-auto" :class="getPeriodScheduleDaysClass(periodIdx)">
+                  <span v-if="getPeriodScheduleDaysLabel(periodIdx)" class="text-[9px] font-bold ml-auto" :class="getPeriodScheduleDaysClass(periodIdx)">
                     {{ getPeriodScheduleDaysLabel(periodIdx) }}
                   </span>
                 </div>
               </div>
-              <div class="p-2 space-y-1.5">
+              <div class="px-2.5 py-1.5 space-y-0.5">
                 <div
                   v-for="stat in periodStats"
                   :key="stat.role"
-                  class="flex items-center gap-2 text-xs font-semibold"
+                  class="flex items-center justify-between text-[11px] font-semibold"
                 >
-                  <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    :class="coverageStatIconClass(stat)"
-                  ><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="coverageStatIcon(stat)"/></svg>
-                  <span class="font-medium opacity-80">{{ stat.bucket === 'teknisi' ? 'Teknisi' : 'Operator' }}:</span>
-                  <span class="font-bold tracking-wide">{{ stat.checked }}/{{ stat.total }}</span>
-                  <span class="text-[9px] font-bold px-1 py-0.5 rounded leading-none ml-auto" :class="coverageStatBadgeClass(stat)">
-                    {{ coverageStatLabel(stat) }}
-                  </span>
+                  <span class="font-medium opacity-80">{{ stat.bucket === 'teknisi' ? 'Berat' : 'Ringan' }}</span>
+                  <span class="font-bold tracking-wide" :class="coverageStatBadgeClass(stat)">{{ stat.checked }}/{{ stat.total }}</span>
                 </div>
               </div>
             </div>

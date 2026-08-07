@@ -231,7 +231,7 @@
       <template #cell-info="{ row }">
         <div class="space-y-0.5">
           <p class="text-xs text-slate-600 font-medium">Qty: <span class="font-bold text-slate-800">{{ row.qty || '-' }} {{ row.unit }}</span></p>
-          <p class="text-[10px] text-slate-400">{{ row.indicators?.length || 0 }} Indikator</p>
+          <p class="text-[10px] text-slate-400">{{ row.indicators_count ?? row.indicators?.length ?? 0 }} Indikator</p>
         </div>
       </template>
 

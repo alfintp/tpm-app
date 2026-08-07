@@ -195,7 +195,7 @@ async function openMachinesModal(user) {
   
   try {
     // Fetch all machines and filter by pic_mesin_id
-    const response = await window.axios.get('/api/machines');
+    const response = await window.axios.get('/api/machines?lite=true');
     const allMachines = response.data || [];
     userMachines.value = allMachines.filter(m => m.pic_mesin_id === user.id);
   } catch (error) {

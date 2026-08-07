@@ -232,6 +232,38 @@
                         >
                         <span class="text-xs text-slate-700 font-medium">Ganti komponen</span>
                       </label>
+
+                      <!-- Stock selector (muncul saat ganti komponen dicentang) -->
+                      <div v-if="row.is_component_replacement && !isInputDisabled(row)" class="space-y-1.5 pl-6 border-l-2 border-brand-cream">
+                        <label class="text-[10px] font-bold text-slate-500 block">Pilih Stok Pengganti</label>
+                        <select
+                          v-model="row.stock_id"
+                          class="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-brown cursor-pointer bg-white"
+                        >
+                          <option value="">-- Pilih item stok --</option>
+                          <option v-for="s in availableStocks" :key="s.id" :value="s.id" :disabled="s.quantity <= 0">
+                            {{ s.code }} - {{ s.name }} ({{ s.quantity }} {{ s.unit }}{{ s.quantity <= 0 ? ' - Habis' : s.quantity <= s.limit_qty ? ' - Menipis' : '' }})
+                          </option>
+                        </select>
+
+                        <div v-if="row.stock_id" class="flex items-center gap-2">
+                          <label class="text-[10px] font-bold text-slate-500">Qty:</label>
+                          <input
+                            v-model.number="row.stock_qty_used"
+                            type="number"
+                            min="1"
+                            class="w-16 rounded-lg border border-slate-200 px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-brand-brown"
+                          />
+                          <span class="text-[10px] text-slate-400">{{ getStockUnit(row.stock_id) }}</span>
+                        </div>
+
+                        <p v-if="row.stock_id" class="text-[10px] text-slate-500">
+                          Stok tersedia: <span class="font-bold" :class="getStockQty(row.stock_id) <= 0 ? 'text-red-500' : getStockQty(row.stock_id) <= getStockLimit(row.stock_id) ? 'text-orange-500' : 'text-slate-700'">{{ getStockQty(row.stock_id) }} {{ getStockUnit(row.stock_id) }}</span>
+                        </p>
+                        <p v-if="row.stock_id && getStockQty(row.stock_id) <= getStockLimit(row.stock_id)" class="text-[10px] text-orange-600 font-semibold">
+                          ⚠ Stok menipis! Segera restock.
+                        </p>
+                      </div>
                     </div>
                   </td>
 
@@ -544,7 +576,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import axios from 'axios';
 import SearchInput from './SearchInput.vue';
 
 const props = defineProps({
@@ -679,6 +712,35 @@ const getDifficultyLabel = (difficulty) => {
 watch(() => filteredRows.value.length, (newLen) => {
   if (newLen === 0) wizardIndex.value = 0;
   else if (wizardIndex.value >= newLen) wizardIndex.value = newLen - 1;
+});
+
+// Stock data for component replacement
+const stockList = ref([]);
+
+const availableStocks = computed(() => stockList.value.filter(s => s.is_active !== false));
+
+const getStockUnit = (id) => {
+  const s = stockList.value.find(x => x.id === id);
+  return s ? s.unit : '';
+};
+
+const getStockQty = (id) => {
+  const s = stockList.value.find(x => x.id === id);
+  return s ? s.quantity : 0;
+};
+
+const getStockLimit = (id) => {
+  const s = stockList.value.find(x => x.id === id);
+  return s ? s.limit_qty : 0;
+};
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/stocks');
+    stockList.value = res.data;
+  } catch (e) {
+    console.error('Failed to load stocks for report:', e);
+  }
 });
 
 </script>

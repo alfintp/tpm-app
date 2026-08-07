@@ -200,7 +200,7 @@ const loadMachinesList = async () => {
   
   machinesLoading.value = true;
   try {
-    const res = await axios.get('/api/machines');
+    const res = await axios.get('/api/machines?lite=true');
     machinesList.value = res.data?.data ?? res.data ?? [];
   } catch (err) {
     console.error('Failed to load machines list:', err);

@@ -390,7 +390,7 @@ const getMachinesForDate = (date, viewYear, viewMonth) => {
       return recDate.getTime() === targetTime;
     });
 
-    const totalComponents = (machine.components ?? []).length;
+    const totalComponents = machine.components_count ?? (machine.components ?? []).length;
 
     if (dayRecords.length > 0 && totalComponents > 0) {
       // Count unique checked components from records on this date

@@ -18,17 +18,22 @@
               selectedPeriod?.label === period.label
                 ? 'border-brand-brown bg-brand-cream text-brand-brown ring-1 ring-brand-brown/30'
                 : (period.isLocked ? 'border-slate-100 bg-slate-50 text-slate-400 opacity-75' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'),
-              'flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-35 relative overflow-hidden'
+              'flex flex-col items-start px-3 py-2 rounded-lg border text-left transition-all cursor-pointer min-w-[130px] relative overflow-hidden'
             ]"
           >
             <div v-if="period.isLocked" class="absolute top-0 right-0 p-1">
               <svg class="w-3 h-3 text-slate-300" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
             </div>
-            <span class="text-xs font-bold">{{ period.label }}</span>
-            <span class="text-[11px] mt-0.5" :class="selectedPeriod?.label === period.label ? 'text-brand-brown/70' : 'text-slate-400'">{{ period.dateStr }}</span>
-            <span v-if="period.isLocked" class="text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 uppercase tracking-tighter">Locked</span>
-            <span v-else class="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded-md" :class="period.statusClass">{{ period.statusLabel }}</span>
-            <span class="text-[10px] font-semibold mt-1" :class="period.progressPct === 100 ? 'text-emerald-600' : 'text-slate-500'">{{ period.progressCount }} / {{ period.componentCount }} komponen</span>
+            <div class="flex items-center gap-1">
+              <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <span class="text-xs font-bold">{{ period.dateStr }}</span>
+            </div>
+            <span class="text-[10px] mt-0.5 opacity-70">{{ period.label }}</span>
+            <div class="flex items-center gap-1.5 mt-1">
+              <span v-if="period.isLocked" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-500 uppercase tracking-tighter">Locked</span>
+              <span v-else class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md" :class="period.statusClass">{{ period.statusLabel }}</span>
+              <span class="text-[10px] font-semibold" :class="period.progressPct === 100 ? 'text-emerald-600' : 'text-slate-500'">{{ period.progressCount }}/{{ period.componentCount }}</span>
+            </div>
           </button>
 
           <button
@@ -37,11 +42,14 @@
               isUnscheduled
                 ? 'border-indigo-400 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-300'
                 : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50',
-              'flex flex-col items-start px-4 py-2.5 rounded-xl border text-left transition-all cursor-pointer min-w-35'
+              'flex flex-col items-start px-3 py-2 rounded-lg border text-left transition-all cursor-pointer min-w-[130px]'
             ]"
           >
-            <span class="text-xs font-bold">Di Luar Jadwal</span>
-            <span class="text-[11px] mt-0.5" :class="isUnscheduled ? 'text-indigo-500' : 'text-slate-400'">Maintenance di luar jadwal</span>
+            <div class="flex items-center gap-1">
+              <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span class="text-xs font-bold">Di Luar Jadwal</span>
+            </div>
+            <span class="text-[10px] mt-0.5 opacity-70">Maintenance tambahan</span>
             <span class="text-[10px] font-semibold mt-1 px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-600">Unscheduled</span>
           </button>
         </div>

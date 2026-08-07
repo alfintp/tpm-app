@@ -158,19 +158,33 @@
                     </div>
                     <div v-if="recordActions(record).length" class="space-y-1.5">
                       <p class="text-[10px] font-bold uppercase text-slate-400">Komponen Dicek:</p>
-                      <div v-for="action in recordActions(record)" :key="action.id" class="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
-                        <div class="flex flex-col min-w-0">
-                          <span class="font-medium text-slate-700">{{ action.component?.name ?? componentMap[action.machine_component_id]?.name ?? '-' }}</span>
-                          <span v-if="action.component?.specification ?? componentMap[action.machine_component_id]?.specification" class="text-[10px] text-slate-400 truncate">{{ action.component?.specification ?? componentMap[action.machine_component_id]?.specification }}</span>
+                      <div v-for="action in recordActions(record)" :key="action.id" class="bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
+                        <div class="flex items-center justify-between">
+                          <div class="flex flex-col min-w-0">
+                            <span class="font-medium text-slate-700">{{ action.component?.name ?? componentMap[action.machine_component_id]?.name ?? '-' }}</span>
+                            <span v-if="action.component?.specification ?? componentMap[action.machine_component_id]?.specification" class="text-[10px] text-slate-400 truncate">{{ action.component?.specification ?? componentMap[action.machine_component_id]?.specification }}</span>
+                          </div>
+                          <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" :class="action.action_type === 'replace' ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-blue-50 text-blue-700 border border-blue-100'">
+                              {{ action.action_type === 'replace' ? 'Ganti' : 'Inspeksi' }}
+                            </span>
+                            <span v-if="action.condition_before_pct != null || action.condition_after_pct != null" class="text-slate-500 font-semibold">
+                              {{ action.condition_before_pct ?? '-' }}% → {{ action.condition_after_pct ?? '-' }}%
+                            </span>
+                          </div>
                         </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" :class="action.action_type === 'replace' ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-blue-50 text-blue-700 border border-blue-100'">
-                            {{ action.action_type === 'replace' ? 'Ganti' : 'Inspeksi' }}
-                          </span>
-                          <span v-if="action.condition_before_pct != null || action.condition_after_pct != null" class="text-slate-500 font-semibold">
-                            {{ action.condition_before_pct ?? '-' }}% → {{ action.condition_after_pct ?? '-' }}%
-                          </span>
+                        <!-- Indicator values -->
+                        <div v-if="action.indicator_values && action.indicator_values.length > 0" class="mt-2 space-y-1">
+                          <div v-for="(iv, ivIdx) in action.indicator_values" :key="ivIdx" class="flex items-center gap-2 text-[11px]">
+                            <span class="font-semibold w-4 h-4 rounded flex items-center justify-center shrink-0" :class="iv.value ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
+                              {{ iv.value ? '✓' : '✗' }}
+                            </span>
+                            <span class="text-slate-600">{{ iv.indicator?.name ?? '-' }}</span>
+                            <span class="text-slate-400">: {{ iv.value ? 'OK' : 'Not OK' }}</span>
+                          </div>
                         </div>
+                        <!-- Description -->
+                        <p v-if="action.description" class="text-[11px] text-slate-500 italic mt-1.5">{{ action.description }}</p>
                       </div>
                     </div>
                   </div>
@@ -189,8 +203,9 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -200,6 +215,19 @@ const emit = defineEmits(['close']);
 
 const showComponents = ref(true);
 const expandedReports = reactive(new Set());
+const fetchedComponents = ref([]);
+
+watch(() => props.show, async (show) => {
+  if (show && props.machine?.id) {
+    fetchedComponents.value = [];
+    try {
+      const res = await axios.get(`/api/machines/${props.machine.id}/components`);
+      fetchedComponents.value = res.data;
+    } catch (e) {
+      console.error('Failed to load components:', e);
+    }
+  }
+});
 
 const toggleReport = (id) => {
   if (expandedReports.has(id)) expandedReports.delete(id);
@@ -207,7 +235,7 @@ const toggleReport = (id) => {
 };
 
 const records = computed(() => [...(props.machine.records ?? [])].sort((a, b) => new Date(b.maintenance_date) - new Date(a.maintenance_date)));
-const components = computed(() => props.machine.components ?? []);
+const components = computed(() => fetchedComponents.value.length ? fetchedComponents.value : (props.machine.components ?? []));
 const latestRecord = computed(() => records.value[0] ?? null);
 const recentRecords = computed(() => records.value.slice(0, 10));
 

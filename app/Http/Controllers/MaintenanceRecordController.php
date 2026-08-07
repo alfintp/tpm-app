@@ -13,6 +13,8 @@ use App\Models\MaintenanceSchedule;
 use App\Models\ApprovalFlowStep;
 use App\Models\ActivityLog;
 use App\Models\Role;
+use App\Models\Stock;
+use App\Models\StockUsage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -21,7 +23,7 @@ class MaintenanceRecordController extends Controller
 {
     public function index()
     {
-        $records = MaintenanceRecord::with(['machine', 'technician', 'actions.component', 'approvals'])->get();
+        $records = MaintenanceRecord::with(['machine', 'technician', 'actions.component', 'actions.stock', 'approvals'])->get();
         return response()->json($records);
     }
 
@@ -56,6 +58,8 @@ class MaintenanceRecordController extends Controller
             'actions.*.indicator_values' => 'nullable|array',
             'actions.*.indicator_values.*.component_indicator_id' => 'required|exists:component_indicators,id',
             'actions.*.indicator_values.*.value' => 'required|boolean',
+            'actions.*.stock_id' => 'nullable|exists:stocks,id',
+            'actions.*.stock_qty_used' => 'nullable|integer|min:1',
         ]);
 
         // Always use the authenticated user as the technician
@@ -82,7 +86,7 @@ class MaintenanceRecordController extends Controller
         }
 
         // Machine Locking Logic
-        if ($authUser && $authUser->role !== 'admin') {
+        if ($authUser) {
             $isOpen = $machine->isOpenForMaintenance();
             
             if (!$isOpen) {
@@ -149,14 +153,14 @@ class MaintenanceRecordController extends Controller
             $recordData['is_late'] = $isLate;
 
             // Snapshot approval flow for this report so future flow changes only affect new reports
-            $reporterRole = $authUser?->role ?? 'technician';
+            $reporterRole = $authUser?->role ?? 'default';
             $flowSteps = ApprovalFlowStep::active()
                 ->where('reporter_role', $reporterRole)
                 ->ordered()
                 ->get();
-            if ($flowSteps->isEmpty() && $reporterRole !== 'technician') {
+            if ($flowSteps->isEmpty() && $reporterRole !== 'default') {
                 $flowSteps = ApprovalFlowStep::active()
-                    ->where('reporter_role', 'technician')
+                    ->where('reporter_role', 'default')
                     ->ordered()
                     ->get();
             }
@@ -194,6 +198,29 @@ class MaintenanceRecordController extends Controller
                         $action->indicatorValues()->create($indicatorValue);
                     }
 
+                    // Decrement stock if this is a replacement with stock selected
+                    if (!empty($actionData['stock_id']) && !empty($actionData['stock_qty_used'])) {
+                        $stock = Stock::find($actionData['stock_id']);
+                        if ($stock && $stock->quantity >= $actionData['stock_qty_used']) {
+                            $stock->decrement('quantity', $actionData['stock_qty_used']);
+
+                            StockUsage::create([
+                                'stock_id' => $stock->id,
+                                'maintenance_action_id' => $action->id,
+                                'maintenance_record_id' => $record->id,
+                                'machine_id' => $record->machine_id,
+                                'machine_component_id' => $actionData['machine_component_id'] ?? null,
+                                'quantity_used' => $actionData['stock_qty_used'],
+                                'used_at' => Carbon::parse($record->maintenance_date)->toDateString(),
+                                'technician_id' => $record->technician_id,
+                            ]);
+
+                            if ($stock->fresh()->quantity <= $stock->limit_qty) {
+                                ActivityLog::log('Peringatan Stok Menipis', "Stok {$stock->name} ({$stock->code}) menipis: {$stock->fresh()->quantity} {$stock->unit} tersisa (limit: {$stock->limit_qty})");
+                            }
+                        }
+                    }
+
                     // NOTE: component and machine condition updates are deferred until approval
                 }
             }
@@ -209,7 +236,7 @@ class MaintenanceRecordController extends Controller
 
             DB::commit();
 
-            return response()->json($record->load(['actions.component', 'actions.indicatorValues.indicator']), 201);
+            return response()->json($record->load(['actions.component', 'actions.stock', 'actions.indicatorValues.indicator']), 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Failed to create record: ' . $e->getMessage()], 500);
@@ -219,7 +246,7 @@ class MaintenanceRecordController extends Controller
     public function show($id)
     {
         $record = MaintenanceRecord::with([
-            'machine', 'technician', 'actions.component', 'actions.indicatorValues.indicator', 'approvals', 'schedule'
+            'machine', 'technician', 'actions.component', 'actions.stock', 'actions.indicatorValues.indicator', 'approvals', 'schedule'
         ])->findOrFail($id);
         return response()->json($record);
     }
