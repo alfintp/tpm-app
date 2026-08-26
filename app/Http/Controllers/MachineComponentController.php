@@ -50,6 +50,12 @@ class MachineComponentController extends Controller
 
     public function store(Request $request, $machineId)
     {
+        $user = $request->user();
+        $canAdd = $user->role === 'admin' || Role::where('name', $user->role)->value('can_add_data');
+        if (!$canAdd) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         $machine = Machine::findOrFail($machineId);
 
         if ($request->has('qty')) {
@@ -254,6 +260,12 @@ class MachineComponentController extends Controller
 
     public function update(Request $request, $id)
     {
+        $user = $request->user();
+        $canAdd = $user->role === 'admin' || Role::where('name', $user->role)->value('can_add_data');
+        if (!$canAdd) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         $component = MachineComponent::findOrFail($id);
 
         if ($request->has('qty')) {
@@ -295,8 +307,14 @@ class MachineComponentController extends Controller
         return response()->json($component);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $user = $request->user();
+        $canDelete = $user->role === 'admin' || Role::where('name', $user->role)->value('can_delete_data');
+        if (!$canDelete) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         $component = MachineComponent::findOrFail($id);
         $machineName = $component->machine ? $component->machine->name : 'Mesin';
         

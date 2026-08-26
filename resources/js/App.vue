@@ -120,7 +120,7 @@
           <div class="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
             <p class="text-sm font-bold text-brand-brown truncate leading-tight">{{ user.full_name }}</p>
             <p class="text-xs text-slate-500 font-medium truncate uppercase leading-tight">
-              {{ getRoleLabel(user.role) }}<span v-if="user.city && user.city !== 'both'"> · {{ cityLabel(user.city) }}</span>
+              {{ user.role_display_name || getRoleLabel(user.role) }}<span v-if="user.city && user.city !== 'both'"> · {{ cityLabel(user.city) }}</span>
             </p>
           </div>
         </div>
@@ -178,7 +178,7 @@ import SidebarMobileCloser from './components/SidebarMobileCloser.vue';
 import NotificationBell from './components/NotificationBell.vue';
 
 const page = usePage();
-const { user, isAdmin, isManagerOrAdmin, isAuthenticated, authReady, initializeAuth } = useAuth();
+const { user, isAdmin, isManagerOrAdmin, isAuthenticated, authReady, initializeAuth, refreshProfile } = useAuth();
 const alertModalRef = ref(null);
 const authChecked = ref(false);
 
@@ -189,6 +189,11 @@ onMounted(async () => {
   if (!isAuthenticated.value) {
     router.visit('/login', { replace: true });
   }
+});
+
+// Refresh user profile on every Inertia navigation to catch role/permission changes
+router.on('navigate', () => {
+  refreshProfile();
 });
 
 const isUrl = (url) => {

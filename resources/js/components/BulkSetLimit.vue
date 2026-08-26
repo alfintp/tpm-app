@@ -73,6 +73,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../composables/useAlert.js';
 
 const props = defineProps({
   stocks: { type: Array, default: () => [] },
@@ -102,10 +103,10 @@ const save = async () => {
   try {
     const payload = items.value.map(i => ({ id: i.id, limit_qty: i.limit_qty }));
     const res = await axios.put('/api/stocks/bulk-limit', { items: payload });
-    alert(res.data.message);
+    await showAlert('success', 'Berhasil', res.data.message);
     emit('saved');
   } catch (e) {
-    alert(e.response?.data?.message ?? 'Gagal menyimpan limit qty.');
+    showAlert('error', 'Gagal', e.response?.data?.message ?? 'Gagal menyimpan limit qty.');
   } finally {
     saving.value = false;
   }

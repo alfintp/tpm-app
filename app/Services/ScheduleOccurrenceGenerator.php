@@ -20,31 +20,32 @@ use Illuminate\Support\Facades\Http;
 class ScheduleOccurrenceGenerator
 {
     /**
-     * Generate occurrences for the current month and the following month
-     * (2-month rolling window), for every city. Safe to run repeatedly —
+     * Generate occurrences for the current month and the following 5 months
+     * (6-month rolling window), for every city. Safe to run repeatedly —
      * machine/month pairs that already have occurrences are skipped.
      */
     public function generateUpcoming(): void
     {
         $now = Carbon::now();
-        $this->generateForMonth($now->year, $now->month);
-
-        $next = $now->copy()->addMonthNoOverflow();
-        $this->generateForMonth($next->year, $next->month);
+        for ($i = 0; $i < 6; $i++) {
+            $date = $now->copy()->addMonthsNoOverflow($i);
+            $this->generateForMonth($date->year, $date->month);
+        }
     }
 
     /**
-     * Generate the current + next month's occurrences for a single city only.
-     * Used right after an Excel import so newly added machines are scheduled
-     * immediately without waiting for the daily cron.
+     * Generate the current + next 5 months' occurrences (6-month window)
+     * for a single city only. Used right after a machine is created or
+     * imported so newly added machines are scheduled immediately without
+     * waiting for the daily cron.
      */
     public function generateUpcomingForCity(string $kota): void
     {
         $now = Carbon::now();
-        $this->generateForCityMonth($kota, $now->year, $now->month);
-
-        $next = $now->copy()->addMonthNoOverflow();
-        $this->generateForCityMonth($kota, $next->year, $next->month);
+        for ($i = 0; $i < 6; $i++) {
+            $date = $now->copy()->addMonthsNoOverflow($i);
+            $this->generateForCityMonth($kota, $date->year, $date->month);
+        }
     }
 
     /**
@@ -69,12 +70,13 @@ class ScheduleOccurrenceGenerator
             return;
         }
 
-        // Delete all occurrences for this machine's city for current + next month
+        // Delete all occurrences for this machine's city for the 6-month window
         // so the round-robin can rebalance properly.
         $now = Carbon::now();
-        $this->deleteCityMonth($machine->kota, $now->year, $now->month);
-        $next = $now->copy()->addMonthNoOverflow();
-        $this->deleteCityMonth($machine->kota, $next->year, $next->month);
+        for ($i = 0; $i < 6; $i++) {
+            $date = $now->copy()->addMonthsNoOverflow($i);
+            $this->deleteCityMonth($machine->kota, $date->year, $date->month);
+        }
 
         $this->generateUpcomingForCity($machine->kota);
     }

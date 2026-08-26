@@ -25,7 +25,7 @@
           Buat Laporan Baru
         </Button>
         <Button
-          v-if="isManagerOrAdmin"
+          v-if="canAddData"
           @click="openEditMachine"
           class="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium shadow-sm gap-2 hover:cursor-pointer"
         >
@@ -77,6 +77,8 @@
       :components="machine.components ?? []"
       :is-admin="isAdmin"
       :is-manager-or-admin="isManagerOrAdmin"
+      :can-add-data="canAddData"
+      :can-delete-data="canDeleteData"
       :get-color-theme="getColorTheme"
       :format-date="formatDate"
       :get-last-replacement="getLastReplacementDate"
@@ -170,7 +172,7 @@ const props = defineProps({
   }
 });
 
-const { isManagerOrAdmin, isAdmin, user: authUser } = useAuth();
+const { isManagerOrAdmin, isAdmin, user: authUser, canAddData, canDeleteData } = useAuth();
 const machine = ref(props.machine || props.initialMachine);
 const loading = ref(!machine.value);
 const roles = ref([]);
@@ -299,11 +301,10 @@ const componentCoverageStats = computed(() => {
   if (periods.length === 0) return null;
 
   const buckets = [
-    { key: 'teknisi', label: 'Teknisi', difficulties: ['berat', 'sedang', 'none', null] },
-    { key: 'operator', label: 'Operator', difficulties: ['ringan'] },
+    { key: 'berat', label: 'Berat', difficulties: ['berat', 'sedang', 'none', null] },
+    { key: 'ringan', label: 'Ringan', difficulties: ['ringan'] },
   ];
 
-  // For each period in this month, build a slot with Teknisi + Operator stats
   const result = [];
   periods.forEach((period, idx) => {
     const periodLabel = periods.length > 1 ? `Week ${idx + 1}` : null;
@@ -680,20 +681,20 @@ onUnmounted(() => {
 
 const todayChecks = computed(() => {
   const map = {};
-  const periodStart = currentPeriodStart.value;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  if (!machine.value?.records) return map;
+  const period = currentPeriod.value;
+  if (!period || !machine.value?.records) return map;
+
+  const periodDate = dateKey(period.due);
 
   for (const record of machine.value.records) {
-    const recDate = new Date(record.maintenance_date);
-    recDate.setHours(0, 0, 0, 0);
-    // Include records from period start up to today (inclusive).
-    // If due date already passed, laporan terlambat tetap masuk periode ini.
-    if (recDate < periodStart || recDate > today) continue;
+    if (record.status !== 'completed') continue;
+    if (record.is_unscheduled) continue;
     const approvalStatus = record.latest_approval?.decision ?? 'pending';
-    // Rejected records are treated as if they never happened — allow re-submission
     if (approvalStatus === 'rejected') continue;
+    if (String(record.schedule_id) !== String(period.scheduleId)) continue;
+    if (String(record.scheduled_period_date).slice(0, 10) !== periodDate) continue;
 
+    const recDate = new Date(record.maintenance_date);
     for (const action of record.actions ?? []) {
       const id = action.machine_component_id;
       if (!id) continue;
@@ -704,7 +705,7 @@ const todayChecks = computed(() => {
           conditionBefore: action.condition_before_pct,
           description: action.description ?? '',
           isReplacement: action.action_type === 'replace',
-          approvalStatus, // 'pending' | 'approved'
+          approvalStatus,
           startTime: record.start_time,
           endTime: record.end_time,
           indicatorValues: action.indicator_values ? Object.fromEntries(action.indicator_values.map(iv => [iv.component_indicator_id, iv.value])) : {},
@@ -718,17 +719,19 @@ const todayChecks = computed(() => {
 // Map of rejected records for the current period (used to show rejection info)
 const rejectedChecks = computed(() => {
   const map = {};
-  const periodStart = currentPeriodStart.value;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  if (!machine.value?.records) return map;
+  const period = currentPeriod.value;
+  if (!period || !machine.value?.records) return map;
+
+  const periodDate = dateKey(period.due);
 
   for (const record of machine.value.records) {
-    const recDate = new Date(record.maintenance_date);
-    recDate.setHours(0, 0, 0, 0);
-    if (recDate < periodStart || recDate > today) continue;
+    if (record.is_unscheduled) continue;
+    if (String(record.schedule_id) !== String(period.scheduleId)) continue;
+    if (String(record.scheduled_period_date).slice(0, 10) !== periodDate) continue;
     const approvalStatus = record.latest_approval?.decision ?? 'pending';
     if (approvalStatus !== 'rejected') continue;
 
+    const recDate = new Date(record.maintenance_date);
     for (const action of record.actions ?? []) {
       const id = action.machine_component_id;
       if (!id) continue;
@@ -1466,13 +1469,13 @@ const getActionTypeClass = (type) => {
 
 // Component CRUD functions
 const openAddComponent = () => {
-  if (!isManagerOrAdmin.value) return;
+  if (!canAddData.value) return;
   editingComponent.value = null;
   showComponentForm.value = true;
 };
 
 const openEditComponent = (comp) => {
-  if (!isManagerOrAdmin.value) return;
+  if (!canAddData.value) return;
   editingComponent.value = comp;
   showComponentForm.value = true;
 };
@@ -1495,7 +1498,7 @@ const onIndicatorImported = async () => {
 };
 
 const deleteComponent = async (comp) => {
-  if (!isManagerOrAdmin.value) return;
+  if (!canDeleteData.value) return;
   const ok = await showConfirm('Hapus Komponen Mesin', `Apakah Anda yakin ingin menghapus "${comp.name}"? Semua data terkait (komponen, jadwal, riwayat) akan ikut terhapus.`);
   if (!ok) return;
   try {
@@ -1539,7 +1542,7 @@ const filteredComponents = computed(() => {
 
 // Machine edit functions
 const openEditMachine = () => {
-  if (!isManagerOrAdmin.value) return;
+  if (!canAddData.value) return;
   showMachineEdit.value = true;
 };
 

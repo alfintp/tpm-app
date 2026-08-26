@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use App\Models\User;
+use App\Models\Role;
 use App\Models\MaintenanceSchedule;
+use App\Models\MachineUnlockRequest;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -124,6 +126,12 @@ class MachineController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+        $canAdd = $user->role === 'admin' || Role::where('name', $user->role)->value('can_add_data');
+        if (!$canAdd) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         // Convert empty strings to null
         $input = $request->all();
         foreach (['pic_mesin_id', 'maintenance_duration'] as $field) {
@@ -279,6 +287,12 @@ class MachineController extends Controller
 
     public function update(Request $request, $id)
     {
+        $user = $request->user();
+        $canAdd = $user->role === 'admin' || Role::where('name', $user->role)->value('can_add_data');
+        if (!$canAdd) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         $machine = Machine::findOrFail($id);
 
         // Convert empty strings to null
@@ -341,8 +355,14 @@ class MachineController extends Controller
         return response()->json($machine);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $user = $request->user();
+        $canDelete = $user->role === 'admin' || Role::where('name', $user->role)->value('can_delete_data');
+        if (!$canDelete) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         $machine = Machine::findOrFail($id);
         
         ActivityLog::log('Hapus Mesin', "Menghapus mesin: {$machine->name}");
@@ -380,6 +400,14 @@ class MachineController extends Controller
             'requested_period' => 'nullable|string|max:100',
         ]);
 
+        $unlockRequest = MachineUnlockRequest::create([
+            'machine_id' => $machine->id,
+            'requested_by_id' => $request->user()->id,
+            'reason' => $validated['reason'],
+            'requested_period' => $validated['requested_period'] ?? null,
+            'status' => 'pending',
+        ]);
+
         $machine->update([
             'unlock_status' => 'pending',
             'unlock_reason' => $validated['reason'],
@@ -413,6 +441,12 @@ class MachineController extends Controller
             'notes' => $request->input('decision') === 'rejected' ? 'required|string|max:500' : 'nullable|string|max:500',
         ]);
 
+        // Find the latest pending unlock request for this machine
+        $unlockRequest = MachineUnlockRequest::where('machine_id', $machine->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
         if ($validated['decision'] === 'approved') {
             $machine->update([
                 'unlock_status' => 'approved',
@@ -434,6 +468,17 @@ class MachineController extends Controller
             $action = 'Menolak';
         }
 
+        // Update the unlock request record
+        if ($unlockRequest) {
+            $unlockRequest->update([
+                'status' => $validated['decision'],
+                'approved_by_id' => $user->id,
+                'approved_at' => now(),
+                'approval_notes' => $validated['notes'] ?? null,
+                'expires_at' => $validated['decision'] === 'approved' ? now()->endOfMonth() : null,
+            ]);
+        }
+
         ActivityLog::log('Persetujuan Unlock', "{$action} pengajuan buka kunci untuk mesin: {$machine->name}");
 
         return response()->json([
@@ -450,71 +495,83 @@ class MachineController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $query = Machine::with(['unlockRequester', 'unlockApprover'])
-            ->whereNotIn('unlock_status', ['none'])
-            ->whereNotNull('last_unlock_request_at');
+        $query = MachineUnlockRequest::with(['machine', 'requester', 'approver']);
 
         // Filter by user's city unless city is 'both'
         if (isset($user->city) && $user->city !== 'both') {
-            $query->where('kota', $user->city);
+            $query->whereHas('machine', function ($q) use ($user) {
+                $q->where('kota', $user->city);
+            });
         }
 
-        $machines = $query->orderByDesc('last_unlock_request_at')
+        $statusLabels = [
+            'pending' => 'Menunggu Persetujuan',
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+        ];
+
+        $requests = $query->orderByDesc('created_at')
             ->get()
-            ->map(function ($m) {
+            ->map(function ($r) use ($statusLabels) {
                 return [
-                    'id'                       => $m->id,
-                    'name'                     => $m->name,
-                    'kode'                     => $m->kode,
-                    'location'                 => $m->location,
-                    'kota'                     => $m->kota,
-                    'unlock_status'            => $m->unlock_status,
-                    'unlock_status_label'      => $m->unlock_status_label,
-                    'unlock_reason'            => $m->unlock_reason,
-                    'unlock_requested_period'  => $m->unlock_requested_period,
-                    'last_unlock_request_at'   => $m->last_unlock_request_at,
-                    'unlock_expires_at'        => $m->unlock_expires_at,
-                    'unlock_requested_by_id'   => $m->unlock_requested_by_id,
-                    'requester_name'           => $m->unlockRequester?->full_name ?? '-',
-                    'requester_role'           => $m->unlockRequester?->role ?? '-',
-                    'unlock_approved_at'       => $m->unlock_approved_at,
-                    'unlock_approval_notes'    => $m->unlock_approval_notes,
-                    'approver_name'            => $m->unlockApprover?->full_name ?? '-',
+                    'id'                       => $r->machine->id,
+                    'unlock_request_id'        => $r->id,
+                    'name'                     => $r->machine->name,
+                    'kode'                     => $r->machine->kode,
+                    'location'                 => $r->machine->location,
+                    'kota'                     => $r->machine->kota,
+                    'unlock_status'            => $r->status,
+                    'unlock_status_label'      => $statusLabels[$r->status] ?? ucfirst($r->status),
+                    'unlock_reason'            => $r->reason,
+                    'unlock_requested_period'  => $r->requested_period,
+                    'last_unlock_request_at'   => $r->created_at,
+                    'unlock_expires_at'        => $r->expires_at,
+                    'unlock_requested_by_id'   => $r->requested_by_id,
+                    'requester_name'           => $r->requester?->full_name ?? '-',
+                    'requester_role'           => $r->requester?->role ?? '-',
+                    'unlock_approved_at'       => $r->approved_at,
+                    'unlock_approval_notes'    => $r->approval_notes,
+                    'approver_name'            => $r->approver?->full_name ?? '-',
                 ];
             });
 
-        return response()->json($machines);
+        return response()->json($requests);
     }
 
     public function myUnlockRequests(Request $request)
     {
         $userId = $request->user()->id;
 
-        $machines = Machine::with(['unlockRequester', 'unlockApprover'])
-            ->where('unlock_requested_by_id', $userId)
-            ->whereNotIn('unlock_status', ['none'])
-            ->whereNotNull('last_unlock_request_at')
-            ->orderByDesc('last_unlock_request_at')
+        $statusLabels = [
+            'pending' => 'Menunggu Persetujuan',
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+        ];
+
+        $requests = MachineUnlockRequest::with(['machine', 'approver'])
+            ->where('requested_by_id', $userId)
+            ->orderByDesc('created_at')
             ->get()
-            ->map(function ($m) {
+            ->map(function ($r) use ($statusLabels) {
                 return [
-                    'id'                       => $m->id,
-                    'name'                     => $m->name,
-                    'kode'                     => $m->kode,
-                    'location'                 => $m->location,
-                    'kota'                     => $m->kota,
-                    'unlock_status'            => $m->unlock_status,
-                    'unlock_status_label'      => $m->unlock_status_label,
-                    'unlock_reason'            => $m->unlock_reason,
-                    'unlock_requested_period'  => $m->unlock_requested_period,
-                    'last_unlock_request_at'   => $m->last_unlock_request_at,
-                    'unlock_expires_at'        => $m->unlock_expires_at,
-                    'unlock_approved_at'       => $m->unlock_approved_at,
-                    'unlock_approval_notes'    => $m->unlock_approval_notes,
-                    'approver_name'            => $m->unlockApprover?->full_name ?? '-',
+                    'id'                       => $r->machine->id,
+                    'unlock_request_id'        => $r->id,
+                    'name'                     => $r->machine->name,
+                    'kode'                     => $r->machine->kode,
+                    'location'                 => $r->machine->location,
+                    'kota'                     => $r->machine->kota,
+                    'unlock_status'            => $r->status,
+                    'unlock_status_label'      => $statusLabels[$r->status] ?? ucfirst($r->status),
+                    'unlock_reason'            => $r->reason,
+                    'unlock_requested_period'  => $r->requested_period,
+                    'last_unlock_request_at'   => $r->created_at,
+                    'unlock_expires_at'        => $r->expires_at,
+                    'unlock_approved_at'       => $r->approved_at,
+                    'unlock_approval_notes'    => $r->approval_notes,
+                    'approver_name'            => $r->approver?->full_name ?? '-',
                 ];
             });
 
-        return response()->json($machines);
+        return response()->json($requests);
     }
 }

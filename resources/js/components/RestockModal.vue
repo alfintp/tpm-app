@@ -55,6 +55,7 @@
 <script setup>
 import { ref } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../composables/useAlert.js';
 
 const props = defineProps({
   stock: { type: Object, default: null },
@@ -74,7 +75,7 @@ const save = async () => {
     });
     emit('saved', res.data);
   } catch (e) {
-    alert(e.response?.data?.message ?? 'Gagal melakukan restock.');
+    showAlert('error', 'Gagal Restock', e.response?.data?.message ?? 'Gagal melakukan restock.');
   } finally {
     saving.value = false;
   }

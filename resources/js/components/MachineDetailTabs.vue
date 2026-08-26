@@ -4,6 +4,8 @@
       :components="components"
       :is-admin="isAdmin"
       :is-manager-or-admin="isManagerOrAdmin"
+      :can-add-data="canAddData"
+      :can-delete-data="canDeleteData"
       :color-theme="getColorTheme"
       :format-date="formatDate"
       :get-last-replacement="getLastReplacement"
@@ -25,6 +27,8 @@ defineProps({
   components: { type: Array, default: () => [] },
   isAdmin: { type: Boolean, default: false },
   isManagerOrAdmin: { type: Boolean, default: false },
+  canAddData: { type: Boolean, default: false },
+  canDeleteData: { type: Boolean, default: false },
   getColorTheme: { type: Function, required: true },
   formatDate: { type: Function, required: true },
   getLastReplacement: { type: Function, required: true },

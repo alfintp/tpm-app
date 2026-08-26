@@ -17,6 +17,8 @@ class Role extends Model
         'can_report',
         'is_manager',
         'can_approve_unlock',
+        'can_add_data',
+        'can_delete_data',
         'required_difficulties',
         'is_active',
     ];
@@ -26,6 +28,8 @@ class Role extends Model
         'can_report'  => 'boolean',
         'is_manager'  => 'boolean',
         'can_approve_unlock' => 'boolean',
+        'can_add_data' => 'boolean',
+        'can_delete_data' => 'boolean',
         'is_active'   => 'boolean',
         'required_difficulties' => 'array',
     ];

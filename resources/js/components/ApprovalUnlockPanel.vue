@@ -35,7 +35,7 @@
             <tr v-else-if="paginatedItems.length === 0">
               <td colspan="6" class="px-6 py-12 text-center text-slate-400 font-medium italic">Tidak ada data pada halaman ini.</td>
             </tr>
-            <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-slate-50/50 transition-colors group">
+            <tr v-for="item in paginatedItems" :key="item.unlock_request_id" class="hover:bg-slate-50/50 transition-colors group">
               <!-- Mesin -->
               <td class="px-6 py-4">
                 <div class="font-black text-slate-800 group-hover:text-brand-brown transition-colors cursor-pointer" @click="$emit('go-to-machine', item.id)">
@@ -62,8 +62,8 @@
               </td>
 
               <!-- Alasan -->
-              <td class="px-6 py-4 max-w-[200px]">
-                <p class="text-slate-600 line-clamp-2 italic text-xs" :title="item.unlock_reason">"{{ item.unlock_reason }}"</p>
+              <td class="px-6 py-4 max-w-[320px]">
+                <p class="text-slate-600 italic text-xs whitespace-normal break-words" :title="item.unlock_reason">"{{ item.unlock_reason }}"</p>
               </td>
 
               <!-- Waktu -->
@@ -119,7 +119,7 @@
                 <span v-else class="text-[10px] text-slate-400 italic">Sudah diproses</span>
                 <div v-if="item.unlock_approved_at && item.unlock_status !== 'pending'" class="text-[10px] text-slate-500 mt-1">
                   <span class="font-semibold">{{ item.approver_name }}</span>
-                  <span v-if="item.unlock_approval_notes" class="italic block max-w-50 line-clamp-2" :class="item.unlock_status === 'rejected' ? 'text-red-500' : ''" :title="item.unlock_approval_notes">"{{ item.unlock_approval_notes }}"</span>
+                  <span v-if="item.unlock_approval_notes" class="italic block whitespace-normal break-words" :class="item.unlock_status === 'rejected' ? 'text-red-500' : ''" :title="item.unlock_approval_notes">"{{ item.unlock_approval_notes }}"</span>
                 </div>
               </td>
             </tr>

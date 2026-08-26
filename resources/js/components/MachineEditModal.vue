@@ -66,6 +66,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../composables/useAlert.js';
 
 const props = defineProps({
   machine: { type: Object, required: true },
@@ -129,7 +130,7 @@ onMounted(() => {
 
 const submit = async () => {
   if (!form.value.name) {
-    alert('Nama Mesin wajib diisi!');
+    showAlert('warning', 'Data Belum Lengkap', 'Nama Mesin wajib diisi!');
     return;
   }
   saving.value = true;
@@ -139,7 +140,7 @@ const submit = async () => {
     emit('saved');
   } catch (e) {
     console.error(e);
-    alert('Gagal menyimpan: ' + (e.response?.data?.message || e.message));
+    showAlert('error', 'Gagal Menyimpan', 'Gagal menyimpan: ' + (e.response?.data?.message || e.message));
   } finally {
     saving.value = false;
   }

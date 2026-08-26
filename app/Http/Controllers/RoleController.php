@@ -19,6 +19,8 @@ class RoleController extends Controller
             'can_report' => $r->can_report,
             'is_manager' => $r->is_manager,
             'can_approve_unlock' => $r->can_approve_unlock,
+            'can_add_data' => $r->can_add_data,
+            'can_delete_data' => $r->can_delete_data,
             'required_difficulties' => $r->required_difficulties ?? [],
             'is_active' => $r->is_active,
         ]));
@@ -37,6 +39,8 @@ class RoleController extends Controller
             'can_approve' => 'required|boolean',
             'can_report' => 'required|boolean',
             'can_approve_unlock' => 'nullable|boolean',
+            'can_add_data' => 'nullable|boolean',
+            'can_delete_data' => 'nullable|boolean',
             'required_difficulties' => 'nullable|array',
         ]);
 
@@ -46,6 +50,8 @@ class RoleController extends Controller
             'can_approve' => $validated['can_approve'],
             'can_report' => $validated['can_report'],
             'can_approve_unlock' => $validated['can_approve_unlock'] ?? false,
+            'can_add_data' => $validated['can_add_data'] ?? false,
+            'can_delete_data' => $validated['can_delete_data'] ?? false,
             'required_difficulties' => $this->sanitizeDifficulties($validated['required_difficulties'] ?? []),
             'is_active' => true,
         ]);
@@ -93,6 +99,8 @@ class RoleController extends Controller
             'roles.*.can_approve' => 'required|boolean',
             'roles.*.can_report' => 'required|boolean',
             'roles.*.can_approve_unlock' => 'nullable|boolean',
+            'roles.*.can_add_data' => 'nullable|boolean',
+            'roles.*.can_delete_data' => 'nullable|boolean',
             'roles.*.required_difficulties' => 'nullable|array',
         ]);
 
@@ -140,6 +148,8 @@ class RoleController extends Controller
                     'can_approve' => $roleData['can_approve'],
                     'can_report' => $roleData['can_report'],
                     'can_approve_unlock' => $roleData['can_approve_unlock'] ?? false,
+                    'can_add_data' => $roleData['can_add_data'] ?? false,
+                    'can_delete_data' => $roleData['can_delete_data'] ?? false,
                     'required_difficulties' => $this->sanitizeDifficulties($roleData['required_difficulties'] ?? []),
                 ]);
             }

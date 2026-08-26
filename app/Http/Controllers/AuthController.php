@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Role;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,10 +32,13 @@ class AuthController extends Controller
 
         ActivityLog::log('Login User', "User {$user->full_name} ({$user->email}) berhasil login ke sistem", $user);
 
+        $roleDisplayName = Role::where('name', $user->role)->value('display_name');
+
         return response()->json([
             'user' => $user,
             'access_token' => $token,
             'token_type' => 'Bearer',
+            'role_display_name' => $roleDisplayName,
         ]);
     }
 
@@ -52,6 +56,11 @@ class AuthController extends Controller
 
     public function profile(Request $request)
     {
-        return response()->json($request->user());
+        $user = $request->user();
+        $roleDisplayName = Role::where('name', $user->role)->value('display_name');
+
+        return response()->json(array_merge($user->toArray(), [
+            'role_display_name' => $roleDisplayName,
+        ]));
     }
 }

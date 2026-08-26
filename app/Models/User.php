@@ -46,7 +46,7 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    protected $appends = ['is_manager', 'can_approve'];
+    protected $appends = ['is_manager', 'can_approve', 'can_add_data', 'can_delete_data'];
 
     public function roleRelation()
     {
@@ -61,5 +61,15 @@ class User extends Authenticatable
     public function getCanApproveAttribute(): bool
     {
         return $this->roleRelation?->can_approve ?? Role::where('name', $this->role)->value('can_approve') ?? false;
+    }
+
+    public function getCanAddDataAttribute(): bool
+    {
+        return $this->roleRelation?->can_add_data ?? Role::where('name', $this->role)->value('can_add_data') ?? false;
+    }
+
+    public function getCanDeleteDataAttribute(): bool
+    {
+        return $this->roleRelation?->can_delete_data ?? Role::where('name', $this->role)->value('can_delete_data') ?? false;
     }
 }

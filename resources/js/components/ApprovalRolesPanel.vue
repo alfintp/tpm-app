@@ -58,6 +58,14 @@
           <input id="newRoleCanApproveUnlock" :checked="newRole.can_approve_unlock" @change="$emit('update:newRole', { ...newRole, can_approve_unlock: $event.target.checked })" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
           <label for="newRoleCanApproveUnlock" class="text-xs text-slate-600">Dapat Approve Kunci</label>
         </div>
+        <div class="flex items-center gap-2">
+          <input id="newRoleCanAddData" :checked="newRole.can_add_data" @change="$emit('update:newRole', { ...newRole, can_add_data: $event.target.checked })" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          <label for="newRoleCanAddData" class="text-xs text-slate-600">Dapat Tambah/Edit Data</label>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="newRoleCanDeleteData" :checked="newRole.can_delete_data" @change="$emit('update:newRole', { ...newRole, can_delete_data: $event.target.checked })" type="checkbox" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+          <label for="newRoleCanDeleteData" class="text-xs text-slate-600">Dapat Hapus Data</label>
+        </div>
       </div>
       <button
         @click="$emit('addRole')"
@@ -79,6 +87,8 @@
             <th class="px-3 py-2 text-center font-semibold">Approve</th>
             <th class="px-3 py-2 text-center font-semibold">Report</th>
             <th class="px-3 py-2 text-center font-semibold">Acc Kunci</th>
+            <th class="px-3 py-2 text-center font-semibold">Tambah Data</th>
+            <th class="px-3 py-2 text-center font-semibold">Hapus Data</th>
             <th class="px-3 py-2 text-left font-semibold">Kategori Wajib</th>
             <th v-if="roleEditMode" class="px-3 py-2 text-right font-semibold">Aksi</th>
           </tr>
@@ -113,6 +123,12 @@
             </td>
             <td class="px-3 py-2 text-center">
               <input :checked="role.can_approve_unlock" @change="$emit('toggleCanApproveUnlock', { role, value: $event.target.checked })" type="checkbox" :disabled="!roleEditMode" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+            </td>
+            <td class="px-3 py-2 text-center">
+              <input :checked="role.can_add_data" @change="$emit('toggleCanAddData', { role, value: $event.target.checked })" type="checkbox" :disabled="!roleEditMode" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+            </td>
+            <td class="px-3 py-2 text-center">
+              <input :checked="role.can_delete_data" @change="$emit('toggleCanDeleteData', { role, value: $event.target.checked })" type="checkbox" :disabled="!roleEditMode" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
             </td>
             <td class="px-3 py-2">
               <div v-if="role.can_report" class="flex items-center gap-2 flex-wrap">
@@ -171,12 +187,12 @@ defineProps({
   localRoles: { type: Array, default: () => [] },
   difficultyOptions: { type: Array, default: () => [] },
   roleConfigLoading: { type: Boolean, default: false },
-  newRole: { type: Object, default: () => ({ name: '', display_name: '', can_approve: true, can_report: false, can_approve_unlock: false, is_active: true }) },
+  newRole: { type: Object, default: () => ({ name: '', display_name: '', can_approve: true, can_report: false, can_approve_unlock: false, can_add_data: false, can_delete_data: false, is_active: true }) },
   isNewRoleValid: { type: Boolean, default: false },
   isRoleNamesValid: { type: Boolean, default: false },
   isCoreSystemRole: { type: Function, default: () => false },
   isSystemRole: { type: Function, default: () => false },
 });
 
-defineEmits(['edit', 'cancel', 'save', 'addRole', 'deleteRole', 'toggleDifficulty', 'update:newRole', 'updateRoleName', 'updateRoleDisplayName', 'toggleCanApprove', 'toggleCanReport', 'toggleCanApproveUnlock']);
+defineEmits(['edit', 'cancel', 'save', 'addRole', 'deleteRole', 'toggleDifficulty', 'update:newRole', 'updateRoleName', 'updateRoleDisplayName', 'toggleCanApprove', 'toggleCanReport', 'toggleCanApproveUnlock', 'toggleCanAddData', 'toggleCanDeleteData']);
 </script>

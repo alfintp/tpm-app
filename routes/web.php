@@ -72,7 +72,7 @@ Route::get('/notifications', function () {
     return Inertia::render('Notifications');
 });
 
-// Menggunakan view lama agar fungsi-fungsi SPA lama berjalan normal dahulu
+// Catch-all: render 404 page via Inertia instead of Blade view
 Route::get('/{any}', function () {
-    return view('dashboard');
+    return Inertia::render('NotFound');
 })->where('any', '.*');

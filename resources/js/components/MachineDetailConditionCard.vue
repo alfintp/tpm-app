@@ -72,7 +72,7 @@
                   :key="stat.role"
                   class="flex items-center justify-between text-[11px] font-semibold"
                 >
-                  <span class="font-medium opacity-80">{{ stat.bucket === 'teknisi' ? 'Berat' : 'Ringan' }}</span>
+                  <span class="font-medium opacity-80">{{ stat.bucket === 'berat' ? 'Berat' : 'Ringan' }}</span>
                   <span class="font-bold tracking-wide" :class="coverageStatBadgeClass(stat)">{{ stat.checked }}/{{ stat.total }}</span>
                 </div>
               </div>

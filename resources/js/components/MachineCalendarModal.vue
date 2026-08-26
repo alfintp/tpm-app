@@ -148,25 +148,22 @@
           </div>
           <!-- Mobile detail list -->
           <div class="mt-4 pt-4 border-t border-slate-200">
-            <p class="text-sm font-semibold text-slate-600 mb-3">Detail Jadwal Hari Ini:</p>
+            <p class="text-sm font-semibold text-slate-600 mb-3">Detail Jadwal Bulan Ini:</p>
             <div class="space-y-2">
-              <div v-for="day in calendarDaysWithMachines.slice(0, 5)" :key="day.date" class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+              <div v-for="day in calendarDaysWithMachines" :key="day.date" class="bg-slate-50 rounded-lg p-3 border border-slate-200">
                 <div class="flex items-center justify-between mb-2">
                   <span class="font-bold text-sm text-brand-brown">{{ day.dayNumber }} {{ currentMonthName }}</span>
                   <span v-if="day.isToday" class="text-xs bg-brand-brown text-white px-2 py-0.5 rounded-full">Hari Ini</span>
                 </div>
                 <div class="space-y-1.5">
                   <div
-                    v-for="(machine, index) in day.machines.slice(0, 3)" :key="index"
+                    v-for="(machine, index) in day.machines" :key="index"
                     :class="getMachineBadgeClass(machine.status)"
                     class="text-xs sm:text-sm p-2 rounded-lg cursor-pointer transition-all flex items-center gap-2 shadow-sm"
                     @click="navigateToMachine(machine.id)"
                   >
                     <div class="font-semibold truncate flex-1">{{ machine.name }}</div>
                   </div>
-                  <button v-if="day.machines.length > 3" @click="openDayModal(day)" class="w-full text-xs text-brand-brown font-semibold text-center py-1 hover:underline cursor-pointer">
-                    +{{ day.machines.length - 3 }} mesin lainnya &rarr;
-                  </button>
                 </div>
               </div>
             </div>

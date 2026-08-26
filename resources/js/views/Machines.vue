@@ -44,7 +44,7 @@
             Periode Laporan
           </Button>
           <Button
-            v-if="isManagerOrAdmin"
+            v-if="canAddData"
             @click="openCreate"
             class="inline-flex flex-row items-center bg-linear-to-tr from-brand-brown to-brand-gradation text-white hover:opacity-90 rounded-xl font-semibold text-sm px-4 py-2 whitespace-nowrap gap-2 shadow-md hover:cursor-pointer min-w-fit"
           >
@@ -306,7 +306,7 @@
       <!-- Kolom: Komponen -->
       <template #cell-components_count="{ row }">
         <div class="flex flex-col items-center gap-1">
-          <span class="text-sm text-slate-600" v-if="!getMachineProgress(row).isPartiallyChecked">{{ row.components?.length ?? 0 }}</span>
+          <span class="text-sm text-slate-600" v-if="!getMachineProgress(row).isPartiallyChecked">{{ row.components_count ?? row.components?.length ?? 0 }}</span>
           <div v-if="getMachineProgress(row).isPartiallyChecked" 
                class="flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-md text-xs font-black border border-amber-300 shadow-sm animate-pulse"
                title="Progres Pengecekan (Sebagian)">
@@ -319,7 +319,7 @@
       <!-- Slot Actions: Hapus -->
       <template #actions="{ row }">
         <button
-          v-if="isManagerOrAdmin"
+          v-if="canDeleteData"
           @click.stop="deleteMachine(row, $event)"
           class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
           title="Hapus"
@@ -417,7 +417,7 @@ const props = defineProps({
   }
 });
 
-const { isManagerOrAdmin, isAdmin, user, hasBothCities } = useAuth();
+const { isManagerOrAdmin, isAdmin, user, hasBothCities, canAddData, canDeleteData } = useAuth();
 const machines = ref(props.machines || props.initialMachines || []);
 const schedules = ref(props.schedules || props.initialSchedules || []);
 const notifications = ref(props.notifications || props.initialNotifications || []);
@@ -987,7 +987,7 @@ const onSettingsSaved = (newSettings) => {
 
 const deleteMachine = async (machine, event) => {
   event.stopPropagation();
-  if (!isManagerOrAdmin.value) return;
+  if (!canDeleteData.value) return;
   const ok = await showConfirm('Hapus Mesin', `Apakah Anda yakin ingin menghapus "${machine.name}"? Semua data terkait (komponen, jadwal, riwayat) akan ikut terhapus.`);
   if (!ok) return;
   try {

@@ -4,7 +4,7 @@
     <PageHeader title="Manajemen Stok" subtitle="Kelola stok suku cadang penggantian komponen">
       <template #actions>
         <button
-          v-if="isAdmin"
+          v-if="canAddData"
           @click="showBulkLimit = true"
           class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:border-brand-brown hover:text-brand-brown cursor-pointer"
         >
@@ -20,7 +20,7 @@
           Import
         </button>
         <button
-          v-if="isAdmin"
+          v-if="canAddData"
           @click="openCreate"
           class="inline-flex items-center gap-1.5 rounded-xl bg-brand-gradation text-white px-3 py-2 text-xs font-bold transition-all hover:shadow-md active:scale-95 cursor-pointer"
         >
@@ -191,7 +191,7 @@
           <template #actions="{ row }">
             <div class="flex items-center justify-end gap-1">
               <button
-                v-if="isAdmin"
+                v-if="canAddData"
                 @click="openRestock(row)"
                 class="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors"
                 title="Restock"
@@ -206,7 +206,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               </button>
               <button
-                v-if="isAdmin"
+                v-if="canAddData"
                 @click="openEdit(row)"
                 class="p-2 text-slate-400 hover:text-brand-gradation hover:bg-brand-cream rounded-lg cursor-pointer transition-colors"
                 title="Edit Stok"
@@ -214,7 +214,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
               </button>
               <button
-                v-if="isAdmin"
+                v-if="canDeleteData"
                 @click="deleteStock(row)"
                 class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
                 title="Hapus Stok"
@@ -421,6 +421,7 @@ import PageHeader from '../components/PageHeader.vue';
 import SearchInput from '../components/SearchInput.vue';
 import DataTable from '../components/DataTable.vue';
 import { useAuth } from '../composables/useAuth.js';
+import { showAlert, showConfirm } from '../composables/useAlert.js';
 
 const StockForm = defineAsyncComponent(() => import('../components/StockForm.vue'));
 const RestockModal = defineAsyncComponent(() => import('../components/RestockModal.vue'));
@@ -428,7 +429,7 @@ const StockImport = defineAsyncComponent(() => import('../components/StockImport
 const BulkSetLimit = defineAsyncComponent(() => import('../components/BulkSetLimit.vue'));
 const StockUsageHistory = defineAsyncComponent(() => import('../components/StockUsageHistory.vue'));
 
-const { isAdmin } = useAuth();
+const { isAdmin, canAddData, canDeleteData } = useAuth();
 
 const stocks = ref([]);
 const machines = ref([]);
@@ -666,13 +667,15 @@ const viewUsageHistory = (stock) => {
 };
 
 const deleteStock = async (stock) => {
-  if (!confirm(`Hapus stok "${stock.name}" (${stock.code})?`)) return;
+  const ok = await showConfirm('Hapus Stok', `Hapus stok "${stock.name}" (${stock.code})?`);
+  if (!ok) return;
   try {
     await axios.delete(`/api/stocks/${stock.id}`);
     stocks.value = stocks.value.filter(s => s.id !== stock.id);
+    showAlert('success', 'Berhasil', 'Stok berhasil dihapus.');
   } catch (e) {
     if (e.response?.data?.message) {
-      alert(e.response.data.message);
+      showAlert('error', 'Gagal', e.response.data.message);
       stocks.value = stocks.value.map(s => s.id === stock.id ? { ...s, is_active: false } : s);
     }
   }
@@ -680,13 +683,15 @@ const deleteStock = async (stock) => {
 
 const onStockSaved = (stock) => {
   const idx = stocks.value.findIndex(s => s.id === stock.id);
+  const isEdit = idx >= 0;
   stock.is_low_stock = stock.quantity <= stock.limit_qty;
-  if (idx >= 0) {
+  if (isEdit) {
     stocks.value[idx] = stock;
   } else {
     stocks.value.push(stock);
   }
   showStockForm.value = false;
+  showAlert('success', 'Berhasil', isEdit ? 'Stok berhasil diperbarui.' : 'Stok baru berhasil ditambahkan.');
 };
 
 const onRestockSaved = (stock) => {
@@ -696,6 +701,7 @@ const onRestockSaved = (stock) => {
     stocks.value[idx] = stock;
   }
   showRestock.value = false;
+  showAlert('success', 'Berhasil', 'Restock stok berhasil.');
 };
 
 const onImported = () => {

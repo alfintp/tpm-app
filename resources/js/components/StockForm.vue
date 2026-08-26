@@ -102,6 +102,7 @@
 <script setup>
 import { ref } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../composables/useAlert.js';
 
 const props = defineProps({
   stock: { type: Object, default: null },
@@ -123,7 +124,7 @@ const saving = ref(false);
 
 const save = async () => {
   if (!form.value.code || !form.value.name) {
-    alert('Kode dan nama stok wajib diisi.');
+    showAlert('warning', 'Data Belum Lengkap', 'Kode dan nama stok wajib diisi.');
     return;
   }
   saving.value = true;
@@ -136,7 +137,7 @@ const save = async () => {
       emit('saved', res.data);
     }
   } catch (e) {
-    alert(e.response?.data?.message ?? 'Gagal menyimpan stok.');
+    showAlert('error', 'Gagal Menyimpan', e.response?.data?.message ?? 'Gagal menyimpan stok.');
   } finally {
     saving.value = false;
   }

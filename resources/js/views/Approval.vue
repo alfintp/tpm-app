@@ -98,6 +98,8 @@
       @toggle-can-approve="({ role, value }) => role.can_approve = value"
       @toggle-can-report="({ role, value }) => role.can_report = value"
       @toggle-can-approve-unlock="({ role, value }) => role.can_approve_unlock = value"
+      @toggle-can-add-data="({ role, value }) => role.can_add_data = value"
+      @toggle-can-delete-data="({ role, value }) => role.can_delete_data = value"
     />
 
     <ApprovalUnlockPanel
@@ -229,7 +231,7 @@ const flowStepsBackup = ref([]);
 
 const localRoles = ref([]);
 const rolesBackup = ref([]);
-const newRole = ref({ name: '', display_name: '', can_approve: true, can_report: false, can_approve_unlock: false, is_active: true });
+const newRole = ref({ name: '', display_name: '', can_approve: true, can_report: false, can_approve_unlock: false, can_add_data: false, can_delete_data: false, is_active: true });
 const roleConfigLoading = ref(false);
 const roleEditMode = ref(false);
 
@@ -248,12 +250,14 @@ const approvalColumns = [
 
 const { isAdmin, user: currentUser, authReady } = useAuth();
 
-// Default city filter to user's city
-watchEffect(() => {
-  if (currentUser.value?.city && currentUser.value.city !== 'both' && cityFilter.value === 'all') {
-    cityFilter.value = currentUser.value.city;
+// Default city filter to user's city (one-time only, don't override user's manual selection)
+const cityFilterInitialized = ref(false);
+watch(() => currentUser.value?.city, (city) => {
+  if (city && city !== 'both' && !cityFilterInitialized.value) {
+    cityFilter.value = city;
+    cityFilterInitialized.value = true;
   }
-});
+}, { immediate: true });
 
 const decideModal = ref({ show: false, item: null, decision: 'approved', notes: '' });
 const detailModal = ref({ show: false, item: null });
@@ -652,7 +656,7 @@ const addNewRole = async () => {
   roleConfigLoading.value = true;
   try {
     await axios.post('/api/roles', { ...newRole.value });
-    newRole.value = { name: '', display_name: '', can_approve: true, can_report: false, can_approve_unlock: false, is_active: true };
+    newRole.value = { name: '', display_name: '', can_approve: true, can_report: false, can_approve_unlock: false, can_add_data: false, can_delete_data: false, is_active: true };
     await loadData();
     showAlert('success', 'Berhasil', 'Role baru berhasil ditambahkan.');
   } catch (e) {
@@ -678,6 +682,8 @@ const saveAllRoles = async () => {
         can_approve: r.can_approve,
         can_report: r.can_report,
         can_approve_unlock: r.can_approve_unlock || false,
+        can_add_data: r.can_add_data || false,
+        can_delete_data: r.can_delete_data || false,
         required_difficulties: r.required_difficulties || [],
       }))
     });

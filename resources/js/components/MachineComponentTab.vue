@@ -65,7 +65,7 @@
           Import Indikator
         </button>
         <button
-          v-if="isManagerOrAdmin"
+          v-if="canAddData"
           @click="$emit('add')"
           class="flex items-center gap-1.5 bg-brand-brown hover:bg-brand-gradation text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors shadow-sm cursor-pointer"
         >
@@ -124,11 +124,11 @@
             </div>
 
             <!-- Edit/Delete -->
-            <div v-if="isManagerOrAdmin" class="flex flex-col gap-1">
-              <button @click.stop="$emit('edit', comp)" class="p-1.5 text-slate-400 hover:text-brand-gradation hover:bg-brand-cream rounded-lg cursor-pointer transition-colors" title="Edit">
+            <div v-if="canAddData || canDeleteData" class="flex flex-col gap-1">
+              <button v-if="canAddData" @click.stop="$emit('edit', comp)" class="p-1.5 text-slate-400 hover:text-brand-gradation hover:bg-brand-cream rounded-lg cursor-pointer transition-colors" title="Edit">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
               </button>
-              <button @click.stop="$emit('delete', comp)" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors" title="Hapus">
+              <button v-if="canDeleteData" @click.stop="$emit('delete', comp)" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors" title="Hapus">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
               </button>
             </div>
@@ -170,6 +170,8 @@ const props = defineProps({
   components: { type: Array, default: () => [] },
   isAdmin: { type: Boolean, default: false },
   isManagerOrAdmin: { type: Boolean, default: false },
+  canAddData: { type: Boolean, default: false },
+  canDeleteData: { type: Boolean, default: false },
   colorTheme: { type: Function, required: true },
   formatDate: { type: Function, required: true },
   getLastReplacement: { type: Function, required: true },

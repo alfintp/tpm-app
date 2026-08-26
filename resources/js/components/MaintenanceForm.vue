@@ -149,6 +149,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { showAlert } from '../composables/useAlert.js';
 
 const props = defineProps(['initialMachineId']);
 const emit = defineEmits(['close']);
@@ -224,7 +225,7 @@ const formatDateTime = (d) => new Date(d).toLocaleString('id-ID', { day: 'numeri
 const submitReport = async () => {
   const validActions = form.value.actions.filter(a => a.machine_component_id && a.condition_after_pct !== null && a.condition_after_pct !== '');
   if (validActions.length === 0 && form.value.actions.length > 0) {
-    alert('Lengkapi pilihan komponen dan kondisi sesudah pada setiap tindakan.');
+    showAlert('warning', 'Data Belum Lengkap', 'Lengkapi pilihan komponen dan kondisi sesudah pada setiap tindakan.');
     return;
   }
   submitting.value = true;
@@ -239,7 +240,7 @@ const submitReport = async () => {
     await axios.post('/api/records', payload);
     emit('close', true);
   } catch (e) {
-    alert('Gagal submit: ' + (e.response?.data?.error || e.message));
+    showAlert('error', 'Gagal Submit', 'Gagal submit: ' + (e.response?.data?.error || e.message));
   } finally {
     submitting.value = false;
   }

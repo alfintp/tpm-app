@@ -7,6 +7,7 @@ use App\Models\Stock;
 use App\Models\StockUsage;
 use App\Models\ActivityLog;
 use App\Models\Machine;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -78,7 +79,9 @@ class StockController extends Controller
 
     public function store(Request $request)
     {
-        if ($request->user()->role !== 'admin') {
+        $user = $request->user();
+        $canAdd = $user->role === 'admin' || Role::where('name', $user->role)->value('can_add_data');
+        if (!$canAdd) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
@@ -103,7 +106,9 @@ class StockController extends Controller
 
     public function update(Request $request, $id)
     {
-        if ($request->user()->role !== 'admin') {
+        $user = $request->user();
+        $canAdd = $user->role === 'admin' || Role::where('name', $user->role)->value('can_add_data');
+        if (!$canAdd) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
@@ -129,7 +134,9 @@ class StockController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        if ($request->user()->role !== 'admin') {
+        $user = $request->user();
+        $canDelete = $user->role === 'admin' || Role::where('name', $user->role)->value('can_delete_data');
+        if (!$canDelete) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 

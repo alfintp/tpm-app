@@ -31,7 +31,7 @@
             <tr v-else-if="items.length === 0">
               <td colspan="5" class="px-6 py-12 text-center text-slate-400 font-medium italic">Belum ada pengajuan buka kunci.</td>
             </tr>
-            <tr v-for="item in items" :key="item.id" class="hover:bg-slate-50/50 transition-colors group">
+            <tr v-for="item in items" :key="item.unlock_request_id" class="hover:bg-slate-50/50 transition-colors group">
               <td class="px-6 py-4">
                 <div class="font-black text-slate-800 group-hover:text-brand-brown transition-colors cursor-pointer" @click="$emit('go-to-machine', item.id)">
                   {{ item.name }}

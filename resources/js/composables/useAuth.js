@@ -38,6 +38,8 @@ export function useAuth() {
   const isTechnician = computed(() => role.value === 'technician');
   const isManagerOrAdmin = computed(() => isAdmin.value || isManager.value);
   const isApprover = computed(() => isAdmin.value || (user.value?.can_approve ?? false));
+  const canAddData = computed(() => isAdmin.value || (user.value?.can_add_data ?? false));
+  const canDeleteData = computed(() => isAdmin.value || (user.value?.can_delete_data ?? false));
   const hasBothCities = computed(() => (user.value?.city ?? 'both') === 'both');
 
   async function login(email, password) {
@@ -45,7 +47,7 @@ export function useAuth() {
       const response = await window.axios.post('/api/login', { email, password });
       
       token.value = response.data.access_token;
-      user.value = response.data.user;
+      user.value = { ...response.data.user, role_display_name: response.data.role_display_name };
 
       localStorage.setItem('auth_token', token.value);
       localStorage.setItem('user_profile', JSON.stringify(user.value));
@@ -116,6 +118,18 @@ export function useAuth() {
     }
   }
 
+  async function refreshProfile() {
+    if (!token.value || token.value === 'null') return;
+    try {
+      const response = await window.axios.get('/api/user/profile');
+      user.value = response.data;
+      localStorage.setItem('user_profile', JSON.stringify(user.value));
+      window.dispatchEvent(new Event('auth-changed'));
+    } catch (error) {
+      console.error('Profile refresh failed:', error);
+    }
+  }
+
   return {
     user,
     token,
@@ -127,9 +141,12 @@ export function useAuth() {
     isTechnician,
     isManagerOrAdmin,
     isApprover,
+    canAddData,
+    canDeleteData,
     hasBothCities,
     login,
     logout,
     initializeAuth,
+    refreshProfile,
   };
 }

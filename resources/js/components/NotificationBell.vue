@@ -102,13 +102,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import { router } from '@inertiajs/vue3';
 
 const open = ref(false);
-const notifications = ref([]);
-const unreadCount = ref(0);
+const broadcastNotifications = ref([]);
+const dynamicNotifications = ref([]);
 const isMobile = ref(false);
+
+const notifications = computed(() => {
+  const all = [...dynamicNotifications.value, ...broadcastNotifications.value];
+  all.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return all;
+});
+
+const unreadCount = computed(() => notifications.value.filter(n => !n.is_read).length);
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 640;
@@ -123,30 +132,39 @@ const togglePanel = () => {
 
 const fetchNotifications = async () => {
   try {
-    const res = await axios.get('/api/notifications');
-    notifications.value = res.data.notifications ?? [];
-    unreadCount.value = res.data.unread_count ?? 0;
+    const [broadcastRes, dynamicRes] = await Promise.all([
+      axios.get('/api/notifications'),
+      axios.get('/api/notifications/dynamic'),
+    ]);
+    broadcastNotifications.value = broadcastRes.data.notifications ?? [];
+    dynamicNotifications.value = dynamicRes.data.notifications ?? [];
   } catch (e) {
     console.error('Failed to load notifications:', e);
   }
 };
 
 const markRead = async (n) => {
-  if (n.is_read) return;
-  try {
-    await axios.post(`/api/notifications/${n.id}/read`);
-    n.is_read = true;
-    unreadCount.value = Math.max(0, unreadCount.value - 1);
-  } catch (e) {
-    console.error('Failed to mark notification as read:', e);
+  if (n.is_read && !n.link) return;
+  if (n.id && !String(n.id).startsWith('dynamic_') && !n.is_read) {
+    try {
+      await axios.post(`/api/notifications/${n.id}/read`);
+    } catch (e) {
+      console.error('Failed to mark notification as read:', e);
+      return;
+    }
+  }
+  n.is_read = true;
+  if (n.link) {
+    open.value = false;
+    router.visit(n.link);
   }
 };
 
 const markAllRead = async () => {
   try {
     await axios.post('/api/notifications/read-all');
-    notifications.value.forEach(n => { n.is_read = true; });
-    unreadCount.value = 0;
+    broadcastNotifications.value.forEach(n => { n.is_read = true; });
+    dynamicNotifications.value.forEach(n => { n.is_read = true; });
   } catch (e) {
     console.error('Failed to mark all as read:', e);
   }

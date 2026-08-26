@@ -22,6 +22,20 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
             Paste dari Excel
           </button>
+          <button
+            @click="triggerFileInput"
+            class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:border-brand-brown hover:text-brand-brown cursor-pointer transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+            Upload Excel
+          </button>
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            class="hidden"
+            @change="handleFileUpload"
+          />
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-slate-100">
@@ -67,7 +81,13 @@
           </table>
         </div>
 
-        <p class="text-[10px] text-slate-400">Format paste dari Excel: kode, kategori, nama, qty, unit, limit (dipisah tab/koma)</p>
+        <div class="rounded-xl bg-slate-50 border border-slate-100 p-3 space-y-1">
+          <p class="text-xs font-semibold text-slate-600">Format Excel/CSV:</p>
+          <p class="text-[10px] text-slate-400">Kolom: Kode | Kategori | Nama | Qty | Unit | Limit</p>
+          <p class="text-[10px] text-slate-400">Wajib: Kode & Nama. Opsional: Kategori, Qty (default 0), Unit (default pcs), Limit (default 1)</p>
+          <p class="text-[10px] text-slate-400">Bisa dengan atau tanpa header row. Jika ada header berisi "Kode"/"Code", otomatis dilewati.</p>
+          <p class="text-[10px] text-slate-400">Paste juga didukung: copy dari Excel lalu klik "Paste dari Excel".</p>
+        </div>
       </div>
 
       <div class="p-5 border-t border-slate-100 flex justify-end gap-2">
@@ -92,6 +112,8 @@
 <script setup>
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
+import { showAlert } from '../composables/useAlert.js';
 
 const emit = defineEmits(['close', 'imported']);
 
@@ -102,6 +124,57 @@ const rows = ref([
 const saving = ref(false);
 
 const validRows = computed(() => rows.value.filter(r => r.code && r.name));
+
+const fileInputRef = ref(null);
+
+const triggerFileInput = () => {
+  fileInputRef.value?.click();
+};
+
+const handleFileUpload = async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+    const newRows = [];
+    let startIdx = 0;
+
+    // Detect header row: if first row contains 'kode' or 'code', skip it
+    const firstRow = json[0];
+    if (firstRow && typeof firstRow[0] === 'string' && /^(kode|code)$/i.test(firstRow[0].trim())) {
+      startIdx = 1;
+    }
+
+    for (let i = startIdx; i < json.length; i++) {
+      const parts = json[i];
+      if (!parts || (!parts[0] && !parts[2])) continue;
+      newRows.push({
+        code: String(parts[0] ?? '').trim(),
+        category: String(parts[1] ?? '').trim(),
+        name: String(parts[2] ?? '').trim(),
+        quantity: parseInt(parts[3] ?? '0') || 0,
+        unit: String(parts[4] ?? 'pcs').trim() || 'pcs',
+        limit_qty: parseInt(parts[5] ?? '1') || 1,
+      });
+    }
+
+    if (newRows.length > 0) {
+      rows.value = newRows;
+    } else {
+      showAlert('warning', 'Data Kosong', 'Tidak ada data valid ditemukan di file.');
+    }
+  } catch (err) {
+    showAlert('error', 'Gagal Membaca File', 'Pastikan format sesuai: Kode, Kategori, Nama, Qty, Unit, Limit.');
+  }
+
+  // Reset input so same file can be re-uploaded
+  e.target.value = '';
+};
 
 const addRow = () => {
   rows.value.push({ code: '', category: '', name: '', quantity: 0, unit: 'pcs', limit_qty: 1 });
@@ -127,7 +200,7 @@ const pasteFromClipboard = async () => {
       rows.value = newRows;
     }
   } catch (e) {
-    alert('Gagal membaca clipboard. Pastikan browser mengizinkan akses clipboard.');
+    showAlert('error', 'Gagal Paste', 'Pastikan browser mengizinkan akses clipboard.');
   }
 };
 
@@ -135,10 +208,10 @@ const submit = async () => {
   saving.value = true;
   try {
     const res = await axios.post('/api/stocks/import', { stocks: validRows.value });
-    alert(res.data.message);
+    await showAlert('success', 'Import Berhasil', res.data.message);
     emit('imported');
   } catch (e) {
-    alert(e.response?.data?.message ?? 'Gagal mengimpor stok.');
+    showAlert('error', 'Gagal Import', e.response?.data?.message ?? 'Terjadi kesalahan saat mengimpor stok.');
   } finally {
     saving.value = false;
   }
