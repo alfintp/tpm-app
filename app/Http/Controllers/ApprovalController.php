@@ -62,8 +62,7 @@ class ApprovalController extends Controller
             'steps.*.role' => 'required|in:' . implode(',', $approvableRoles),
         ]);
 
-        DB::beginTransaction();
-        try {
+        return DB::transaction(function () use ($validated) {
             // Before changing the flow, freeze the current active flow into all existing
             // reports that do not already have a snapshot. New reports will snapshot the
             // new flow when they are created.
@@ -113,12 +112,8 @@ class ApprovalController extends Controller
                 }
             }
 
-            DB::commit();
             return response()->json(['message' => 'Alur approval berhasil diperbarui.']);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => 'Gagal memperbarui alur approval: ' . $e->getMessage()], 500);
-        }
+        }, 3);
     }
 
     public function index(Request $request)
@@ -132,7 +127,13 @@ class ApprovalController extends Controller
         $isApprover = $role === 'admin' || in_array($role, $approvingRoles);
         $roleDisplayMap = Role::pluck('display_name', 'name')->toArray();
 
-        $baseQuery = MaintenanceRecord::with([
+        $baseQuery = MaintenanceRecord::select([
+            'id', 'machine_id', 'technician_id', 'schedule_id',
+            'maintenance_date', 'created_at', 'start_time', 'end_time',
+            'duration_minutes', 'is_unscheduled', 'is_late',
+            'scheduled_period_date', 'notes', 'approval_flow_snapshot',
+        ])
+        ->with([
             'machine:id,name,location,kota',
             'schedule:id,schedule_type,interval_days',
             'technician:id,full_name,role',
@@ -328,8 +329,7 @@ class ApprovalController extends Controller
             return response()->json(['message' => 'Tahap ini sudah diputuskan.'], 409);
         }
 
-        DB::beginTransaction();
-        try {
+        return DB::transaction(function () use ($recordId, $authUser, $validated, $record, $currentStep, $steps) {
             $approval = Approval::create([
                 'record_id'   => $recordId,
                 'approver_id' => $authUser->id,
@@ -400,12 +400,8 @@ class ApprovalController extends Controller
                 "{$statusWord} laporan maintenance mesin: {$machineName} pada tahap {$currentStep}"
             );
 
-            DB::commit();
             return response()->json($approval->load('approver'));
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => 'Gagal memproses keputusan: ' . $e->getMessage()], 500);
-        }
+        }, 3);
     }
 
     private function recordApprovalState(MaintenanceRecord $record, $flowSteps, ?array $roleDisplayMap = null)

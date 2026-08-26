@@ -222,67 +222,67 @@ class MachineController extends Controller
             ->map(fn ($v) => (int) $v)
             ->toArray();
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
+        $createdCount = 0;
+        $affectedCities = [];
+
         try {
-            $createdCount = 0;
-            $affectedCities = [];
-            foreach ($request->machines as $item) {
-                // Find PIC by email
-                $picId = null;
-                if (!empty($item['pic_email'])) {
-                    $picUser = User::where('email', $item['pic_email'])->first();
-                    if ($picUser) {
-                        $picId = $picUser->id;
+            DB::transaction(function () use ($request, $counters, &$createdCount, &$affectedCities) {
+                foreach ($request->machines as $item) {
+                    // Find PIC by email
+                    $picId = null;
+                    if (!empty($item['pic_email'])) {
+                        $picUser = User::where('email', $item['pic_email'])->first();
+                        if ($picUser) {
+                            $picId = $picUser->id;
+                        }
                     }
-                }
 
-                $counters[$item['kota']] = ($counters[$item['kota']] ?? 0) + 1;
-                $affectedCities[$item['kota']] = true;
+                    $counters[$item['kota']] = ($counters[$item['kota']] ?? 0) + 1;
+                    $affectedCities[$item['kota']] = true;
 
-                $machine = Machine::create([
-                    'kode' => $item['kode'],
-                    'name' => $item['name'],
-                    'description' => $item['description'] ?? null,
-                    'condition_pct' => $item['condition_pct'],
-                    'location' => $item['location'] ?? null,
-                    'kota' => $item['kota'],
-                    'import_order' => $counters[$item['kota']],
-                    'status' => $item['status'],
-                    'pic_mesin_id' => $picId,
-                    'maintenance_duration' => $item['maintenance_duration'] ?? null,
-                ]);
-
-                // Automatically create maintenance schedule if a frequency is provided.
-                // The actual due date is computed by ScheduleOccurrenceGenerator from
-                // import_order + interval_days, so next_due_date here is just a placeholder.
-                if (!empty($item['maintenance_duration'])) {
-                    MaintenanceSchedule::create([
-                        'machine_id' => $machine->id,
-                        'schedule_type' => 'preventive',
-                        'interval_days' => $item['maintenance_duration'],
-                        'next_due_date' => now()->toDateString(),
-                        'is_active' => true,
+                    $machine = Machine::create([
+                        'kode' => $item['kode'],
+                        'name' => $item['name'],
+                        'description' => $item['description'] ?? null,
+                        'condition_pct' => $item['condition_pct'],
+                        'location' => $item['location'] ?? null,
+                        'kota' => $item['kota'],
+                        'import_order' => $counters[$item['kota']],
+                        'status' => $item['status'],
+                        'pic_mesin_id' => $picId,
+                        'maintenance_duration' => $item['maintenance_duration'] ?? null,
                     ]);
+
+                    // Automatically create maintenance schedule if a frequency is provided.
+                    // The actual due date is computed by ScheduleOccurrenceGenerator from
+                    // import_order + interval_days, so next_due_date here is just a placeholder.
+                    if (!empty($item['maintenance_duration'])) {
+                        MaintenanceSchedule::create([
+                            'machine_id' => $machine->id,
+                            'schedule_type' => 'preventive',
+                            'interval_days' => $item['maintenance_duration'],
+                            'next_due_date' => now()->toDateString(),
+                            'is_active' => true,
+                        ]);
+                    }
+                    $createdCount++;
                 }
-                $createdCount++;
-            }
 
-            ActivityLog::log('Import Mesin', "Mengimpor {$createdCount} data mesin baru melalui Excel");
-            \Illuminate\Support\Facades\DB::commit();
-
-            $generator = app(\App\Services\ScheduleOccurrenceGenerator::class);
-            foreach (array_keys($affectedCities) as $kota) {
-                $generator->generateUpcomingForCity($kota);
-            }
-
-            return response()->json([
-                'message' => "Berhasil mengimpor {$createdCount} mesin.",
-                'count' => $createdCount
-            ], 201);
+                ActivityLog::log('Import Mesin', "Mengimpor {$createdCount} data mesin baru melalui Excel");
+            }, 3);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['message' => 'Gagal mengimpor data: ' . $e->getMessage()], 500);
         }
+
+        $generator = app(\App\Services\ScheduleOccurrenceGenerator::class);
+        foreach (array_keys($affectedCities) as $kota) {
+            $generator->generateUpcomingForCity($kota);
+        }
+
+        return response()->json([
+            'message' => "Berhasil mengimpor {$createdCount} mesin.",
+            'count' => $createdCount
+        ], 201);
     }
 
     public function update(Request $request, $id)

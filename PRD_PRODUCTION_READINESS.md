@@ -295,3 +295,37 @@ Atau pakai systemd timer jika web utama sudah pakai approach tersebut.
 
 ## Next Step
 Implementasi poin 5 (deadlock retry) dan 6 (pagination approval) sekarang. Poin lain menunggu migrasi ke web utama.
+
+---
+
+## Log Implementasi
+
+### Poin 5: Deadlock Retry — SELESAI (26 Aug 2026)
+
+**Yang diubah:** Semua `DB::beginTransaction()` / `DB::commit()` / `DB::rollBack()` manual diganti dengan `DB::transaction(fn() => ..., 3)` yang auto-retry 3x pada deadlock.
+
+**File yang diubah:**
+- `app/Http/Controllers/ApprovalController.php` — method `updateFlowConfig` dan `decide`
+- `app/Http/Controllers/RoleController.php` — method `bulkUpdate`
+- `app/Http/Controllers/MaintenanceRecordController.php` — method `store`
+- `app/Http/Controllers/MachineController.php` — method `bulkStore`
+- `app/Http/Controllers/StockController.php` — method `import` dan `bulkLimit`
+- `app/Http/Controllers/MachineComponentController.php` — method `bulkStore`, `bulkStoreGlobal`, `bulkImportIndicators`
+
+**Cara kerja:** Jika terjadi deadlock (MySQL error 1213), Laravel otomatis retry hingga 3x dengan delay kecil antara retry. Jika masih gagal setelah 3x, exception dilempar dan user dapat error 500.
+
+### Poin 6: N+1 / Pagination Approval — SELESAI (26 Aug 2026)
+
+**Yang diubah:**
+1. `app/Http/Controllers/ApprovalController.php` — method `index`: ditambah `->select([...])` untuk hanya load kolom yang dibutuhkan, mengurangi memory per record.
+2. `database/migrations/2026_08_26_110000_add_status_date_index_to_maintenance_records.php` — composite index `(status, maintenance_date)` untuk mempercepat query approval list.
+
+**Kenapa tidak pakai server-side pagination?** Frontend (`Approval.vue`) melakukan semua filtering client-side (city, month, search, status tabs, sorting). Server-side pagination akan membreak filtering ini. Sebagai gantinya, optimasi dilakukan dengan:
+- Select hanya kolom yang dibutuhkan (reduce memory per record)
+- Composite index untuk query yang lebih cepat
+- Eager loading sudah ada (tidak ada N+1)
+
+**Catatan untuk masa depan:** Jika data tumbuh > 1000 records, pertimbangkan untuk:
+- Limit query ke 12-24 bulan terakhir
+- Implement server-side pagination dengan frontend rewrite
+- Atau switch ke server-side filtering

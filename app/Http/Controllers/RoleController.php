@@ -177,7 +177,7 @@ class RoleController extends Controller
                     'required_difficulties' => $this->sanitizeDifficulties($roleData['required_difficulties'] ?? []),
                 ]);
             }
-        });
+        }, 3);
 
         return response()->json(['message' => 'Semua role berhasil disimpan.']);
     }

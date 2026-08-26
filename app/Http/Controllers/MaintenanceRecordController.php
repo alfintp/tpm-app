@@ -121,14 +121,12 @@ class MaintenanceRecordController extends Controller
             }
         }
 
-        DB::beginTransaction();
+        $beforeVals = collect($validated['actions'] ?? [])->pluck('condition_before_pct')->filter();
+        $afterVals = collect($validated['actions'] ?? [])->pluck('condition_after_pct')->filter();
+        $recordData = collect($validated)->except('actions')->toArray();
 
-        try {
+        return DB::transaction(function () use ($validated, $authUser, $beforeVals, $afterVals, $recordData) {
             // Calculate overall before/after from actions
-            $beforeVals = collect($validated['actions'] ?? [])->pluck('condition_before_pct')->filter();
-            $afterVals = collect($validated['actions'] ?? [])->pluck('condition_after_pct')->filter();
-
-            $recordData = collect($validated)->except('actions')->toArray();
             $recordData['condition_before_pct'] = $beforeVals->count() ? round($beforeVals->avg(), 1) : null;
             $recordData['condition_after_pct'] = $afterVals->count() ? round($afterVals->avg(), 1) : null;
 
@@ -234,13 +232,8 @@ class MaintenanceRecordController extends Controller
                 ]);
             }
 
-            DB::commit();
-
             return response()->json($record->load(['actions.component', 'actions.stock', 'actions.indicatorValues.indicator']), 201);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => 'Failed to create record: ' . $e->getMessage()], 500);
-        }
+        }, 3);
     }
 
     public function show($id)

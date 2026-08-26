@@ -133,40 +133,40 @@ class MachineComponentController extends Controller
             'components.*.indicators.*.description' => 'nullable|string|max:500',
         ]);
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
-        try {
-            $createdCount = 0;
-            foreach ($request->components as $item) {
-                $component = $machine->components()->create([
-                    'category' => $item['category'] ?? null,
-                    'name' => $item['name'],
-                    'specification' => $item['specification'] ?? null,
-                    'qty' => $item['qty'] ?? null,
-                    'unit' => $item['unit'] ?? null,
-                    'difficulty' => $item['difficulty'] ?? null,
-                    'last_condition_pct' => $item['last_condition_pct'] ?? 100,
-                ]);
+        $createdCount = 0;
 
-                foreach ($item['indicators'] ?? [] as $index => $indicator) {
-                    $component->indicators()->create([
-                        'name' => $indicator['name'],
-                        'description' => $indicator['description'] ?? null,
-                        'sort_order' => $index,
+        try {
+            DB::transaction(function () use ($request, $machine, &$createdCount) {
+                foreach ($request->components as $item) {
+                    $component = $machine->components()->create([
+                        'category' => $item['category'] ?? null,
+                        'name' => $item['name'],
+                        'specification' => $item['specification'] ?? null,
+                        'qty' => $item['qty'] ?? null,
+                        'unit' => $item['unit'] ?? null,
+                        'difficulty' => $item['difficulty'] ?? null,
+                        'last_condition_pct' => $item['last_condition_pct'] ?? 100,
                     ]);
+
+                    foreach ($item['indicators'] ?? [] as $index => $indicator) {
+                        $component->indicators()->create([
+                            'name' => $indicator['name'],
+                            'description' => $indicator['description'] ?? null,
+                            'sort_order' => $index,
+                        ]);
+                    }
+
+                    $createdCount++;
                 }
 
-                $createdCount++;
-            }
-
-            ActivityLog::log('Import Komponen', "Mengimpor {$createdCount} komponen baru untuk mesin: {$machine->name} melalui Excel");
-            \Illuminate\Support\Facades\DB::commit();
+                ActivityLog::log('Import Komponen', "Mengimpor {$createdCount} komponen baru untuk mesin: {$machine->name} melalui Excel");
+            }, 3);
 
             return response()->json([
                 'message' => "Berhasil mengimpor {$createdCount} komponen.",
                 'count' => $createdCount
             ], 201);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['message' => 'Gagal mengimpor komponen: ' . $e->getMessage()], 500);
         }
     }
@@ -219,41 +219,41 @@ class MachineComponentController extends Controller
             ], 422);
         }
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
-        try {
-            $createdCount = 0;
-            foreach ($request->components as $item) {
-                $machine = $existingMachines->get($item['machine_code']);
-                $component = $machine->components()->create([
-                    'category' => $item['category'] ?? null,
-                    'name' => $item['name'],
-                    'specification' => $item['specification'] ?? null,
-                    'qty' => $item['qty'] ?? null,
-                    'unit' => $item['unit'] ?? null,
-                    'difficulty' => $item['difficulty'] ?? null,
-                    'last_condition_pct' => $item['last_condition_pct'] ?? 100,
-                ]);
+        $createdCount = 0;
 
-                foreach ($item['indicators'] ?? [] as $index => $indicator) {
-                    $component->indicators()->create([
-                        'name' => $indicator['name'],
-                        'description' => $indicator['description'] ?? null,
-                        'sort_order' => $index,
+        try {
+            DB::transaction(function () use ($request, $existingMachines, &$createdCount) {
+                foreach ($request->components as $item) {
+                    $machine = $existingMachines->get($item['machine_code']);
+                    $component = $machine->components()->create([
+                        'category' => $item['category'] ?? null,
+                        'name' => $item['name'],
+                        'specification' => $item['specification'] ?? null,
+                        'qty' => $item['qty'] ?? null,
+                        'unit' => $item['unit'] ?? null,
+                        'difficulty' => $item['difficulty'] ?? null,
+                        'last_condition_pct' => $item['last_condition_pct'] ?? 100,
                     ]);
+
+                    foreach ($item['indicators'] ?? [] as $index => $indicator) {
+                        $component->indicators()->create([
+                            'name' => $indicator['name'],
+                            'description' => $indicator['description'] ?? null,
+                            'sort_order' => $index,
+                        ]);
+                    }
+
+                    $createdCount++;
                 }
 
-                $createdCount++;
-            }
-
-            ActivityLog::log('Import Komponen', "Mengimpor {$createdCount} komponen berdasarkan kode mesin melalui Excel");
-            \Illuminate\Support\Facades\DB::commit();
+                ActivityLog::log('Import Komponen', "Mengimpor {$createdCount} komponen berdasarkan kode mesin melalui Excel");
+            }, 3);
 
             return response()->json([
                 'message' => "Berhasil mengimpor {$createdCount} komponen untuk berbagai mesin.",
                 'count' => $createdCount
             ], 201);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['message' => 'Gagal mengimpor komponen: ' . $e->getMessage()], 500);
         }
     }
@@ -407,57 +407,53 @@ class MachineComponentController extends Controller
             'items.*.indicators.*.description' => 'nullable|string|max:500',
         ]);
 
-        DB::beginTransaction();
+        $missingComponents = [];
+        $importedCount = 0;
+
         try {
-            $machineCodes = collect($request->items)->pluck('machine_code')->unique()->toArray();
-            $machines = Machine::whereIn('kode', $machineCodes)->get()->keyBy('kode');
+            DB::transaction(function () use ($request, &$missingComponents, &$importedCount) {
+                $machineCodes = collect($request->items)->pluck('machine_code')->unique()->toArray();
+                $machines = Machine::whereIn('kode', $machineCodes)->get()->keyBy('kode');
 
-            $missingCodes = [];
-            foreach ($machineCodes as $code) {
-                if (!$machines->has($code)) {
-                    $missingCodes[] = $code;
+                $missingCodes = [];
+                foreach ($machineCodes as $code) {
+                    if (!$machines->has($code)) {
+                        $missingCodes[] = $code;
+                    }
                 }
-            }
-            if (!empty($missingCodes)) {
-                return response()->json([
-                    'message' => 'Kode mesin tidak ditemukan: ' . implode(', ', $missingCodes),
-                    'missing_codes' => $missingCodes,
-                ], 422);
-            }
-
-            $componentNamesByMachine = collect($request->items)->groupBy('machine_code')->map(function ($group) {
-                return $group->pluck('component_name')->unique()->toArray();
-            });
-
-            $componentsByKey = [];
-            foreach ($machines as $code => $machine) {
-                $names = $componentNamesByMachine[$code] ?? [];
-                $machineComponents = $machine->components()
-                    ->whereIn('name', $names)
-                    ->with('indicators')
-                    ->get()
-                    ->keyBy('name');
-                foreach ($machineComponents as $name => $component) {
-                    $componentsByKey[$code . '|' . $name] = $component;
-                }
-            }
-
-            $missingComponents = [];
-            $importedCount = 0;
-
-            foreach ($request->items as $item) {
-                $key = $item['machine_code'] . '|' . $item['component_name'];
-                if (!isset($componentsByKey[$key])) {
-                    $missingComponents[] = $item['machine_code'] . ' - ' . $item['component_name'];
-                    continue;
+                if (!empty($missingCodes)) {
+                    throw new \Exception('Kode mesin tidak ditemukan: ' . implode(', ', $missingCodes));
                 }
 
-                $component = $componentsByKey[$key];
-                $this->syncIndicators($component, $item['indicators']);
-                $importedCount += count($item['indicators']);
-            }
+                $componentNamesByMachine = collect($request->items)->groupBy('machine_code')->map(function ($group) {
+                    return $group->pluck('component_name')->unique()->toArray();
+                });
 
-            DB::commit();
+                $componentsByKey = [];
+                foreach ($machines as $code => $machine) {
+                    $names = $componentNamesByMachine[$code] ?? [];
+                    $machineComponents = $machine->components()
+                        ->whereIn('name', $names)
+                        ->with('indicators')
+                        ->get()
+                        ->keyBy('name');
+                    foreach ($machineComponents as $name => $component) {
+                        $componentsByKey[$code . '|' . $name] = $component;
+                    }
+                }
+
+                foreach ($request->items as $item) {
+                    $key = $item['machine_code'] . '|' . $item['component_name'];
+                    if (!isset($componentsByKey[$key])) {
+                        $missingComponents[] = $item['machine_code'] . ' - ' . $item['component_name'];
+                        continue;
+                    }
+
+                    $component = $componentsByKey[$key];
+                    $this->syncIndicators($component, $item['indicators']);
+                    $importedCount += count($item['indicators']);
+                }
+            }, 3);
 
             return response()->json([
                 'message' => "Berhasil mengimpor {$importedCount} indikator.",
@@ -465,7 +461,6 @@ class MachineComponentController extends Controller
                 'missing_components' => array_unique($missingComponents),
             ], 201);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json(['message' => 'Gagal mengimpor indikator: ' . $e->getMessage()], 500);
         }
     }

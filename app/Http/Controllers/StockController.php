@@ -170,36 +170,37 @@ class StockController extends Controller
             'stocks.*.limit_qty' => 'nullable|integer|min:0',
         ]);
 
-        DB::beginTransaction();
-        try {
-            $created = 0;
-            $updated = 0;
-            foreach ($request->stocks as $item) {
-                $existing = Stock::where('code', $item['code'])->first();
-                if ($existing) {
-                    $existing->update([
-                        'category' => $item['category'] ?? $existing->category,
-                        'name' => $item['name'],
-                        'quantity' => $item['quantity'] ?? $existing->quantity,
-                        'unit' => $item['unit'] ?? $existing->unit,
-                        'limit_qty' => $item['limit_qty'] ?? $existing->limit_qty,
-                    ]);
-                    $updated++;
-                } else {
-                    Stock::create([
-                        'code' => $item['code'],
-                        'category' => $item['category'] ?? null,
-                        'name' => $item['name'],
-                        'quantity' => $item['quantity'] ?? 0,
-                        'unit' => $item['unit'] ?? 'pcs',
-                        'limit_qty' => $item['limit_qty'] ?? 1,
-                    ]);
-                    $created++;
-                }
-            }
+        $created = 0;
+        $updated = 0;
 
-            ActivityLog::log('Import Stok', "Mengimpor stok: {$created} baru, {$updated} diperbarui");
-            DB::commit();
+        try {
+            DB::transaction(function () use ($request, &$created, &$updated) {
+                foreach ($request->stocks as $item) {
+                    $existing = Stock::where('code', $item['code'])->first();
+                    if ($existing) {
+                        $existing->update([
+                            'category' => $item['category'] ?? $existing->category,
+                            'name' => $item['name'],
+                            'quantity' => $item['quantity'] ?? $existing->quantity,
+                            'unit' => $item['unit'] ?? $existing->unit,
+                            'limit_qty' => $item['limit_qty'] ?? $existing->limit_qty,
+                        ]);
+                        $updated++;
+                    } else {
+                        Stock::create([
+                            'code' => $item['code'],
+                            'category' => $item['category'] ?? null,
+                            'name' => $item['name'],
+                            'quantity' => $item['quantity'] ?? 0,
+                            'unit' => $item['unit'] ?? 'pcs',
+                            'limit_qty' => $item['limit_qty'] ?? 1,
+                        ]);
+                        $created++;
+                    }
+                }
+
+                ActivityLog::log('Import Stok', "Mengimpor stok: {$created} baru, {$updated} diperbarui");
+            }, 3);
 
             return response()->json([
                 'message' => "Berhasil mengimpor {$created} stok baru, {$updated} diperbarui.",
@@ -207,7 +208,6 @@ class StockController extends Controller
                 'updated' => $updated,
             ], 201);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json(['message' => 'Gagal mengimpor stok: ' . $e->getMessage()], 500);
         }
     }
@@ -224,20 +224,20 @@ class StockController extends Controller
             'items.*.limit_qty' => 'required|integer|min:0',
         ]);
 
-        DB::beginTransaction();
-        try {
-            $count = 0;
-            foreach ($request->items as $item) {
-                Stock::where('id', $item['id'])->update(['limit_qty' => $item['limit_qty']]);
-                $count++;
-            }
+        $count = 0;
 
-            ActivityLog::log('Bulk Update Limit Stok', "Mengatur limit_qty untuk {$count} item stok");
-            DB::commit();
+        try {
+            DB::transaction(function () use ($request, &$count) {
+                foreach ($request->items as $item) {
+                    Stock::where('id', $item['id'])->update(['limit_qty' => $item['limit_qty']]);
+                    $count++;
+                }
+
+                ActivityLog::log('Bulk Update Limit Stok', "Mengatur limit_qty untuk {$count} item stok");
+            }, 3);
 
             return response()->json(['message' => "Berhasil mengatur limit qty untuk {$count} item stok."]);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json(['message' => 'Gagal mengatur limit qty: ' . $e->getMessage()], 500);
         }
     }
