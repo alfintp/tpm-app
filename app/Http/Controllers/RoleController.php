@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Role;
+use App\Models\MaintenanceRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -140,6 +141,29 @@ class RoleController extends Controller
                     DB::table('users')->where('role', $oldName)->update(['role' => $newName]);
                     DB::table('approval_flow_steps')->where('role', $oldName)->update(['role' => $newName]);
                     DB::table('approval_flow_steps')->where('reporter_role', $oldName)->update(['reporter_role' => $newName]);
+
+                    // Update approval_flow_snapshot in maintenance_records
+                    $records = MaintenanceRecord::whereNotNull('approval_flow_snapshot')->get(['id', 'approval_flow_snapshot']);
+                    foreach ($records as $record) {
+                        $snapshot = $record->approval_flow_snapshot;
+                        if (!is_array($snapshot)) continue;
+                        $changed = false;
+                        foreach ($snapshot as &$step) {
+                            if (($step['role'] ?? null) === $oldName) {
+                                $step['role'] = $newName;
+                                $changed = true;
+                            }
+                            if (($step['reporter_role'] ?? null) === $oldName) {
+                                $step['reporter_role'] = $newName;
+                                $changed = true;
+                            }
+                        }
+                        unset($step);
+                        if ($changed) {
+                            $record->approval_flow_snapshot = $snapshot;
+                            $record->save();
+                        }
+                    }
                 }
 
                 $role->update([
