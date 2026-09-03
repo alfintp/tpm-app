@@ -12,11 +12,13 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Idempotent — only generates months that don't have occurrences yet, so this
-        // safely keeps the 6-month rolling schedule window always populated.
-        // Runs monthly on the 1st since the 6-month window provides ample buffer.
-        // New machines get scheduled immediately via generateUpcomingForCity() on creation.
-        $schedule->command('schedules:generate-occurrences')->monthlyOn(1, '00:00');
+        // Schedule generation is now triggered on-demand when users access the
+        // Dashboard (via /api/schedules/notifications). The
+        // ScheduleOccurrenceGenerator::ensureGenerated() method uses a 6-hour
+        // cache flag to avoid redundant checks.
+        // The artisan command is still available manually if needed:
+        //   php artisan schedules:generate-occurrences
+        // $schedule->command('schedules:generate-occurrences')->monthlyOn(1, '00:00');
     }
 
     /**

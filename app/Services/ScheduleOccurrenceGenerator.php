@@ -59,6 +59,24 @@ class ScheduleOccurrenceGenerator
     }
 
     /**
+     * On-demand generation triggered by user page access.
+     * Uses a cache flag (6-hour TTL) to avoid redundant DB checks on every request.
+     * Safe to call frequently — if cache is fresh, returns immediately.
+     * If cache expired, runs generateUpcoming() (idempotent — skips months already generated).
+     */
+    public function ensureGenerated(): void
+    {
+        $cacheKey = 'schedule_generation_checked';
+        if (Cache::has($cacheKey)) {
+            return;
+        }
+
+        $this->generateUpcoming();
+
+        Cache::put($cacheKey, true, now()->addDay());
+    }
+
+    /**
      * Delete future (today onward) occurrences for a single schedule and
      * regenerate its current + next month occurrences. Used when a schedule's
      * interval or active state changes so stale assignments don't linger.

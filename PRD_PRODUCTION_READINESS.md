@@ -258,30 +258,32 @@ Item-item ini adalah code-level fix yang tidak bergantung pada server/domain. Am
 |---|------|----------------------|
 | 5 | Deadlock retry | Code-level fix di controller. Tidak bergantung server. Tetap relevan setelah migrasi. |
 | 6 | N+1 / pagination approval | Code-level fix di controller. Mencegah memory issue saat data tumbuh. Tetap relevan. |
+| 9 | Cron → On-demand | Diganti dengan on-demand generation + cache 1 hari. Tidak perlu cron setup di server mana pun. |
 
-### Kasus Khusus: Cron Scheduler (Poin 9)
+### Kasus Khusus: Cron Scheduler (Poin 9) — SELESAI (On-Demand)
 
-**Saat ini (cPanel):**
-cPanel punya fitur Cron Jobs di dashboard. Bisa di-set manual:
-```
-* * * * * cd /home/user/tpm-app && php artisan schedule:run >> /dev/null 2>&1
-```
-Tapi karena schedule hanya `monthlyOn(1, '00:00')` (jalankan tiap tanggal 1 jam 00:00), bisa disederhanakan:
-```
-0 0 1 * * cd /home/user/tpm-app && php artisan schedules:generate-occurrences >> /dev/null 2>&1
-```
-Cara set: Login cPanel → Cron Jobs → Add new cron job → paste command di atas. Sesuaikan path `/home/user/tpm-app` dengan path asli di cPanel.
+**Perubahan:** Cron job diganti dengan on-demand generation. Schedule sekarang di-generate saat user membuka Dashboard (endpoint `/api/schedules/notifications`).
 
-**Setelah migrasi (VPS):**
-Di VPS, setup cron standar:
-```bash
-crontab -e
-# Tambah:
-* * * * * cd /var/www/tpm-app && php artisan schedule:run >> /dev/null 2>&1
-```
-Atau pakai systemd timer jika web utama sudah pakai approach tersebut.
+**Cara kerja:**
+1. User buka Dashboard → frontend panggil `/api/schedules/notifications`
+2. Backend panggil `ScheduleOccurrenceGenerator::ensureGenerated()`
+3. Method cek cache key `schedule_generation_checked` (TTL 1 hari)
+4. Jika cache masih ada → skip (return immediately, no DB query)
+5. Jika cache expired → jalankan `generateUpcoming()` (idempotent, skip month yang sudah ada) → set cache baru
+6. Maksimal 1x generate per hari, tidak per request
 
-**Kesimpulan:** Tidak perlu code change. Hanya server config. Bisa di-set di cPanel sekarang, atau tunggu sampai migrasi VPS. Tidak urgent karena schedule hanya monthly dan bisa di-run manual via `php artisan schedules:generate-occurrences` jika terlewat.
+**Keuntungan:**
+- Tidak perlu setup cron di cPanel/VPS
+- Tidak perlu reconfigure saat migrasi server
+- Tetap idempotent (jadwal yang sudah ada tidak berubah)
+- Cache 1 hari memastikan tidak ada redundant DB query di setiap page load
+
+**File yang diubah:**
+- `app/Services/ScheduleOccurrenceGenerator.php` — tambah method `ensureGenerated()` dengan cache
+- `app/Http/Controllers/MaintenanceScheduleController.php` — trigger `ensureGenerated()` di `notifications()`
+- `app/Console/Kernel.php` — cron job dikomentari (artisan command masih available manual)
+
+**Catatan:** Jika tidak ada user yang buka app dalam waktu lama, jadwal tidak ter-generate. Tapi karena jadwal di-generate 6 bulan ke depan, butuh 6 bulan tanpa ada user buka app baru terjadi masalah. Command manual `php artisan schedules:generate-occurrences` masih available sebagai backup.
 
 ### Tambahan: Yang Tidak Ada di List Tapi Perlu Diperhatikan Saat Migrasi
 
@@ -294,7 +296,7 @@ Atau pakai systemd timer jika web utama sudah pakai approach tersebut.
 ---
 
 ## Next Step
-Implementasi poin 5 (deadlock retry) dan 6 (pagination approval) sekarang. Poin lain menunggu migrasi ke web utama.
+Poin 5, 6, dan 9 sudah selesai diimplementasi. Poin lain (1, 3, 4, 7, 8, 12) menunggu migrasi ke web utama.
 
 ---
 
@@ -329,3 +331,14 @@ Implementasi poin 5 (deadlock retry) dan 6 (pagination approval) sekarang. Poin 
 - Limit query ke 12-24 bulan terakhir
 - Implement server-side pagination dengan frontend rewrite
 - Atau switch ke server-side filtering
+
+### Poin 9: Cron → On-Demand Generation — SELESAI (26 Aug 2026)
+
+**Yang diubah:**
+1. `app/Services/ScheduleOccurrenceGenerator.php` — tambah method `ensureGenerated()` dengan cache 1 hari
+2. `app/Http/Controllers/MaintenanceScheduleController.php` — panggil `ensureGenerated()` di `notifications()`
+3. `app/Console/Kernel.php` — cron job dikomentari (artisan command masih available)
+
+**Cara kerja:** Saat user buka Dashboard, backend cek cache `schedule_generation_checked`. Jika masih ada (dalam 1 hari), skip. Jika expired, jalankan `generateUpcoming()` (idempotent) dan set cache baru. Maksimal 1x generate per hari.
+
+**Jadwal yang sudah ada tidak berubah** — `generateUpcoming()` skip month yang sudah punya occurrence.

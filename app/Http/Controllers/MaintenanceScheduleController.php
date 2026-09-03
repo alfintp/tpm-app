@@ -21,6 +21,8 @@ class MaintenanceScheduleController extends Controller
     
     public function notifications()
     {
+        app(ScheduleOccurrenceGenerator::class)->ensureGenerated();
+
         $tomorrow = Carbon::tomorrow();
         $monthStart = Carbon::today()->startOfMonth();
         $monthEnd = Carbon::today()->endOfMonth();
