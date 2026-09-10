@@ -5,6 +5,10 @@
 
 echo "=== Laravel Startup ==="
 
+# Copy public files (including build/) to shared volume for nginx
+echo "Syncing public files to shared volume..."
+cp -r /var/www/html/public/. /shared-public/
+
 # Generate APP_KEY kalau belum ada
 if [ -z "$APP_KEY" ]; then
     echo "Generating APP_KEY..."
