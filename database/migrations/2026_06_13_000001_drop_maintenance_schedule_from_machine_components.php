@@ -9,7 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('machine_components', function (Blueprint $table) {
-            $table->dropColumn('maintenance_schedule');
+            if (Schema::hasColumn('machine_components', 'maintenance_schedule')) {
+                $table->dropColumn('maintenance_schedule');
+            }
         });
     }
 
