@@ -69,9 +69,7 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: tpm-cloudflared
     restart: unless-stopped
-    command: tunnel run
-    environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
     networks:
       - tpm-net
     depends_on:
