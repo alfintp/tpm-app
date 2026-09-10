@@ -1,10 +1,11 @@
 # ============================================================
 # Docker Compose: Laravel + Inertia.js + Vue (Monolith)
 # ============================================================
-# 3 container:
-#   - app:    PHP-FPM (Laravel app)
-#   - nginx:  Web server (serve static + proxy ke PHP-FPM)
-#   - mysql:  Database
+# 4 container:
+#   - app:        PHP-FPM (Laravel app)
+#   - nginx:      Web server (serve static + proxy ke PHP-FPM)
+#   - mysql:      Database
+#   - cloudflared: Cloudflare Tunnel (expose ke internet via domain)
 # ============================================================
 
 services:
@@ -62,6 +63,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # --- Cloudflare Tunnel (expose app ke internet via domain) ---
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: tpm-cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    networks:
+      - tpm-net
+    depends_on:
+      - nginx
 
 # --- Networks ---
 networks:
